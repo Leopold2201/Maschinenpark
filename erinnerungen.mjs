@@ -60,7 +60,7 @@ const tokens = geraete.docs.map(d => d.id);
 const res = await getMessaging().sendEachForMulticast({
   tokens,
   notification: { title, body },
-  webpush: { fcmOptions: { link: APP_URL }, notification: { icon: APP_URL + "icons/icon-192.png", badge: APP_URL + "icons/icon-192.png", tag: "maschinenpark" } },
+  webpush: { fcmOptions: { link: APP_URL }, notification: { icon: APP_URL + "icon-192.png", badge: APP_URL + "icon-192.png", tag: "maschinenpark" } },
 });
 console.log(`Gesendet: ${res.successCount} ok, ${res.failureCount} fehlgeschlagen.\n${title}\n${body}`);
 
