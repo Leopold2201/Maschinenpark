@@ -199,7 +199,7 @@ img{max-width:100%}[hidden]{display:none!important}
 <script src="firebase-config.js"></script>
 <script>
 const KATS=["Traktor","Mähdrescher","Häcksler","Anhänger","Bodenbearbeitung","Sätechnik","Pflanzenschutz","Düngung","Futterernte","Hoflader / Teleskoplader","Fahrzeug / PKW","Sonstiges"];
-const STD_PUNKTE=[["Motoröl",12],["Getriebeöl",24],["Hydrauliköl",24],["Abschmieren",1]];
+const STD_PUNKTE=[["Motoröl",12],["Dieselfilter",12],["Getriebeöl",24],["Hydrauliköl",24],["Abschmieren",1]];
 const ARTEN=["Wartung","Reparatur","TÜV / HU","Sonstiges"];
 const S={m:[],e:[],ready:false,canWrite:true,open:null,db:null};
 const $=s=>document.querySelector(s);
@@ -438,7 +438,7 @@ if(!configured){
     $("#login").hidden=!!user;$("#app").hidden=!user;
     if(!user){S.m=[];S.e=[];S.ready=false;closeSheet();return}
     S.ready=false;render();
-    let got=0;const done=()=>{if(++got===2){S.ready=true;$("#conn").textContent="Alle Änderungen werden sofort für die ganze Familie gespeichert."}};
+    let got=0;const done=()=>{if(++got===2){S.ready=true;$("#conn").textContent="Alle Änderungen werden sofort für die ganze Familie gespeichert.";migrate()}};
     const fail=e=>{$("#conn").textContent=e&&e.code==="permission-denied"?"Dieser Login hat keinen Zugriff auf die Hof-Daten.":"Keine Verbindung. Änderungen werden gespeichert, sobald du wieder online bist."};
     let f1=1,f2=1;
     unsub.push(S.db.collection("maschinen").onSnapshot(s=>{S.m=s.docs.map(d=>({id:d.id,...d.data()}));if(f1){f1=0;done()}render()},fail));
@@ -446,7 +446,31 @@ if(!configured){
     initPush(false);
   });
 
-  /* Startdaten aus der alten App übernehmen */
+  /* Einmalig: Dieselfilter als Wartungspunkt bei allen Maschinen mit Motor ergänzen */
+async function migrate(){
+  if(migrate.ran||!S.m.length)return;migrate.ran=1;
+  try{
+    const ref=S.db.doc("meta/migrationen");const snap=await ref.get();
+    if(snap.exists&&snap.data().dieselfilter)return;
+    const b=S.db.batch();let n=0;
+    for(const m of S.m){
+      if(m.kategorie==="Anhänger")continue;
+      if(Array.isArray(m.wartung)){
+        if(m.wartung.some(p=>/dieselfilter/i.test(p.name)))continue;
+        const w=m.wartung.slice();const i=w.findIndex(p=>p.name==="Motoröl");
+        w.splice(i<0?w.length:i+1,0,{id:uid(),name:"Dieselfilter",intervall:"12",naechste:""});
+        b.update(S.db.doc("maschinen/"+m.id),{wartung:w});n++;
+      }else{
+        b.update(S.db.doc("maschinen/"+m.id),{wartung:STD_PUNKTE.map(([name,iv])=>({id:uid(),name,intervall:String(iv),naechste:""}))});n++;
+      }
+    }
+    b.set(ref,{dieselfilter:true},{merge:true});
+    await b.commit();
+    if(n)toast(`Dieselfilter bei ${n} Maschinen als Wartungspunkt ergänzt.`);
+  }catch(e){migrate.ran=0}
+}
+
+/* Startdaten aus der alten App übernehmen */
   document.addEventListener("change",async e=>{
     if(e.target.id!=="impFile"||!e.target.files[0])return;
     try{
