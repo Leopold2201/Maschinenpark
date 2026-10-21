@@ -1,0 +1,500 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Maschinenpark</title>
+<meta name="theme-color" content="#23331f">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Maschinen">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap">
+<style>
+/* Layout: Werkstatt-Tafel – Kopfband, Terminliste vor Maschinenkarten, Details als Bogen von unten */
+:root{
+  --bg:#f1f3ec; --surface:#fbfcf8; --sunk:#e7eadf; --ink:#1c2318; --muted:#5a6453; --line:#d6dbcc;
+  --accent:#2d5a32; --accent-ink:#ffffff; --band:#23331f; --band-ink:#eef2e6;
+  --ok:#2e6a38; --ok-bg:#dbebd8; --warn:#9a5c00; --warn-bg:#fbe9c9; --bad:#ae2a20; --bad-bg:#f7dcd8;
+  --f-display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --r:10px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#121610; --surface:#1a1f18; --sunk:#161b14; --ink:#e6eadf; --muted:#9ba393; --line:#2d3529;
+  --accent:#86bd84; --accent-ink:#0f170e; --band:#0c100b; --band-ink:#e6eadf;
+  --ok:#93cf92; --ok-bg:#1c3220; --warn:#f0b65a; --warn-bg:#3a2b10; --bad:#f28e84; --bad-bg:#3f1a16; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#121610; --surface:#1a1f18; --sunk:#161b14; --ink:#e6eadf; --muted:#9ba393; --line:#2d3529;
+  --accent:#86bd84; --accent-ink:#0f170e; --band:#0c100b; --band-ink:#e6eadf;
+  --ok:#93cf92; --ok-bg:#1c3220; --warn:#f0b65a; --warn-bg:#3a2b10; --bad:#f28e84; --bad-bg:#3f1a16; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45;font-variant-numeric:tabular-nums}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--band)}
+.wrap{max-width:980px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header.band{background:var(--band);color:var(--band-ink)}
+header.band .wrap{padding-block:22px 18px;display:flex;flex-wrap:wrap;gap:12px 20px;align-items:flex-end;justify-content:space-between}
+h1{font-family:var(--f-display);font-weight:700;font-size:2.1rem;line-height:1;margin:0;letter-spacing:.01em;text-wrap:balance}
+.sub{margin:6px 0 0;opacity:.75;font-size:.9rem}
+.tally{display:flex;gap:8px;flex-wrap:wrap}
+.tally div{border:1px solid color-mix(in srgb,var(--band-ink) 25%,transparent);border-radius:8px;padding:6px 12px;min-width:84px}
+.tally b{display:block;font-family:var(--f-display);font-size:1.5rem;line-height:1.1}
+.tally span{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;opacity:.8}
+main .wrap{padding-block:20px 60px;display:grid;gap:28px}
+h2{font-family:var(--f-display);font-weight:700;font-size:1.35rem;margin:0;letter-spacing:.02em}
+.sechead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;flex-wrap:wrap}
+.label{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+button,.btn{font:inherit;font-weight:600;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:9px 14px;cursor:pointer}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+button.ghost{background:transparent}
+button.danger{color:var(--bad);border-color:color-mix(in srgb,var(--bad) 45%,transparent);background:transparent}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,.mcard:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button:disabled{opacity:.5;cursor:default}
+/* Termine */
+.due{list-style:none;margin:0;padding:0;border:1px solid var(--line);border-radius:var(--r);background:var(--surface);overflow:hidden}
+.due li{display:grid;grid-template-columns:6px 1fr auto;gap:12px;align-items:center;padding:10px 14px 10px 0;border-top:1px solid var(--line);cursor:pointer}
+.due li:first-child{border-top:0}
+.due .stripe{align-self:stretch}
+.due .what{min-width:0}
+.due .what b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.due .what small{color:var(--muted)}
+.empty{padding:16px;border:1px dashed var(--line);border-radius:var(--r);color:var(--muted);background:var(--surface)}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;font-weight:600;padding:3px 9px;border-radius:999px;white-space:nowrap}
+.pill.ok{background:var(--ok-bg);color:var(--ok)} .pill.warn{background:var(--warn-bg);color:var(--warn)} .pill.bad{background:var(--bad-bg);color:var(--bad)} .pill.none{background:var(--sunk);color:var(--muted)}
+.s-ok{background:var(--ok)} .s-warn{background:var(--warn)} .s-bad{background:var(--bad)}
+/* Maschinen */
+.toolbar{display:flex;gap:8px;flex-wrap:wrap}
+.toolbar input,.toolbar select{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);min-width:0}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.mcard{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;display:grid;gap:10px;cursor:pointer;text-align:left;font-weight:400}
+.mcard:hover{border-color:color-mix(in srgb,var(--accent) 50%,var(--line))}
+.mcard .top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.mcard.is-ab{opacity:.62}
+.tag.ab{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 45%,transparent)}
+.toggle{display:flex;align-items:center;gap:6px;font-size:.9rem;color:var(--muted);white-space:nowrap}
+.mcard h3{font-family:var(--f-display);font-size:1.25rem;margin:0;line-height:1.1;min-width:0;overflow-wrap:anywhere}
+.mcard .meta{color:var(--muted);font-size:.86rem}
+.mcard .chips{display:flex;gap:6px;flex-wrap:wrap}
+.tag{font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:1px 6px;white-space:nowrap}
+/* Kosten */
+.costs{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px}
+.bars{display:grid;gap:9px;margin-top:8px}
+.bar{display:grid;grid-template-columns:minmax(90px,38%) 1fr auto;gap:10px;align-items:center;font-size:.9rem}
+.bar .track{height:10px;background:var(--sunk);border-radius:3px;overflow:hidden}
+.bar .fill{height:100%;background:var(--accent);border-radius:3px}
+.bar .name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.big{font-family:var(--f-display);font-size:2rem;font-weight:700;line-height:1}
+/* Bogen */
+.scrim{position:fixed;inset:0;background:rgb(0 0 0 / .45);z-index:20;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--bg);width:100%;max-width:720px;max-height:92%;overflow:auto;border-radius:16px 16px 0 0;padding:18px max(16px,env(safe-area-inset-right,0px)) calc(24px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));display:grid;gap:18px;align-content:start}
+@media (min-width:760px){.scrim{align-items:center}.sheet{border-radius:16px;max-height:88%}}
+.sheet-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.sheet-head h2{font-size:1.7rem;line-height:1.05}
+dl.facts{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin:0}
+dl.facts div{min-width:0} dl.facts dd{margin:2px 0 0;overflow-wrap:anywhere}
+.status2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.status2 .panel{display:grid;gap:6px}
+.hist{list-style:none;margin:0;padding:0;display:grid}
+.hist li{display:grid;grid-template-columns:auto 1fr auto;gap:4px 12px;padding:10px 0;border-top:1px solid var(--line);align-items:baseline}
+.hist .d{color:var(--muted);font-size:.85rem;min-width:78px}
+.hist .t{min-width:0;overflow-wrap:anywhere}
+.hist .a{font-weight:600;text-align:right}
+.hist .x{grid-column:2/4;justify-self:end}
+.linkbtn{background:none;border:0;padding:0;color:var(--muted);font-size:.8rem;font-weight:500;text-decoration:underline;cursor:pointer}
+.linkbtn.armed{color:var(--bad);font-weight:600}
+form{display:grid;gap:12px}
+.fields{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.f{display:grid;gap:4px;min-width:0}
+.f.full{grid-column:1/-1}
+.f input,.f select,.f textarea{font:inherit;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);width:100%}
+.f small{color:var(--muted)}
+.row{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.check{display:flex;gap:8px;align-items:center}
+.note{font-size:.85rem;color:var(--muted)}
+.err{color:var(--bad);font-size:.9rem}
+@media (max-width:420px){.status2{grid-template-columns:1fr}h1{font-size:1.8rem}}
+@media (prefers-reduced-motion:no-preference){.sheet{animation:up .18s ease-out}@keyframes up{from{transform:translateY(16px);opacity:.6}}}
+.panel.tuev{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.panel.tuev b{display:block;font-size:1.1rem}
+.wlist{list-style:none;margin:0;padding:0;border:1px solid var(--line);border-radius:var(--r);background:var(--surface);overflow:hidden}
+.wlist li{display:grid;grid-template-columns:6px 1fr auto auto;gap:10px;align-items:center;padding:9px 12px 9px 0;border-top:1px solid var(--line)}
+.wlist li:first-child{border-top:0}
+.wlist .stripe{align-self:stretch}
+.wlist .wn{min-width:0}.wlist .wn b{display:block}.wlist .wn small{color:var(--muted)}
+.wlist .wd{font-size:.9rem}
+@media (max-width:480px){.wlist li{grid-template-columns:6px 1fr auto}.wlist .wd{grid-column:2;grid-row:2;color:var(--muted);font-size:.85rem}.wlist .pill{grid-row:1/3;grid-column:3}}
+.wrow{display:grid;grid-template-columns:2fr 1fr 1.3fr auto;gap:10px;align-items:end;padding:10px 0;border-top:1px solid var(--line)}
+.wrow .wdel{padding-bottom:10px}
+@media (max-width:560px){.wrow{grid-template-columns:1fr 1fr}.wrow .f:first-child{grid-column:1/-1}.wrow .wdel{grid-column:1/-1;justify-self:start;padding:0}}
+fieldset.checks{border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin:0;display:grid;gap:8px;background:var(--surface)}
+fieldset.checks small{color:var(--muted)}
+.hist li{grid-template-columns:auto 1fr auto}
+html{-webkit-text-size-adjust:100%}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0}
+img{max-width:100%}[hidden]{display:none!important}
+.hbtn{background:transparent;color:var(--band-ink);border-color:color-mix(in srgb,var(--band-ink) 35%,transparent);font-size:.85rem;padding:7px 12px}
+.hbtn.on{background:color-mix(in srgb,var(--band-ink) 14%,transparent)}
+.foot{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:space-between}
+.login{min-height:70vh;display:grid;place-items:center;padding-block:32px}
+.login form{width:100%;max-width:360px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px;display:grid;gap:14px}
+.login h2{font-size:1.6rem}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--band);color:var(--band-ink);padding:12px 16px;border-radius:10px;z-index:40;max-width:min(92vw,520px);box-shadow:0 6px 24px rgb(0 0 0 / .25)}
+.import{display:grid;gap:10px;justify-items:start}
+</style>
+</head>
+<body>
+
+<header class="band"><div class="wrap">
+  <div>
+    <h1>Maschinenpark</h1>
+    <p class="sub">TÜV, Ölwechsel und Abschmieren aller Maschinen am Hof</p>
+  </div>
+  <div class="tally" id="tally"></div>
+  <button class="hbtn" id="pushBtn" hidden>Benachrichtigungen einschalten</button>
+</div></header>
+
+<section class="login wrap" id="login" hidden>
+  <form id="lf">
+    <div><span class="label">Hof-Zugang</span><h2>Anmelden</h2></div>
+    <label class="f"><span class="label">E-Mail</span><input id="l_mail" type="email" autocomplete="username" required></label>
+    <label class="f"><span class="label">Passwort</span><input id="l_pw" type="password" autocomplete="current-password" required></label>
+    <p class="err" id="lerr" hidden></p>
+    <button class="primary" type="submit">Anmelden</button>
+    <p class="note" style="margin:0">Ein gemeinsamer Login für die ganze Familie. Du bleibst auf diesem Gerät angemeldet.</p>
+  </form>
+</section>
+<main id="app" hidden><div class="wrap">
+  <section>
+    <div class="sechead"><h2>Anstehende Termine</h2><span class="label">nächste 60 Tage &amp; überfällig</span></div>
+    <div id="due"></div>
+  </section>
+  <section>
+    <div class="sechead">
+      <h2>Maschinen</h2>
+      <div class="toolbar">
+        <input id="q" type="search" placeholder="Suchen…" aria-label="Maschinen durchsuchen">
+        <select id="fcat" aria-label="Kategorie filtern"></select>
+        <label class="toggle"><input id="showAb" type="checkbox" checked> Abgemeldete zeigen</label>
+        <button class="primary" id="addM">+ Maschine</button>
+      </div>
+    </div>
+    <div id="grid"></div>
+  </section>
+  <div class="foot"><p class="note" id="conn">Verbinde…</p><button class="linkbtn" id="logout">Abmelden</button></div>
+</div></main>
+<div id="toast" class="toast" hidden></div>
+
+<div id="layer"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script>
+const KATS=["Traktor","Mähdrescher","Häcksler","Anhänger","Bodenbearbeitung","Sätechnik","Pflanzenschutz","Düngung","Futterernte","Hoflader / Teleskoplader","Fahrzeug / PKW","Sonstiges"];
+const STD_PUNKTE=[["Motoröl",12],["Getriebeöl",24],["Hydrauliköl",24],["Abschmieren",1]];
+const ARTEN=["Wartung","Reparatur","TÜV / HU","Sonstiges"];
+const S={m:[],e:[],ready:false,canWrite:true,open:null,db:null};
+const $=s=>document.querySelector(s);
+const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const today=()=>{const d=new Date();d.setHours(0,0,0,0);return d};
+const iso=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+const parse=s=>{if(!s)return null;const[y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d||1)};
+const fmtD=s=>{const d=parse(s);return d?d.toLocaleDateString("de-DE",{day:"2-digit",month:"2-digit",year:"numeric"}):"–"};
+const fmtM=s=>{if(!s)return"–";const[y,m]=s.split("-");return `${m}/${y}`};
+const addMonths=(s,n)=>{const d=parse(s);d.setMonth(d.getMonth()+Number(n));return iso(d)};
+/* Wartung nur monatsgenau: "2026-10" → 10/26, fällig bis Monatsende */
+const ym=s=>(s||"").slice(0,7);
+const addYM=(s,n)=>{const[y,m]=ym(s).split("-").map(Number);const t=y*12+(m-1)+Number(n);return `${Math.floor(t/12)}-${String(t%12+1).padStart(2,"0")}`};
+const fmtMY=s=>{if(!s)return"–";const[y,m]=ym(s).split("-");return `${m}/${y.slice(2)}`};
+const dueW=s=>days(new Date(+ym(s).slice(0,4),+ym(s).slice(5,7),0));
+const tuevEnd=s=>{if(!s)return null;const[y,m]=s.split("-").map(Number);return new Date(y,m,0)};
+const days=d=>Math.round((d-today())/864e5);
+const uid=()=>Math.random().toString(36).slice(2,9);
+function lvl(d){if(d==null)return"none";if(d<0)return"bad";if(d<=30)return"warn";return"ok"}
+function rel(d){if(d==null)return"kein Termin";if(d<0)return `${-d} Tage überfällig`;if(d===0)return"heute";if(d===1)return"morgen";if(d<=60)return `in ${d} Tagen`;return"in Ordnung"}
+const ez=s=>s?(/^\d{4}-\d{2}-\d{2}$/.test(s)?fmtD(s):s):"";
+/* TÜV gilt immer genau 2 Jahre */
+const plus2=ym=>ym?`${+ym.slice(0,4)+2}${ym.slice(4,7)}`:"";
+const letzter=m=>m.letzterTuev||(m.tuevBis?`${+m.tuevBis.slice(0,4)-2}${m.tuevBis.slice(4,7)}`:"");
+const iv=n=>!n?"":n==1?"jeden Monat":`alle ${n} Monate`;
+
+/* ältere Einträge mit einem einzigen Wartungstermin weiter anzeigen */
+function punkte(m){
+  if(Array.isArray(m.wartung))return m.wartung;
+  return m.naechsteWartung||m.intervall?[{id:"allg",name:"Wartung allgemein",intervall:m.intervall||"",naechste:m.naechsteWartung||""}]:[];
+}
+function termine(m){
+  const out=[];
+  if(m.tuevBis&&!m.abgemeldet)out.push({typ:"TÜV / HU",d:days(tuevEnd(m.tuevBis)),label:`Plakette bis ${fmtM(m.tuevBis)}`,kurz:fmtM(m.tuevBis)});
+  punkte(m).forEach(p=>{if(p.naechste)out.push({typ:p.name,d:dueW(p.naechste),label:`fällig ${fmtMY(p.naechste)}`,kurz:fmtMY(p.naechste)})});
+  return out;
+}
+const ORD={bad:0,warn:1,ok:2,none:3};
+function worst(m){const t=termine(m);if(!t.length)return"none";return t.map(x=>lvl(x.d)).sort((a,b)=>ORD[a]-ORD[b])[0]}
+
+function render(){
+  const all=S.m.flatMap(m=>termine(m).map(t=>({...t,m})));
+  const over=all.filter(t=>t.d<0).length, soon=all.filter(t=>t.d>=0&&t.d<=30).length;
+  $("#tally").innerHTML=`<div><b>${S.m.filter(m=>!m.abgemeldet).length}</b><span>angemeldet</span></div><div><b style="color:${over?"#ff9d92":"inherit"}">${over}</b><span>überfällig</span></div><div><b style="color:${soon?"#f6c46d":"inherit"}">${soon}</b><span>≤ 30 Tage</span></div>`;
+
+  const list=all.filter(t=>t.d<=60).sort((a,b)=>a.d-b.d);
+  $("#due").innerHTML=!S.ready?`<div class="empty">Termine werden geladen…</div>`:list.length?`<ul class="due">${list.map(t=>`<li data-open="${esc(t.m.id)}" tabindex="0"><span class="stripe s-${lvl(t.d)}"></span><span class="what"><b>${esc(t.m.name)}</b><small>${esc(t.typ)} · ${esc(t.label)}</small></span><span class="pill ${lvl(t.d)}">${rel(t.d)}</span></li>`).join("")}</ul>`:`<div class="empty">${S.m.length?"Alles im grünen Bereich. In den nächsten 60 Tagen ist nichts fällig.":"Sobald du Maschinen mit TÜV- oder Wartungsterminen anlegst, erscheinen sie hier."}</div>`;
+
+  const cats=[...new Set(S.m.map(m=>m.kategorie).filter(Boolean))].sort();
+  const fc=$("#fcat"),cur=fc.value;
+  fc.innerHTML=`<option value="">Alle Kategorien</option>`+cats.map(c=>`<option ${c===cur?"selected":""}>${esc(c)}</option>`).join("");
+  const q=$("#q").value.trim().toLowerCase();
+  const ms=S.m.filter(m=>($("#showAb").checked||!m.abgemeldet)&&(!fc.value||m.kategorie===fc.value)&&(!q||[m.name,m.hersteller,m.modell,m.kennzeichen].join(" ").toLowerCase().includes(q)))
+    .sort((a,b)=>(!!a.abgemeldet-!!b.abgemeldet)||ORD[worst(a)]-ORD[worst(b)]||String(a.name).localeCompare(b.name,"de"));
+  $("#grid").innerHTML=!S.ready?`<div class="empty">Maschinen werden geladen…</div>`:!S.m.length?`<div class="empty import"><span>Noch keine Maschinen. Hast du die Datei <b>startdaten.json</b>? Dann übernimm damit alle Maschinen aus der alten App.</span><label class="btn">Startdaten importieren<input type="file" id="impFile" accept=".json,application/json" hidden></label></div><div class="empty" style="margin-top:8px">Oder fang von vorn an: Tippe auf <b>+ Maschine</b> und leg zum Beispiel euren Haupttraktor an. Motoröl, Getriebeöl, Hydrauliköl und Abschmieren sind als Wartungspunkte schon vorbereitet.</div>`:!ms.length?`<div class="empty">Keine Maschine passt zur Suche.</div>`:
+  `<div class="grid">${ms.map(m=>{
+    const t=termine(m);const tv=t.find(x=>x.typ==="TÜV / HU");
+    const w=t.filter(x=>x!==tv).sort((a,b)=>a.d-b.d);
+    const chips=[];
+    if(tv)chips.push(`<span class="pill ${lvl(tv.d)}">TÜV: ${tv.kurz}</span>`);
+    if(w[0])chips.push(`<span class="pill ${lvl(w[0].d)}">${esc(w[0].typ)}: ${w[0].kurz}</span>`);
+    if(w.length>1)chips.push(`<span class="pill none">+${w.length-1} weitere</span>`);
+    return `<button class="mcard${m.abgemeldet?" is-ab":""}" data-open="${esc(m.id)}">
+    <div class="top"><h3>${esc(m.name)}</h3>${m.abgemeldet?`<span class="tag ab">Abgemeldet</span>`:`<span class="tag">${m.beispiel?"Beispiel":esc(m.kategorie||"")}</span>`}</div>
+    <div class="meta">${esc([m.hersteller,m.modell].filter(Boolean).join(" ")||"–")}${m.kennzeichen?` · ${esc(m.kennzeichen)}`:""}${m.erstzulassung?` · EZ ${esc(ez(m.erstzulassung))}`:m.baujahr?` · Bj. ${esc(m.baujahr)}`:""}</div>
+    <div class="chips">${chips.length?chips.join(""):`<span class="pill none">keine Termine</span>`}</div></button>`}).join("")}</div>`;
+
+  $("#addM").disabled=!S.canWrite;
+  if(S.open&&S.open.type==="detail")drawDetail();
+}
+
+/* ---------- Bögen ---------- */
+function openSheet(html){
+  $("#layer").innerHTML=`<div class="scrim" id="scrim"><div class="sheet" role="dialog" aria-modal="true">${html}</div></div>`;
+  $("#scrim").addEventListener("click",e=>{if(e.target.id==="scrim")closeSheet()});
+}
+function closeSheet(){$("#layer").innerHTML="";S.open=null}
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&S.open)closeSheet()});
+
+function drawDetail(){
+  const m=S.m.find(x=>x.id===S.open.id);if(!m){closeSheet();return}
+  const ents=S.e.filter(e=>e.maschineId===m.id).sort((a,b)=>(b.datum||"").localeCompare(a.datum||""));
+  const tv=m.tuevBis?days(tuevEnd(m.tuevBis)):null;
+  const fact=(l,v)=>v?`<div><dt class="label">${l}</dt><dd>${esc(v)}</dd></div>`:"";
+  const ps=punkte(m);
+  const scroll=$(".sheet")?.scrollTop;
+  openSheet(`<div class="sheet-head"><div><span class="label">${esc(m.kategorie||"Maschine")}${m.beispiel?" · Beispiel":""}</span>${m.abgemeldet?` <span class="tag ab">Abgemeldet</span>`:""}<h2>${esc(m.name)}</h2></div><button class="ghost" data-act="close">Schließen</button></div>
+  <div class="panel tuev"><div><span class="label">TÜV / HU</span><b>${m.tuevBis?`Plakette bis ${fmtM(m.tuevBis)}`:"nicht eingetragen"}</b>${m.tuevBis?`<small class="note">Letzter TÜV ${fmtM(letzter(m))}</small>`:""}</div>${m.abgemeldet?`<span class="pill none">abgemeldet</span>`:`<span class="pill ${lvl(tv)}">${m.tuevBis?rel(tv):"–"}</span>`}</div>
+  <div><div class="sechead" style="margin-bottom:6px"><h2 style="font-size:1.15rem">Wartung</h2></div>
+  ${ps.length?`<ul class="wlist">${ps.map(p=>{const d=p.naechste?dueW(p.naechste):null;return `<li><span class="stripe s-${lvl(d)}"></span><span class="wn"><b>${esc(p.name)}</b><small>${esc(iv(p.intervall))||"kein Intervall"}</small></span><span class="wd">${p.naechste?fmtMY(p.naechste):"–"}</span><span class="pill ${lvl(d)}">${p.naechste?rel(d):"kein Termin"}</span></li>`}).join("")}</ul>`:`<div class="empty">Keine Wartungspunkte. Über <b>Bearbeiten</b> kannst du Motoröl, Getriebeöl, Abschmieren und weitere anlegen.</div>`}</div>
+  <dl class="facts">${fact("Erstzulassung",ez(m.erstzulassung))}${fact("Hersteller",m.hersteller)}${fact("Modell",m.modell)}${fact("Baujahr",m.baujahr)}${fact("Kennzeichen",m.kennzeichen)}${fact("Fahrgestell-Nr.",m.fin)}${fact("Versicherung",m.versicherung)}${fact("Notizen",m.notiz)}</dl>
+  <div class="row" style="justify-content:flex-start">${S.canWrite?`<button class="primary" data-act="entry">+ Erledigt eintragen</button><button data-act="edit">Bearbeiten</button>`:""}</div>
+  <div><div class="sechead" style="margin-bottom:4px"><h2 style="font-size:1.15rem">Verlauf</h2></div>
+  ${ents.length?`<ul class="hist">${ents.map(e=>`<li><span class="d">${fmtD(e.datum)}</span><span class="t"><b>${esc(e.art)}</b>${e.punkte&&e.punkte.length?`: ${esc(e.punkte.join(", "))}`:""}${e.text?` · ${esc(e.text)}`:""}</span>${S.canWrite?`<span class="x"><button class="linkbtn" data-del-e="${esc(e.id)}">Löschen</button></span>`:"<span></span>"}</li>`).join("")}</ul>`:`<div class="empty">Noch nichts eingetragen. Halte hier fest, wann Öl gewechselt, abgeschmiert oder repariert wurde.</div>`}</div>
+  ${S.canWrite?`<div class="row" style="justify-content:flex-start"><button class="danger" data-act="delm">Maschine löschen</button></div>`:""}`);
+  if(scroll)$(".sheet").scrollTop=scroll;
+  S.open={type:"detail",id:m.id};
+}
+
+function wRow(p){return `<div class="wrow" data-wid="${esc(p.id)}">
+  <label class="f"><span class="label">Wartungspunkt</span><input class="w_name" value="${esc(p.name)}" placeholder="z. B. Achsöl vorne"></label>
+  <label class="f"><span class="label">Intervall (Monate)</span><input class="w_iv" type="number" min="1" max="120" value="${esc(p.intervall)}"></label>
+  <label class="f"><span class="label">Nächster Termin</span><input class="w_next" type="month" value="${esc(ym(p.naechste))}"></label>
+  <button type="button" class="linkbtn wdel" aria-label="Wartungspunkt entfernen">Entfernen</button></div>`}
+
+function machineForm(m){
+  m=m||{};
+  S.open={type:"mform",id:m.id||null};
+  const v=k=>esc(m[k]||"");
+  const ps=punkte(m).length||Array.isArray(m.wartung)?punkte(m):STD_PUNKTE.map(([n,i])=>({id:uid(),name:n,intervall:i,naechste:""}));
+  openSheet(`<div class="sheet-head"><h2>${m.id?"Maschine bearbeiten":"Neue Maschine"}</h2><button class="ghost" data-act="${m.id?"back":"close"}">Abbrechen</button></div>
+  <form id="mf"><div class="fields">
+   <label class="f full"><span class="label">Name *</span><input id="m_name" required maxlength="80" value="${v("name")}" placeholder="z. B. Fendt 724 Vario"></label>
+   <label class="f"><span class="label">Kategorie</span><select id="m_kategorie">${KATS.map(k=>`<option ${k===(m.kategorie||"Traktor")?"selected":""}>${k}</option>`).join("")}</select></label>
+   <label class="f"><span class="label">Hersteller</span><input id="m_hersteller" value="${v("hersteller")}"></label>
+   <label class="f"><span class="label">Modell</span><input id="m_modell" value="${v("modell")}"></label>
+   <label class="f"><span class="label">Baujahr</span><input id="m_baujahr" inputmode="numeric" maxlength="4" value="${v("baujahr")}"></label>
+   <label class="f"><span class="label">Erstzulassung</span><input id="m_erstzulassung" value="${v("erstzulassung")}" placeholder="z. B. 1967 oder 2019-04-17"><small>Jahr oder Datum (Feld B im Fahrzeugschein)</small></label>
+   <label class="f"><span class="label">Kennzeichen</span><input id="m_kennzeichen" value="${v("kennzeichen")}" placeholder="SO-AB 123"></label>
+   <label class="f"><span class="label">Fahrgestell-Nr.</span><input id="m_fin" value="${v("fin")}"></label>
+   <label class="f full check"><input id="m_abgemeldet" type="checkbox" ${m.abgemeldet?"checked":""} style="width:auto"><span>Abgemeldet <small>· TÜV wird dann nicht mehr als Termin angezeigt</small></span></label>
+   <label class="f"><span class="label">Letzter TÜV / HU</span><input id="m_letzterTuev" type="month" value="${esc(letzter(m))}"><small id="m_tuevHint">${m.tuevBis?`Gültig bis ${fmtM(m.tuevBis)}`:"Gültig wird automatisch 2 Jahre"}</small></label>
+   <label class="f"><span class="label">Versicherung</span><input id="m_versicherung" value="${v("versicherung")}" placeholder="Gesellschaft, Vertrag"></label>
+   <label class="f full"><span class="label">Notizen</span><textarea id="m_notiz" rows="3" placeholder="Ölsorten, Füllmengen, Filternummern, Reifengröße…">${v("notiz")}</textarea></label>
+  </div>
+  <div><div class="sechead" style="margin:8px 0 4px"><h2 style="font-size:1.15rem">Wartungspunkte</h2></div>
+  <p class="note" style="margin:0 0 8px">Leere Punkte ohne Namen werden nicht gespeichert. Ist ein Intervall gesetzt, rechnet die App den nächsten Termin aus, sobald du die Wartung als erledigt einträgst.</p>
+  <div id="wrows">${ps.map(wRow).join("")}</div>
+  <button type="button" id="wadd" style="margin-top:8px">+ Weiterer Punkt</button></div>
+  <p class="err" id="mferr" hidden></p><div class="row"><button class="primary" type="submit">Speichern</button></div></form>`);
+  $("#wadd").addEventListener("click",()=>{$("#wrows").insertAdjacentHTML("beforeend",wRow({id:uid(),name:"",intervall:"",naechste:""}));$("#wrows").lastElementChild.querySelector(".w_name").focus()});
+  $("#wrows").addEventListener("click",e=>{if(e.target.closest(".wdel"))e.target.closest(".wrow").remove()});
+  $("#m_letzterTuev").addEventListener("input",e=>{$("#m_tuevHint").textContent=e.target.value?`Gültig bis ${fmtM(plus2(e.target.value))}`:"Gültig wird automatisch 2 Jahre"});
+  $("#mf").addEventListener("submit",async ev=>{
+    ev.preventDefault();
+    const body={};["name","kategorie","hersteller","modell","baujahr","erstzulassung","kennzeichen","fin","letzterTuev","versicherung","notiz"].forEach(k=>body[k]=$("#m_"+k).value.trim());body.tuevBis=plus2(body.letzterTuev);body.abgemeldet=$("#m_abgemeldet").checked;
+    if(!body.name)return;
+    body.wartung=[...document.querySelectorAll(".wrow")].map(r=>({id:r.dataset.wid,name:r.querySelector(".w_name").value.trim(),intervall:r.querySelector(".w_iv").value.trim(),naechste:r.querySelector(".w_next").value})).filter(p=>p.name);
+    body.beispiel=false;
+    const btn=ev.submitter;btn.disabled=true;btn.textContent="Speichert…";
+    try{
+      if(m.id){body.naechsteWartung="";body.intervall="";await S.db.doc("maschinen/"+m.id).update(body);S.open={type:"detail",id:m.id};drawDetail()}
+      else{delete body.naechsteWartung;delete body.intervall;body.angelegt=iso(new Date());const r=await S.db.collection("maschinen").add(body);S.open={type:"detail",id:r.id};drawDetail()}
+    }catch(e){showErr("#mferr",e);btn.disabled=false;btn.textContent="Speichern"}
+  });
+}
+
+function entryForm(mid){
+  const m=S.m.find(x=>x.id===mid);const ps=punkte(m);
+  S.open={type:"eform",id:mid};
+  openSheet(`<div class="sheet-head"><div><span class="label">${esc(m.name)}</span><h2>Erledigt eintragen</h2></div><button class="ghost" data-act="back">Abbrechen</button></div>
+  <form id="ef"><div class="fields">
+   <label class="f"><span class="label">Art</span><select id="e_art">${ARTEN.map(a=>`<option>${a}</option>`).join("")}</select></label>
+   <label class="f"><span class="label">Datum</span><input id="e_datum" type="date" required value="${iso(new Date())}"></label>
+   <fieldset class="f full checks" id="e_wbox"><legend class="label">Was wurde gemacht?</legend>
+     ${ps.length?ps.map(p=>`<label class="check"><input type="checkbox" value="${esc(p.id)}" class="e_p"><span>${esc(p.name)}${p.intervall?` <small>· nächster Termin dann ${fmtMY(addYM(iso(new Date()),p.intervall))}</small>`:""}</span></label>`).join(""):`<span class="note">Diese Maschine hat noch keine Wartungspunkte.</span>`}
+   </fieldset>
+   <p class="f full note" id="e_tbox" hidden>Die neue Plakette gilt automatisch 2 Jahre, also bis <b id="e_tuev"></b>.</p>
+   <label class="f full"><span class="label">Bemerkung</span><input id="e_text" placeholder="z. B. 15W-40, 18 l · Werkstatt Müller"></label>
+  </div><p class="err" id="eferr" hidden></p><div class="row"><button class="primary" type="submit">Speichern</button></div></form>`);
+  const sync=()=>{const a=$("#e_art").value;$("#e_wbox").hidden=a!=="Wartung";$("#e_tbox").hidden=a!=="TÜV / HU";
+    if($("#e_datum").value)$("#e_tuev").textContent=fmtM(plus2($("#e_datum").value.slice(0,7)));
+    const dt=$("#e_datum").value;document.querySelectorAll("#e_wbox small").forEach((s,i)=>{const p=ps.filter(x=>x.intervall)[i];if(p&&dt)s.textContent=`· nächster Termin dann ${fmtMY(addYM(dt,p.intervall))}`})};
+  $("#e_art").addEventListener("change",sync);$("#e_datum").addEventListener("change",sync);sync();
+  $("#ef").addEventListener("submit",async ev=>{
+    ev.preventDefault();
+    const art=$("#e_art").value,datum=$("#e_datum").value;
+    const sel=art==="Wartung"?[...document.querySelectorAll(".e_p:checked")].map(c=>c.value):[];
+    if(art==="Wartung"&&!sel.length&&ps.length){showErr("#eferr",{code:"pick"});return}
+    const btn=ev.submitter;btn.disabled=true;btn.textContent="Speichert…";
+    try{
+      await S.db.collection("eintraege").add({maschineId:mid,art,datum,punkte:ps.filter(p=>sel.includes(p.id)).map(p=>p.name),text:$("#e_text").value.trim()});
+      const upd={};
+      if(sel.length){upd.wartung=ps.map(p=>sel.includes(p.id)&&p.intervall?{...p,naechste:addYM(datum,p.intervall)}:{...p});if(!Array.isArray(m.wartung)){upd.naechsteWartung="";upd.intervall=""}}
+      if(art==="TÜV / HU"&&datum){upd.letzterTuev=datum.slice(0,7);upd.tuevBis=plus2(upd.letzterTuev)}
+      if(Object.keys(upd).length)await S.db.doc("maschinen/"+mid).update(upd);
+      S.open={type:"detail",id:mid};drawDetail();
+    }catch(e){showErr("#eferr",e);btn.disabled=false;btn.textContent="Speichern"}
+  });
+}
+
+function showErr(sel,e){const el=$(sel);el.hidden=false;
+  el.textContent=e&&e.code==="pick"?"Wähl mindestens einen Wartungspunkt aus.":e&&e.code==="permission-denied"?"Keine Berechtigung. Melde dich mit dem Hof-Login an.":e&&e.code==="resource-exhausted"?"Das Gratis-Kontingent für heute ist aufgebraucht. Morgen geht es wieder.":"Speichern hat nicht geklappt. Prüf die Verbindung und versuch es noch einmal."}
+
+/* Zwei-Tipp-Löschen statt Dialog */
+function arm(btn,label,fn){
+  if(btn.dataset.armed){fn();return}
+  btn.dataset.armed="1";const old=btn.textContent;btn.textContent=label;btn.classList.add("armed");
+  setTimeout(()=>{if(btn.isConnected){delete btn.dataset.armed;btn.textContent=old;btn.classList.remove("armed")}},3500);
+}
+
+document.addEventListener("click",async e=>{
+  const o=e.target.closest("[data-open]");
+  if(o&&!S.open){S.open={type:"detail",id:o.dataset.open};drawDetail();return}
+  const a=e.target.closest("[data-act]");
+  if(a){const act=a.dataset.act,id=S.open&&S.open.id;
+    if(act==="close")closeSheet();
+    if(act==="back"){if(id){S.open={type:"detail",id};drawDetail()}else closeSheet()}
+    if(act==="edit")machineForm(S.m.find(x=>x.id===id));
+    if(act==="entry")entryForm(id);
+    if(act==="delm")arm(a,"Wirklich löschen? Nochmal tippen",async()=>{a.disabled=true;
+      try{for(const en of S.e.filter(x=>x.maschineId===id))await S.db.doc("eintraege/"+en.id).delete();
+        await S.db.doc("maschinen/"+id).delete();closeSheet()}catch(err){a.disabled=false;a.textContent="Löschen fehlgeschlagen"}});
+    return}
+  const d=e.target.closest("[data-del-e]");
+  if(d)arm(d,"Sicher? Nochmal tippen",async()=>{d.disabled=true;try{await S.db.doc("eintraege/"+d.dataset.delE).delete()}catch(err){d.textContent="Fehler"}});
+});
+document.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.matches("li[data-open]")&&!S.open){S.open={type:"detail",id:e.target.dataset.open};drawDetail()}});
+$("#addM").addEventListener("click",()=>machineForm());
+$("#q").addEventListener("input",render);$("#fcat").addEventListener("change",render);$("#showAb").addEventListener("change",render);
+
+/* ---------- Firebase: Login, Daten, Push ---------- */
+const CFG=self.FIREBASE_CONFIG||{};
+const configured=CFG.apiKey&&!String(CFG.apiKey).includes("HIER");
+let unsub=[];
+function toast(msg){const t=$("#toast");t.textContent=msg;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>t.hidden=true,6000)}
+
+if(!configured){
+  document.body.innerHTML='<div class="wrap" style="padding-block:40px"><h2>Fast fertig</h2><p>Trag in <b>firebase-config.js</b> noch die Daten aus deinem Firebase-Projekt ein (siehe Anleitung, Schritt 5).</p></div>';
+}else{
+  firebase.initializeApp(CFG);
+  const auth=firebase.auth();
+  S.db=firebase.firestore();
+  S.db.enablePersistence({synchronizeTabs:true}).catch(()=>{});
+
+  $("#lf").addEventListener("submit",async ev=>{
+    ev.preventDefault();const btn=ev.submitter;btn.disabled=true;$("#lerr").hidden=true;
+    try{await auth.signInWithEmailAndPassword($("#l_mail").value.trim(),$("#l_pw").value)}
+    catch(e){$("#lerr").hidden=false;$("#lerr").textContent=/invalid|wrong|user-not-found/.test(e.code)?"E-Mail oder Passwort stimmt nicht.":e.code==="auth/too-many-requests"?"Zu viele Versuche. Warte ein paar Minuten.":"Anmelden hat nicht geklappt. Prüf die Internetverbindung."}
+    btn.disabled=false;
+  });
+  $("#logout").addEventListener("click",()=>auth.signOut());
+
+  auth.onAuthStateChanged(user=>{
+    unsub.forEach(f=>f());unsub=[];
+    $("#login").hidden=!!user;$("#app").hidden=!user;
+    if(!user){S.m=[];S.e=[];S.ready=false;closeSheet();return}
+    S.ready=false;render();
+    let got=0;const done=()=>{if(++got===2){S.ready=true;$("#conn").textContent="Alle Änderungen werden sofort für die ganze Familie gespeichert."}};
+    const fail=e=>{$("#conn").textContent=e&&e.code==="permission-denied"?"Dieser Login hat keinen Zugriff auf die Hof-Daten.":"Keine Verbindung. Änderungen werden gespeichert, sobald du wieder online bist."};
+    let f1=1,f2=1;
+    unsub.push(S.db.collection("maschinen").onSnapshot(s=>{S.m=s.docs.map(d=>({id:d.id,...d.data()}));if(f1){f1=0;done()}render()},fail));
+    unsub.push(S.db.collection("eintraege").onSnapshot(s=>{S.e=s.docs.map(d=>({id:d.id,...d.data()}));if(f2){f2=0;done()}render()},fail));
+    initPush(false);
+  });
+
+  /* Startdaten aus der alten App übernehmen */
+  document.addEventListener("change",async e=>{
+    if(e.target.id!=="impFile"||!e.target.files[0])return;
+    try{
+      const data=JSON.parse(await e.target.files[0].text());
+      const b=S.db.batch();let n=0;
+      for(const[id,d] of Object.entries(data.maschinen||{})){b.set(S.db.doc("maschinen/"+id),d);n++}
+      for(const[id,d] of Object.entries(data.eintraege||{}))b.set(S.db.doc("eintraege/"+id),d);
+      await b.commit();toast(`${n} Maschinen übernommen.`);
+    }catch(err){toast("Die Datei konnte nicht gelesen werden. Nimm die startdaten.json aus dem Paket.")}
+  });
+}
+
+/* ---------- Service Worker + Push ---------- */
+const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
+const standalone=matchMedia("(display-mode: standalone)").matches||navigator.standalone===true;
+let swReg=null;
+if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").then(r=>swReg=r).catch(()=>{});
+
+let pushReady=null;
+async function initPush(ask){
+  const btn=$("#pushBtn");
+  if(!configured)return;
+  if(pushReady===null){try{pushReady=await firebase.messaging.isSupported()}catch(_){pushReady=false}}
+  btn.hidden=false;
+  if(!pushReady){
+    if(isIOS&&!standalone){btn.textContent="Benachrichtigungen";btn.onclick=()=>toast("Auf dem iPhone: Teilen-Symbol › „Zum Home-Bildschirm“. Dann die App von dort öffnen und hier Benachrichtigungen einschalten.")}
+    else btn.hidden=true;
+    return;
+  }
+  const perm=Notification.permission;
+  if(perm==="denied"){btn.textContent="Benachrichtigungen blockiert";btn.classList.remove("on");btn.onclick=()=>toast("Du hast Benachrichtigungen blockiert. Erlaube sie in den Browser- oder Handy-Einstellungen für diese App.");return}
+  const paint=on=>{btn.textContent=on?"Benachrichtigungen an":"Benachrichtigungen einschalten";btn.classList.toggle("on",on);
+    btn.onclick=()=>on?toast("Benachrichtigungen sind auf diesem Gerät an. Ausschalten kannst du sie in den Einstellungen des Handys."):initPush(true)};
+  paint(perm==="granted");
+  if(perm!=="granted"&&!ask)return;
+  try{
+    if(perm!=="granted"&&await Notification.requestPermission()!=="granted"){paint(false);if(Notification.permission==="denied")initPush(false);return}
+    const reg=swReg||await navigator.serviceWorker.ready;
+    const messaging=firebase.messaging();
+    const token=await messaging.getToken({vapidKey:self.VAPID_KEY,serviceWorkerRegistration:reg});
+    if(token)await S.db.collection("geraete").doc(token).set({token,aktualisiert:new Date().toISOString(),geraet:navigator.userAgent.slice(0,140)});
+    if(!initPush.listening){initPush.listening=1;messaging.onMessage(p=>toast(((p.notification||{}).title||"Maschinenpark")+": "+((p.notification||{}).body||"")))}
+    paint(true);
+    if(ask)toast("Benachrichtigungen sind an. Du bekommst Bescheid, wenn TÜV oder Wartung fällig werden.");
+  }catch(e){if(ask)toast("Benachrichtigungen konnten nicht eingeschaltet werden. Prüf den VAPID-Schlüssel in firebase-config.js.")}
+}
+
+if(configured)render();
+</script>
+</body>
+</html>
