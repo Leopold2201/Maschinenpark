@@ -508,14 +508,14 @@ async function initPush(ask){
   if(perm!=="granted"&&!ask)return;
   try{
     if(perm!=="granted"&&await Notification.requestPermission()!=="granted"){paint(false);if(Notification.permission==="denied")initPush(false);return}
-    const reg=swReg||await navigator.serviceWorker.ready;
+    const reg=await navigator.serviceWorker.ready; // erst wenn der Service Worker wirklich aktiv ist
     const messaging=firebase.messaging();
     const token=await messaging.getToken({vapidKey:self.VAPID_KEY,serviceWorkerRegistration:reg});
     if(token)await S.db.collection("geraete").doc(token).set({token,aktualisiert:new Date().toISOString(),geraet:navigator.userAgent.slice(0,140)});
     if(!initPush.listening){initPush.listening=1;messaging.onMessage(p=>toast(((p.notification||{}).title||"Maschinenpark")+": "+((p.notification||{}).body||"")))}
     paint(true);
     if(ask)toast("Benachrichtigungen sind an. Du bekommst Bescheid, wenn TÜV oder Wartung fällig werden.");
-  }catch(e){if(ask)toast("Benachrichtigungen konnten nicht eingeschaltet werden. Prüf den VAPID-Schlüssel in firebase-config.js.")}
+  }catch(e){console.error(e);btn.textContent="Benachrichtigungen einschalten";btn.classList.remove("on");btn.onclick=()=>initPush(true);if(ask)toast("Benachrichtigungen konnten nicht eingeschaltet werden ("+(e&&(e.code||e.message)||"unbekannt")+"). Schick mir den Text in Klammern.")}
 }
 
 if(configured)render();
