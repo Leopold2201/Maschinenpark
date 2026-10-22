@@ -39,7 +39,9 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 header.band{background:var(--band);color:var(--band-ink)}
 header.band .wrap{padding-block:22px 18px;display:flex;flex-wrap:wrap;gap:12px 20px;align-items:flex-end;justify-content:space-between}
 h1{font-family:var(--f-display);font-weight:700;font-size:2.1rem;line-height:1;margin:0;letter-spacing:.01em;text-wrap:balance}
-.sub{margin:6px 0 0;opacity:.75;font-size:.9rem}
+.brand{flex:1 1 100%;display:flex;align-items:center;justify-content:space-between;gap:16px;min-width:0}
+.brand img{height:64px;width:auto;max-width:45%;object-fit:contain;border-radius:8px}
+.signatur{text-align:center;color:var(--muted);font-size:.82rem;letter-spacing:.04em;margin:8px 0 0}
 .tally{display:flex;gap:8px;flex-wrap:wrap}
 .tally div{border:1px solid color-mix(in srgb,var(--band-ink) 25%,transparent);border-radius:8px;padding:6px 12px;min-width:84px}
 .tally b{display:block;font-family:var(--f-display);font-size:1.5rem;line-height:1.1}
@@ -166,9 +168,9 @@ img{max-width:100%}[hidden]{display:none!important}
 <body>
 
 <header class="band"><div class="wrap">
-  <div>
+  <div class="brand">
     <h1>Maschinenpark</h1>
-    <p class="sub">TÜV, Ölwechsel und Abschmieren aller Maschinen am Hof</p>
+    <img id="logo" src="logo.png" alt="Logo des Betriebs" onerror="this.hidden=true">
   </div>
   <div class="tally" id="tally"></div>
   <button class="hbtn" id="pushBtn" hidden>Benachrichtigungen einschalten</button>
@@ -186,7 +188,7 @@ img{max-width:100%}[hidden]{display:none!important}
 </section>
 <main id="app" hidden><div class="wrap">
   <section>
-    <div class="sechead"><h2>Anstehende Termine</h2><span class="label">nächste 60 Tage &amp; überfällig</span></div>
+    <div class="sechead"><h2>Anstehende TÜV-Termine</h2><span class="label">nächste 60 Tage &amp; überfällig</span></div>
     <div id="due"></div>
   </section>
   <section>
@@ -203,6 +205,7 @@ img{max-width:100%}[hidden]{display:none!important}
     <div id="grid"></div>
   </section>
   <div class="foot"><p class="note" id="conn">Verbinde…</p><button class="linkbtn" id="logout">Abmelden</button></div>
+  <p class="signatur">Leopold Teigeler</p>
 </div></main>
 <div id="toast" class="toast" hidden></div>
 
@@ -291,12 +294,12 @@ function gruppiert(list,keyFn,order,card){
   return keys.map(k=>`<h3 class="ghead">${esc(k)} <span>${by[k].length}</span></h3><div class="grid">${by[k].map(card).join("")}</div>`).join("");
 }
 function render(){
-  const all=S.m.flatMap(m=>termine(m).map(t=>({...t,m})));
+  const all=S.m.flatMap(m=>termine(m).filter(t=>t.typ==="TÜV / HU").map(t=>({...t,m})));
   const over=all.filter(t=>t.d<0).length, soon=all.filter(t=>t.d>=0&&t.d<=30).length;
   $("#tally").innerHTML=`<div><b>${S.m.filter(m=>!m.abgemeldet).length}</b><span>angemeldet</span></div><div><b style="color:${over?"#ff9d92":"inherit"}">${over}</b><span>überfällig</span></div><div><b style="color:${soon?"#f6c46d":"inherit"}">${soon}</b><span>≤ 30 Tage</span></div>`;
 
   const list=all.filter(t=>t.d<=60).sort((a,b)=>a.d-b.d);
-  $("#due").innerHTML=!S.ready?`<div class="empty">Termine werden geladen…</div>`:list.length?`<ul class="due">${list.map(t=>`<li data-open="${esc(t.m.id)}" tabindex="0"><span class="stripe s-${lvl(t.d)}"></span><span class="what"><b>${esc(t.m.name)}</b><small>${esc(t.typ)} · ${esc(t.label)}</small></span><span class="pill ${lvl(t.d)}">${rel(t.d)}</span></li>`).join("")}</ul>`:`<div class="empty">${S.m.length?"Alles im grünen Bereich. In den nächsten 60 Tagen ist nichts fällig.":"Sobald du Maschinen mit TÜV- oder Wartungsterminen anlegst, erscheinen sie hier."}</div>`;
+  $("#due").innerHTML=!S.ready?`<div class="empty">Termine werden geladen…</div>`:list.length?`<ul class="due">${list.map(t=>`<li data-open="${esc(t.m.id)}" tabindex="0"><span class="stripe s-${lvl(t.d)}"></span><span class="what"><b>${esc(t.m.name)}</b><small>${esc(t.typ)} · ${esc(t.label)}</small></span><span class="pill ${lvl(t.d)}">${rel(t.d)}</span></li>`).join("")}</ul>`:`<div class="empty">${S.m.length?"Alles im grünen Bereich. In den nächsten 60 Tagen läuft kein TÜV ab.":"Sobald du Fahrzeuge mit TÜV anlegst, erscheinen ihre Termine hier."}</div>`;
 
   const sichtbar=S.m.filter(m=>$("#showAb").checked||!m.abgemeldet);
   const anz=id=>sichtbar.filter(m=>id==="alle"||gruppeOf(m)===id).length;

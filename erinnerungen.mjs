@@ -1,4 +1,4 @@
-// Prüft jeden Morgen TÜV- und Wartungstermine und schickt Push-Nachrichten an alle Geräte.
+// Prüft jeden Morgen die TÜV-Termine und schickt Push-Nachrichten an alle Geräte.
 // Läuft über GitHub Actions (.github/workflows/erinnerungen.yml).
 //
 // Regeln:
@@ -38,8 +38,7 @@ const maschinen = await db.collection("maschinen").get();
 for (const doc of maschinen.docs) {
   const m = doc.data();
   if (m.tuevBis && !m.abgemeldet && m.tuevPflicht !== false) items.push({ name: m.name, was: "TÜV", wann: mmyy(m.tuevBis), d: daysUntil(monthEnd(m.tuevBis)) });
-  const punkte = Array.isArray(m.wartung) ? m.wartung : [];
-  for (const p of punkte) if (p.naechste && p.modus !== "zuletzt" && !/abschmier/i.test(p.name || "")) items.push({ name: m.name, was: p.name, wann: mmyy(p.naechste), d: daysUntil(monthEnd(p.naechste)) });
+  // Erinnert wird nur an den TÜV, Wartungen stehen nur in der App.
 }
 items.sort((a, b) => a.d - b.d);
 
@@ -54,10 +53,10 @@ if (TEST) {
   title = "Maschinenpark: Test";
   body = offen.length ? offen.slice(0, 6).map(line).join("\n") : "Benachrichtigungen funktionieren. Gerade ist nichts fällig.";
 } else if (montag && offen.length) {
-  title = `Wochenüberblick: ${offen.length} Termin${offen.length > 1 ? "e" : ""}` + (ueberfaellig ? `, ${ueberfaellig} überfällig` : "");
+  title = `TÜV-Überblick: ${offen.length} Termin${offen.length > 1 ? "e" : ""}` + (ueberfaellig ? `, ${ueberfaellig} überfällig` : "");
   body = offen.slice(0, 6).map(line).join("\n") + (offen.length > 6 ? `\n… und ${offen.length - 6} weitere` : "");
 } else if (neu.length) {
-  title = neu.length === 1 ? `${neu[0].was} fällig: ${neu[0].name}` : `${neu.length} Termine werden fällig`;
+  title = neu.length === 1 ? `TÜV läuft ab: ${neu[0].name}` : `${neu.length} Termine werden fällig`;
   body = neu.slice(0, 6).map(line).join("\n");
 }
 if (!title) { console.log("Heute nichts zu melden."); process.exit(0); }
