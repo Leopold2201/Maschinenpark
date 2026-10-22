@@ -68,6 +68,16 @@ button:disabled{opacity:.5;cursor:default}
 .s-ok{background:var(--ok)} .s-warn{background:var(--warn)} .s-bad{background:var(--bad)}
 /* Maschinen */
 .toolbar{display:flex;gap:8px;flex-wrap:wrap}
+main .wrap>section{min-width:0}
+.tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex:0 0 auto;border-radius:999px;padding:7px 14px;font-weight:600;background:var(--surface);color:var(--ink);border:1px solid var(--line)}
+.tab span{color:var(--muted);font-weight:500;margin-left:2px}
+.tab.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.tab.on span{color:inherit;opacity:.8}
+.ghead{font-family:var(--f-display);font-size:1.1rem;margin:18px 0 8px;letter-spacing:.02em}
+.ghead:first-child{margin-top:0}
+.ghead span{color:var(--muted);font-weight:600;font-size:.95rem}
 .toolbar input,.toolbar select{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);min-width:0}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
 .mcard{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;display:grid;gap:10px;cursor:pointer;text-align:left;font-weight:400}
@@ -179,14 +189,15 @@ img{max-width:100%}[hidden]{display:none!important}
   </section>
   <section>
     <div class="sechead">
-      <h2>Maschinen</h2>
+      <h2>Fuhrpark &amp; Geräte</h2>
       <div class="toolbar">
         <input id="q" type="search" placeholder="Suchen…" aria-label="Maschinen durchsuchen">
         <select id="fcat" aria-label="Kategorie filtern"></select>
         <label class="toggle"><input id="showAb" type="checkbox" checked> Abgemeldete zeigen</label>
-        <button class="primary" id="addM">+ Maschine</button>
+        <button class="primary" id="addM">+ Neu</button>
       </div>
     </div>
+    <div class="tabs" id="tabs" role="tablist" aria-label="Gruppen"></div>
     <div id="grid"></div>
   </section>
   <div class="foot"><p class="note" id="conn">Verbinde…</p><button class="linkbtn" id="logout">Abmelden</button></div>
@@ -201,7 +212,25 @@ img{max-width:100%}[hidden]{display:none!important}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script src="firebase-config.js"></script>
 <script>
-const KATS=["Traktor","Mähdrescher","Häcksler","Anhänger","Bodenbearbeitung","Sätechnik","Pflanzenschutz","Düngung","Futterernte","Hoflader / Teleskoplader","Fahrzeug / PKW","Sonstiges"];
+/* Hauptgruppen (Reiter) mit ihren Kategorien */
+const GRUPPEN=[
+  {id:"traktoren",name:"Traktoren",kats:["Traktor"]},
+  {id:"autos",name:"Autos",kats:["Fahrzeug / PKW","Transporter / LKW"]},
+  {id:"selbstfahrer",name:"Lader & Selbstfahrer",kats:["Hoflader / Teleskoplader","Mähdrescher","Häcksler","Sonstige Selbstfahrer"]},
+  {id:"geraete",name:"Geräte",kats:["Anhänger","Heu- & Futtergeräte","Bodenbearbeitung","Sätechnik","Düngung","Pflanzenschutz","Sonstige Geräte"]}
+];
+const ALT={"Futterernte":"Heu- & Futtergeräte","Sonstiges":"Sonstige Geräte"};
+const katOf=m=>ALT[m.kategorie]||m.kategorie||"Sonstige Geräte";
+const gruppeOf=m=>(GRUPPEN.find(g=>g.kats.includes(katOf(m)))||GRUPPEN[3]).id;
+const KATS=GRUPPEN.flatMap(g=>g.kats);
+const katOptions=sel=>GRUPPEN.map(g=>`<optgroup label="${g.name}">${g.kats.map(k=>`<option ${k===sel?"selected":""}>${k}</option>`).join("")}</optgroup>`).join("");
+/* Standard-Wartung je Gruppe */
+const STD_JE={traktoren:[["Motoröl",12],["Dieselfilter",12],["Getriebeöl",24],["Hydrauliköl",24],["Abschmieren",1]],
+  autos:[["Motoröl",12],["Dieselfilter",24]],
+  selbstfahrer:[["Motoröl",12],["Dieselfilter",12],["Getriebeöl",24],["Hydrauliköl",24],["Abschmieren",1]],
+  geraete:[["Abschmieren",1]]};
+const stdFuer=k=>(STD_JE[(GRUPPEN.find(g=>g.kats.includes(k))||GRUPPEN[3]).id]).map(([n,i])=>({id:uid(),name:n,intervall:i,naechste:""}));
+let TAB="alle";try{TAB=localStorage.getItem("mp_tab")||"alle"}catch(_){}
 const STD_PUNKTE=[["Motoröl",12],["Dieselfilter",12],["Getriebeöl",24],["Hydrauliköl",24],["Abschmieren",1]];
 const ARTEN=["Wartung","Reparatur","TÜV / HU","Sonstiges"];
 const S={m:[],e:[],ready:false,canWrite:true,open:null,db:null};
@@ -245,6 +274,12 @@ function termine(m){
 const ORD={bad:0,warn:1,ok:2,none:3};
 function worst(m){const t=termine(m);if(!t.length)return"none";return t.map(x=>lvl(x.d)).sort((a,b)=>ORD[a]-ORD[b])[0]}
 
+function gruppiert(list,keyFn,order,card){
+  const by={};list.forEach(m=>{(by[keyFn(m)]=by[keyFn(m)]||[]).push(m)});
+  const keys=Object.keys(by).sort((a,b)=>{const i=order.indexOf(a),j=order.indexOf(b);return(i<0?99:i)-(j<0?99:j)});
+  if(keys.length===1)return `<div class="grid">${by[keys[0]].map(card).join("")}</div>`;
+  return keys.map(k=>`<h3 class="ghead">${esc(k)} <span>${by[k].length}</span></h3><div class="grid">${by[k].map(card).join("")}</div>`).join("");
+}
 function render(){
   const all=S.m.flatMap(m=>termine(m).map(t=>({...t,m})));
   const over=all.filter(t=>t.d<0).length, soon=all.filter(t=>t.d>=0&&t.d<=30).length;
@@ -253,14 +288,19 @@ function render(){
   const list=all.filter(t=>t.d<=60).sort((a,b)=>a.d-b.d);
   $("#due").innerHTML=!S.ready?`<div class="empty">Termine werden geladen…</div>`:list.length?`<ul class="due">${list.map(t=>`<li data-open="${esc(t.m.id)}" tabindex="0"><span class="stripe s-${lvl(t.d)}"></span><span class="what"><b>${esc(t.m.name)}</b><small>${esc(t.typ)} · ${esc(t.label)}</small></span><span class="pill ${lvl(t.d)}">${rel(t.d)}</span></li>`).join("")}</ul>`:`<div class="empty">${S.m.length?"Alles im grünen Bereich. In den nächsten 60 Tagen ist nichts fällig.":"Sobald du Maschinen mit TÜV- oder Wartungsterminen anlegst, erscheinen sie hier."}</div>`;
 
-  const cats=[...new Set(S.m.map(m=>m.kategorie).filter(Boolean))].sort();
+  const sichtbar=S.m.filter(m=>$("#showAb").checked||!m.abgemeldet);
+  const anz=id=>sichtbar.filter(m=>id==="alle"||gruppeOf(m)===id).length;
+  $("#tabs").innerHTML=[{id:"alle",name:"Alle"},...GRUPPEN].map(g=>`<button role="tab" class="tab${TAB===g.id?" on":""}" aria-selected="${TAB===g.id}" data-tab="${g.id}">${g.name} <span>${anz(g.id)}</span></button>`).join("");
+  const inTab=sichtbar.filter(m=>TAB==="alle"||gruppeOf(m)===TAB);
+  const cats=[...new Set(inTab.map(katOf))].sort((a,b)=>KATS.indexOf(a)-KATS.indexOf(b));
   const fc=$("#fcat"),cur=fc.value;
-  fc.innerHTML=`<option value="">Alle Kategorien</option>`+cats.map(c=>`<option ${c===cur?"selected":""}>${esc(c)}</option>`).join("");
+  fc.innerHTML=`<option value="">Alle Unterkategorien</option>`+cats.map(c=>`<option ${c===cur?"selected":""}>${esc(c)}</option>`).join("");
+  fc.hidden=cats.length<2;
   const q=$("#q").value.trim().toLowerCase();
-  const ms=S.m.filter(m=>($("#showAb").checked||!m.abgemeldet)&&(!fc.value||m.kategorie===fc.value)&&(!q||[m.name,m.hersteller,m.modell,m.kennzeichen].join(" ").toLowerCase().includes(q)))
+  const ms=inTab.filter(m=>(!fc.value||katOf(m)===fc.value)&&(!q||[m.name,m.hersteller,m.modell,m.kennzeichen].join(" ").toLowerCase().includes(q)))
     .sort((a,b)=>(!!a.abgemeldet-!!b.abgemeldet)||ORD[worst(a)]-ORD[worst(b)]||String(a.name).localeCompare(b.name,"de"));
-  $("#grid").innerHTML=!S.ready?`<div class="empty">Maschinen werden geladen…</div>`:!S.m.length?`<div class="empty import"><span>Noch keine Maschinen. Hast du die Datei <b>startdaten.json</b>? Dann übernimm damit alle Maschinen aus der alten App.</span><label class="btn">Startdaten importieren<input type="file" id="impFile" accept=".json,application/json" hidden></label></div><div class="empty" style="margin-top:8px">Oder fang von vorn an: Tippe auf <b>+ Maschine</b> und leg zum Beispiel euren Haupttraktor an. Motoröl, Getriebeöl, Hydrauliköl und Abschmieren sind als Wartungspunkte schon vorbereitet.</div>`:!ms.length?`<div class="empty">Keine Maschine passt zur Suche.</div>`:
-  `<div class="grid">${ms.map(m=>{
+  $("#grid").innerHTML=!S.ready?`<div class="empty">Maschinen werden geladen…</div>`:!S.m.length?`<div class="empty import"><span>Noch keine Maschinen. Hast du die Datei <b>startdaten.json</b>? Dann übernimm damit alle Maschinen aus der alten App.</span><label class="btn">Startdaten importieren<input type="file" id="impFile" accept=".json,application/json" hidden></label></div><div class="empty" style="margin-top:8px">Oder fang von vorn an: Tippe auf <b>+ Maschine</b> und leg zum Beispiel euren Haupttraktor an. Motoröl, Getriebeöl, Hydrauliköl und Abschmieren sind als Wartungspunkte schon vorbereitet.</div>`:!ms.length?`<div class="empty">Hier passt nichts zur Suche oder zum Filter.</div>`:
+  gruppiert(ms,TAB==="alle"?(m=>GRUPPEN.find(g=>g.id===gruppeOf(m)).name):(m=>katOf(m)),TAB==="alle"?GRUPPEN.map(g=>g.name):KATS,m=>{
     const t=termine(m);const tv=t.find(x=>x.typ==="TÜV / HU");
     const w=t.filter(x=>x!==tv).sort((a,b)=>a.d-b.d);
     const chips=[];
@@ -268,9 +308,9 @@ function render(){
     if(w[0])chips.push(`<span class="pill ${lvl(w[0].d)}">${esc(w[0].typ)}: ${w[0].kurz}</span>`);
     if(w.length>1)chips.push(`<span class="pill none">+${w.length-1} weitere</span>`);
     return `<button class="mcard${m.abgemeldet?" is-ab":""}" data-open="${esc(m.id)}">
-    <div class="top"><h3>${esc(m.name)}</h3>${m.abgemeldet?`<span class="tag ab">Abgemeldet</span>`:`<span class="tag">${m.beispiel?"Beispiel":esc(m.kategorie||"")}</span>`}</div>
+    <div class="top"><h3>${esc(m.name)}</h3>${m.abgemeldet?`<span class="tag ab">Abgemeldet</span>`:`<span class="tag">${m.beispiel?"Beispiel":esc(katOf(m))}</span>`}</div>
     <div class="meta">${esc([m.hersteller,m.modell].filter(Boolean).join(" ")||"–")}${m.kennzeichen?` · ${esc(m.kennzeichen)}`:""}${m.erstzulassung?` · EZ ${esc(ez(m.erstzulassung))}`:m.baujahr?` · Bj. ${esc(m.baujahr)}`:""}</div>
-    <div class="chips">${chips.length?chips.join(""):`<span class="pill none">keine Termine</span>`}</div></button>`}).join("")}</div>`;
+    <div class="chips">${chips.length?chips.join(""):`<span class="pill none">keine Termine</span>`}</div></button>`});
 
   $("#addM").disabled=!S.canWrite;
   if(S.open&&S.open.type==="detail")drawDetail();
@@ -316,11 +356,12 @@ function machineForm(m){
   m=m||{};
   S.open={type:"mform",id:m.id||null};
   const v=k=>esc(m[k]||"");
-  const ps=punkte(m).length||Array.isArray(m.wartung)?punkte(m):STD_PUNKTE.map(([n,i])=>({id:uid(),name:n,intervall:i,naechste:""}));
-  openSheet(`<div class="sheet-head"><h2>${m.id?"Maschine bearbeiten":"Neue Maschine"}</h2><button class="ghost" data-act="${m.id?"back":"close"}">Abbrechen</button></div>
+  const startKat=m.id?katOf(m):(GRUPPEN.find(g=>g.id===TAB)||GRUPPEN[0]).kats[0];
+  const ps=punkte(m).length||Array.isArray(m.wartung)?punkte(m):stdFuer(startKat);
+  openSheet(`<div class="sheet-head"><h2>${m.id?"Bearbeiten":"Neu anlegen"}</h2><button class="ghost" data-act="${m.id?"back":"close"}">Abbrechen</button></div>
   <form id="mf"><div class="fields">
    <label class="f full"><span class="label">Name *</span><input id="m_name" required maxlength="80" value="${v("name")}" placeholder="z. B. Fendt 724 Vario"></label>
-   <label class="f"><span class="label">Kategorie</span><select id="m_kategorie">${KATS.map(k=>`<option ${k===(m.kategorie||"Traktor")?"selected":""}>${k}</option>`).join("")}</select></label>
+   <label class="f"><span class="label">Kategorie</span><select id="m_kategorie">${katOptions(startKat)}</select></label>
    <label class="f"><span class="label">Hersteller</span><input id="m_hersteller" value="${v("hersteller")}"></label>
    <label class="f"><span class="label">Modell</span><input id="m_modell" value="${v("modell")}"></label>
    <label class="f"><span class="label">Baujahr</span><input id="m_baujahr" inputmode="numeric" maxlength="4" value="${v("baujahr")}"></label>
@@ -337,6 +378,9 @@ function machineForm(m){
   <div id="wrows">${ps.map(wRow).join("")}</div>
   <button type="button" id="wadd" style="margin-top:8px">+ Weiterer Punkt</button></div>
   <p class="err" id="mferr" hidden></p><div class="row"><button class="primary" type="submit">Speichern</button></div></form>`);
+  // Neue Maschine: Wartungspunkte passend zur gewählten Kategorie vorschlagen, solange nichts verändert wurde
+  let wTouched=false;$("#wrows").addEventListener("input",()=>wTouched=true);
+  $("#m_kategorie").addEventListener("change",e=>{if(!m.id&&!wTouched)$("#wrows").innerHTML=stdFuer(e.target.value).map(wRow).join("")});
   $("#wadd").addEventListener("click",()=>{$("#wrows").insertAdjacentHTML("beforeend",wRow({id:uid(),name:"",intervall:"",naechste:""}));$("#wrows").lastElementChild.querySelector(".w_name").focus()});
   $("#wrows").addEventListener("click",e=>{if(e.target.closest(".wdel"))e.target.closest(".wrow").remove()});
   $("#m_letzterTuev").addEventListener("input",e=>{$("#m_tuevHint").textContent=e.target.value?`Gültig bis ${fmtM(plus2(e.target.value))}`:"Gültig wird automatisch 2 Jahre"});
@@ -416,6 +460,7 @@ document.addEventListener("click",async e=>{
 });
 document.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.matches("li[data-open]")&&!S.open){S.open={type:"detail",id:e.target.dataset.open};drawDetail()}});
 $("#addM").addEventListener("click",()=>machineForm());
+$("#tabs").addEventListener("click",e=>{const b=e.target.closest("[data-tab]");if(!b)return;TAB=b.dataset.tab;$("#fcat").value="";try{localStorage.setItem("mp_tab",TAB)}catch(_){}render()});
 $("#q").addEventListener("input",render);$("#fcat").addEventListener("change",render);$("#showAb").addEventListener("change",render);
 
 /* ---------- Firebase: Login, Daten, Push ---------- */
