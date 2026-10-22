@@ -10,8 +10,17 @@ import { initializeApp, cert } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import { getMessaging } from "firebase-admin/messaging";
 
-const sa = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT || "{}");
-if (!sa.project_id) { console.error("Secret FIREBASE_SERVICE_ACCOUNT fehlt."); process.exit(1); }
+// Schlüssel aus dem GitHub-Secret lesen (verzeiht doppelt verpacktes JSON und Leerzeichen)
+const roh = (process.env.FIREBASE_SERVICE_ACCOUNT || "").trim();
+if (!roh) { console.error("Secret FIREBASE_SERVICE_ACCOUNT ist leer oder fehlt."); process.exit(1); }
+let sa;
+try { sa = JSON.parse(roh); if (typeof sa === "string") sa = JSON.parse(sa); }
+catch (e) { console.error("Secret FIREBASE_SERVICE_ACCOUNT ist kein gültiges JSON. Bitte den kompletten Inhalt der Datei von { bis } einfügen."); process.exit(1); }
+if (!sa || !sa.project_id || !sa.private_key || !sa.client_email) {
+  console.error("Secret FIREBASE_SERVICE_ACCOUNT enthält nicht den Dienstkonto-Schlüssel. Gefundene Felder: " + Object.keys(sa || {}).join(", ") +
+    "\nErwartet: type, project_id, private_key, client_email … (Firebase › Projekteinstellungen › Dienstkonten › Neuen privaten Schlüssel generieren)");
+  process.exit(1);
+}
 initializeApp({ credential: cert(sa) });
 const db = getFirestore();
 const APP_URL = process.env.APP_URL || "/";
