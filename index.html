@@ -260,9 +260,10 @@ const uid=()=>Math.random().toString(36).slice(2,9);
 function lvl(d){if(d==null)return"none";if(d<0)return"bad";if(d<=30)return"warn";return"ok"}
 function rel(d){if(d==null)return"kein Termin";if(d<0)return `${-d} Tage überfällig`;if(d===0)return"heute";if(d===1)return"morgen";if(d<=60)return `in ${d} Tagen`;return"in Ordnung"}
 const ez=s=>s?(/^\d{4}-\d{2}-\d{2}$/.test(s)?fmtD(s):s):"";
-/* TÜV gilt immer genau 2 Jahre */
-const plus2=ym=>ym?`${+ym.slice(0,4)+2}${ym.slice(4,7)}`:"";
-const letzter=m=>m.letzterTuev||(m.tuevBis?`${+m.tuevBis.slice(0,4)-2}${m.tuevBis.slice(4,7)}`:"");
+/* TÜV gilt 2 Jahre, bei Pflanzenschutzspritzen 3 Jahre */
+const tuevJahre=k=>(ALT[k]||k)==="Pflanzenschutz"?3:2;
+const plusJ=(ym,j)=>ym?`${+ym.slice(0,4)+j}${ym.slice(4,7)}`:"";
+const letzter=m=>m.letzterTuev||(m.tuevBis?`${+m.tuevBis.slice(0,4)-tuevJahre(m.kategorie)}${m.tuevBis.slice(4,7)}`:"");
 const teilHint=n=>/motoröl/i.test(n)?"Ölfilter, z. B. 03L 115 562":/diesel/i.test(n)?"Dieselfilter-Einsatz":/hydraulik/i.test(n)?"Hydraulikfilter":/getriebe/i.test(n)?"Getriebeölfilter, falls vorhanden":/luft/i.test(n)?"Luftfilter":"Filter oder Teilenummer";
 const mengeHint=n=>/abschmier/i.test(n)?"z. B. Fett, Sorte":/öl/i.test(n)?"z. B. 4,3 l · 5W-30":"falls nötig";
 /* Abschmieren: kein Intervall, nur „zuletzt gemacht“ */
@@ -272,7 +273,7 @@ const seit=s=>{const d=-days(parse(s));return d<=0?"heute":d===1?"gestern":d<60?
 const seitM=s=>{const[y,m]=ym(s).split("-").map(Number);const t=new Date();const n=(t.getFullYear()*12+t.getMonth())-(y*12+m-1);return n<=0?"diesen Monat":n===1?"letzten Monat":n<24?`vor ${n} Monaten`:`vor ${Math.floor(n/12)} Jahren`};
 /* TÜV-pflichtig? Alte Einträge ohne Angabe gelten als ja. Neue Geräte (außer Anhänger) standardmäßig nein. */
 const hatTuev=m=>m.tuevPflicht!==false;
-const tuevStd=k=>!(GRUPPEN[3].kats.includes(k)&&k!=="Anhänger");
+const tuevStd=k=>!(GRUPPEN[3].kats.includes(k)&&k!=="Anhänger"&&k!=="Pflanzenschutz");
 const iv=n=>!n?"":n==1?"jeden Monat":`alle ${n} Monate`;
 
 /* ältere Einträge mit einem einzigen Wartungstermin weiter anzeigen */
@@ -406,7 +407,7 @@ function machineForm(m){
    <label class="f"><span class="label">Fahrgestell-Nr.</span><input id="m_fin" value="${v("fin")}"></label>
    <label class="f full check"><input id="m_abgemeldet" type="checkbox" ${m.abgemeldet?"checked":""} style="width:auto"><span>Abgemeldet <small>· TÜV wird dann nicht mehr als Termin angezeigt</small></span></label>
    <label class="f full check"><input id="m_tuevPflicht" type="checkbox" ${(m.id?hatTuev(m):tuevStd(startKat))?"checked":""} style="width:auto"><span>TÜV-pflichtig <small>· abwählen bei Geräten ohne TÜV</small></span></label>
-   <label class="f" id="m_tuevBox"><span class="label">Letzter TÜV / HU</span><input id="m_letzterTuev" type="month" value="${esc(letzter(m))}"><small id="m_tuevHint">${m.tuevBis?`Gültig bis ${fmtM(m.tuevBis)}`:"Gültig wird automatisch 2 Jahre"}</small></label>
+   <label class="f" id="m_tuevBox"><span class="label">Letzter TÜV / HU</span><input id="m_letzterTuev" type="month" value="${esc(letzter(m))}"><small id="m_tuevHint">${m.tuevBis?`Gültig bis ${fmtM(m.tuevBis)}`:`Gültig wird automatisch ${tuevJahre(startKat)} Jahre`}</small></label>
    <label class="f"><span class="label">Versicherung</span><input id="m_versicherung" value="${v("versicherung")}" placeholder="Gesellschaft, Vertrag"></label>
    <label class="f full"><span class="label">Notizen</span><textarea id="m_notiz" rows="3" placeholder="Ölsorten, Füllmengen, Filternummern, Reifengröße…">${v("notiz")}</textarea></label>
   </div>
@@ -426,10 +427,11 @@ function machineForm(m){
   const tuevSync=()=>{$("#m_tuevBox").hidden=!$("#m_tuevPflicht").checked};tuevSync();
   $("#m_tuevPflicht").addEventListener("change",tuevSync);
   $("#m_kategorie").addEventListener("change",e=>{if(!m.id){$("#m_tuevPflicht").checked=tuevStd(e.target.value);tuevSync()}});
-  $("#m_letzterTuev").addEventListener("input",e=>{$("#m_tuevHint").textContent=e.target.value?`Gültig bis ${fmtM(plus2(e.target.value))}`:"Gültig wird automatisch 2 Jahre"});
+  const tuevHint=()=>{const v=$("#m_letzterTuev").value,j=tuevJahre($("#m_kategorie").value);$("#m_tuevHint").textContent=v?`Gültig bis ${fmtM(plusJ(v,j))} (${j} Jahre)`:`Gültig wird automatisch ${j} Jahre`};
+  $("#m_letzterTuev").addEventListener("input",tuevHint);$("#m_kategorie").addEventListener("change",tuevHint);
   $("#mf").addEventListener("submit",async ev=>{
     ev.preventDefault();
-    const body={};["name","kategorie","hersteller","modell","baujahr","erstzulassung","kennzeichen","fin","letzterTuev","versicherung","notiz"].forEach(k=>body[k]=$("#m_"+k).value.trim());body.tuevBis=plus2(body.letzterTuev);body.abgemeldet=$("#m_abgemeldet").checked;body.tuevPflicht=$("#m_tuevPflicht").checked;if(!body.tuevPflicht){body.letzterTuev="";body.tuevBis=""}
+    const body={};["name","kategorie","hersteller","modell","baujahr","erstzulassung","kennzeichen","fin","letzterTuev","versicherung","notiz"].forEach(k=>body[k]=$("#m_"+k).value.trim());body.tuevBis=plusJ(body.letzterTuev,tuevJahre(body.kategorie));body.abgemeldet=$("#m_abgemeldet").checked;body.tuevPflicht=$("#m_tuevPflicht").checked;if(!body.tuevPflicht){body.letzterTuev="";body.tuevBis=""}
     if(!body.name)return;
     body.wartung=[...document.querySelectorAll(".wrow")].map(r=>({id:r.dataset.wid,name:r.querySelector(".w_name").value.trim(),...(()=>{const zz=r.querySelector(".w_modus").value==="zuletzt"||istAbschmieren({name:r.querySelector(".w_name").value});
       return zz?{modus:"zuletzt",intervall:"",naechste:"",zuletzt:r.querySelector(".w_last").value}
@@ -453,11 +455,11 @@ function entryForm(mid){
    <fieldset class="f full checks" id="e_wbox"><legend class="label">Was wurde gemacht?</legend>
      ${ps.length?ps.map(p=>`<label class="check"><input type="checkbox" value="${esc(p.id)}" class="e_p"><span>${esc(p.name)}${nurZuletzt(p)?` <small class="nb">· wird als „zuletzt gemacht“ gespeichert</small>`:p.intervall?` <small data-iv="${esc(p.intervall)}">· nächster Termin dann ${fmtMY(addYM(iso(new Date()),p.intervall))}</small>`:""}</span></label>`).join(""):`<span class="note">Diese Maschine hat noch keine Wartungspunkte.</span>`}
    </fieldset>
-   <p class="f full note" id="e_tbox" hidden>Die neue Plakette gilt automatisch 2 Jahre, also bis <b id="e_tuev"></b>.</p>
+   <p class="f full note" id="e_tbox" hidden>Die neue Plakette gilt automatisch ${tuevJahre(m.kategorie)} Jahre, also bis <b id="e_tuev"></b>.</p>
    <label class="f full"><span class="label">Bemerkung</span><input id="e_text" placeholder="z. B. 15W-40, 18 l · Werkstatt Müller"></label>
   </div><p class="err" id="eferr" hidden></p><div class="row"><button class="primary" type="submit">Speichern</button></div></form>`);
   const sync=()=>{const a=$("#e_art").value;$("#e_wbox").hidden=a!=="Wartung";$("#e_tbox").hidden=a!=="TÜV / HU";
-    if($("#e_datum").value)$("#e_tuev").textContent=fmtM(plus2($("#e_datum").value.slice(0,7)));
+    if($("#e_datum").value)$("#e_tuev").textContent=fmtM(plusJ($("#e_datum").value.slice(0,7),tuevJahre(m.kategorie)));
     const dt=$("#e_datum").value;document.querySelectorAll("#e_wbox small[data-iv]").forEach(s=>{if(dt)s.textContent=`· nächster Termin dann ${fmtMY(addYM(dt,s.dataset.iv))}`})};
   $("#e_art").addEventListener("change",sync);$("#e_datum").addEventListener("change",sync);sync();
   $("#ef").addEventListener("submit",async ev=>{
@@ -470,7 +472,7 @@ function entryForm(mid){
       await S.db.collection("eintraege").add({maschineId:mid,art,datum,punkte:ps.filter(p=>sel.includes(p.id)).map(p=>p.name),text:$("#e_text").value.trim()});
       const upd={};
       if(sel.length){upd.wartung=ps.map(p=>!sel.includes(p.id)?{...p}:nurZuletzt(p)?{...p,zuletzt:ym(datum),naechste:"",intervall:""}:{...p,zuletzt:datum,...(p.intervall?{naechste:addYM(datum,p.intervall)}:{})});if(!Array.isArray(m.wartung)){upd.naechsteWartung="";upd.intervall=""}}
-      if(art==="TÜV / HU"&&datum){upd.letzterTuev=datum.slice(0,7);upd.tuevBis=plus2(upd.letzterTuev)}
+      if(art==="TÜV / HU"&&datum){upd.letzterTuev=datum.slice(0,7);upd.tuevBis=plusJ(upd.letzterTuev,tuevJahre(m.kategorie))}
       if(Object.keys(upd).length)await S.db.doc("maschinen/"+mid).update(upd);
       S.open={type:"detail",id:mid};drawDetail();
     }catch(e){showErr("#eferr",e);btn.disabled=false;btn.textContent="Speichern"}
