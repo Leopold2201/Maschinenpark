@@ -3,9 +3,9 @@ importScripts("firebase-config.js");
 importScripts("https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js");
 importScripts("https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js");
 
-const CACHE = "maschinenpark-v2";
+const CACHE = "maschinenpark-v3";
 const SHELL = ["./", "index.html", "firebase-config.js", "manifest.webmanifest",
-  "icon-192.png", "icon-512.png", "apple-touch-icon.png"];
+  "icon-192.png", "icon-512.png", "apple-touch-icon.png", "logo.png"];
 
 self.addEventListener("install", e => {
   // Einzeln cachen: fehlt eine Datei, klappt die Installation trotzdem.

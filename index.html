@@ -40,7 +40,8 @@ header.band{background:var(--band);color:var(--band-ink)}
 header.band .wrap{padding-block:22px 18px;display:flex;flex-wrap:wrap;gap:12px 20px;align-items:flex-end;justify-content:space-between}
 h1{font-family:var(--f-display);font-weight:700;font-size:2.1rem;line-height:1;margin:0;letter-spacing:.01em;text-wrap:balance}
 .brand{flex:1 1 100%;display:flex;align-items:center;justify-content:space-between;gap:16px;min-width:0}
-.brand img{height:64px;width:auto;max-width:45%;object-fit:contain;border-radius:8px}
+.brand img{height:80px;width:auto;max-width:40%;object-fit:contain;flex:0 0 auto}
+@media (min-width:700px){.brand img{height:104px}}
 .signatur{text-align:center;color:var(--muted);font-size:.82rem;letter-spacing:.04em;margin:8px 0 0}
 .tally{display:flex;gap:8px;flex-wrap:wrap}
 .tally div{border:1px solid color-mix(in srgb,var(--band-ink) 25%,transparent);border-radius:8px;padding:6px 12px;min-width:84px}
