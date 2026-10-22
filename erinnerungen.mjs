@@ -37,7 +37,7 @@ const items = [];
 const maschinen = await db.collection("maschinen").get();
 for (const doc of maschinen.docs) {
   const m = doc.data();
-  if (m.tuevBis && !m.abgemeldet) items.push({ name: m.name, was: "TÜV", wann: mmyy(m.tuevBis), d: daysUntil(monthEnd(m.tuevBis)) });
+  if (m.tuevBis && !m.abgemeldet && m.tuevPflicht !== false) items.push({ name: m.name, was: "TÜV", wann: mmyy(m.tuevBis), d: daysUntil(monthEnd(m.tuevBis)) });
   const punkte = Array.isArray(m.wartung) ? m.wartung : [];
   for (const p of punkte) if (p.naechste && !/abschmier/i.test(p.name || "")) items.push({ name: m.name, was: p.name, wann: mmyy(p.naechste), d: daysUntil(monthEnd(p.naechste)) });
 }

@@ -264,6 +264,9 @@ const mengeHint=n=>/abschmier/i.test(n)?"z. B. Fett, Sorte":/öl/i.test(n)?"z. B
 const nurZuletzt=p=>/abschmier/i.test(p.name||"");
 const seit=s=>{const d=-days(parse(s));return d<=0?"heute":d===1?"gestern":d<60?`vor ${d} Tagen`:d<730?`vor ${Math.round(d/30.4)} Monaten`:`vor ${Math.round(d/365)} Jahren`};
 const seitM=s=>{const[y,m]=ym(s).split("-").map(Number);const t=new Date();const n=(t.getFullYear()*12+t.getMonth())-(y*12+m-1);return n<=0?"diesen Monat":n===1?"letzten Monat":n<24?`vor ${n} Monaten`:`vor ${Math.floor(n/12)} Jahren`};
+/* TÜV-pflichtig? Alte Einträge ohne Angabe gelten als ja. Neue Geräte (außer Anhänger) standardmäßig nein. */
+const hatTuev=m=>m.tuevPflicht!==false;
+const tuevStd=k=>!(GRUPPEN[3].kats.includes(k)&&k!=="Anhänger");
 const iv=n=>!n?"":n==1?"jeden Monat":`alle ${n} Monate`;
 
 /* ältere Einträge mit einem einzigen Wartungstermin weiter anzeigen */
@@ -273,7 +276,7 @@ function punkte(m){
 }
 function termine(m){
   const out=[];
-  if(m.tuevBis&&!m.abgemeldet)out.push({typ:"TÜV / HU",d:days(tuevEnd(m.tuevBis)),label:`Plakette bis ${fmtM(m.tuevBis)}`,kurz:fmtM(m.tuevBis)});
+  if(m.tuevBis&&!m.abgemeldet&&hatTuev(m))out.push({typ:"TÜV / HU",d:days(tuevEnd(m.tuevBis)),label:`Plakette bis ${fmtM(m.tuevBis)}`,kurz:fmtM(m.tuevBis)});
   punkte(m).forEach(p=>{if(p.naechste&&!nurZuletzt(p))out.push({typ:p.name,d:dueW(p.naechste),label:`fällig ${fmtMY(p.naechste)}`,kurz:fmtMY(p.naechste)})});
   return out;
 }
@@ -338,7 +341,7 @@ function drawDetail(){
   const ps=punkte(m);
   const scroll=$(".sheet")?.scrollTop;
   openSheet(`<div class="sheet-head"><div><span class="label">${esc(m.kategorie||"Maschine")}${m.beispiel?" · Beispiel":""}</span>${m.abgemeldet?` <span class="tag ab">Abgemeldet</span>`:""}<h2>${esc(m.name)}</h2></div><button class="ghost" data-act="close">Schließen</button></div>
-  <div class="panel tuev"><div><span class="label">TÜV / HU</span><b>${m.tuevBis?`Plakette bis ${fmtM(m.tuevBis)}`:"nicht eingetragen"}</b>${m.tuevBis?`<small class="note">Letzter TÜV ${fmtM(letzter(m))}</small>`:""}</div>${m.abgemeldet?`<span class="pill none">abgemeldet</span>`:`<span class="pill ${lvl(tv)}">${m.tuevBis?rel(tv):"–"}</span>`}</div>
+  ${hatTuev(m)?"":"<!--"}<div class="panel tuev"><div><span class="label">TÜV / HU</span><b>${m.tuevBis?`Plakette bis ${fmtM(m.tuevBis)}`:"nicht eingetragen"}</b>${m.tuevBis?`<small class="note">Letzter TÜV ${fmtM(letzter(m))}</small>`:""}</div>${m.abgemeldet?`<span class="pill none">abgemeldet</span>`:`<span class="pill ${lvl(tv)}">${m.tuevBis?rel(tv):"–"}</span>`}</div>${hatTuev(m)?"":"-->"}
   <div><div class="sechead" style="margin-bottom:6px"><h2 style="font-size:1.15rem">Wartung</h2></div>
   ${ps.length?`<ul class="wlist">${ps.map(p=>{
     const extra=`${p.teil?`<small class="teil">Filter: <b>${esc(p.teil)}</b></small>`:""}${p.menge?`<small class="teil">Füllmenge: <b>${esc(p.menge)}</b></small>`:""}`;
@@ -381,7 +384,8 @@ function machineForm(m){
    <label class="f"><span class="label">Kennzeichen</span><input id="m_kennzeichen" value="${v("kennzeichen")}" placeholder="SO-AB 123"></label>
    <label class="f"><span class="label">Fahrgestell-Nr.</span><input id="m_fin" value="${v("fin")}"></label>
    <label class="f full check"><input id="m_abgemeldet" type="checkbox" ${m.abgemeldet?"checked":""} style="width:auto"><span>Abgemeldet <small>· TÜV wird dann nicht mehr als Termin angezeigt</small></span></label>
-   <label class="f"><span class="label">Letzter TÜV / HU</span><input id="m_letzterTuev" type="month" value="${esc(letzter(m))}"><small id="m_tuevHint">${m.tuevBis?`Gültig bis ${fmtM(m.tuevBis)}`:"Gültig wird automatisch 2 Jahre"}</small></label>
+   <label class="f full check"><input id="m_tuevPflicht" type="checkbox" ${(m.id?hatTuev(m):tuevStd(startKat))?"checked":""} style="width:auto"><span>TÜV-pflichtig <small>· abwählen bei Geräten ohne TÜV</small></span></label>
+   <label class="f" id="m_tuevBox"><span class="label">Letzter TÜV / HU</span><input id="m_letzterTuev" type="month" value="${esc(letzter(m))}"><small id="m_tuevHint">${m.tuevBis?`Gültig bis ${fmtM(m.tuevBis)}`:"Gültig wird automatisch 2 Jahre"}</small></label>
    <label class="f"><span class="label">Versicherung</span><input id="m_versicherung" value="${v("versicherung")}" placeholder="Gesellschaft, Vertrag"></label>
    <label class="f full"><span class="label">Notizen</span><textarea id="m_notiz" rows="3" placeholder="Ölsorten, Füllmengen, Filternummern, Reifengröße…">${v("notiz")}</textarea></label>
   </div>
@@ -395,10 +399,13 @@ function machineForm(m){
   $("#m_kategorie").addEventListener("change",e=>{if(!m.id&&!wTouched)$("#wrows").innerHTML=stdFuer(e.target.value).map(wRow).join("")});
   $("#wadd").addEventListener("click",()=>{$("#wrows").insertAdjacentHTML("beforeend",wRow({id:uid(),name:"",intervall:"",naechste:""}));$("#wrows").lastElementChild.querySelector(".w_name").focus()});
   $("#wrows").addEventListener("click",e=>{if(e.target.closest(".wdel"))e.target.closest(".wrow").remove()});
+  const tuevSync=()=>{$("#m_tuevBox").hidden=!$("#m_tuevPflicht").checked};tuevSync();
+  $("#m_tuevPflicht").addEventListener("change",tuevSync);
+  $("#m_kategorie").addEventListener("change",e=>{if(!m.id){$("#m_tuevPflicht").checked=tuevStd(e.target.value);tuevSync()}});
   $("#m_letzterTuev").addEventListener("input",e=>{$("#m_tuevHint").textContent=e.target.value?`Gültig bis ${fmtM(plus2(e.target.value))}`:"Gültig wird automatisch 2 Jahre"});
   $("#mf").addEventListener("submit",async ev=>{
     ev.preventDefault();
-    const body={};["name","kategorie","hersteller","modell","baujahr","erstzulassung","kennzeichen","fin","letzterTuev","versicherung","notiz"].forEach(k=>body[k]=$("#m_"+k).value.trim());body.tuevBis=plus2(body.letzterTuev);body.abgemeldet=$("#m_abgemeldet").checked;
+    const body={};["name","kategorie","hersteller","modell","baujahr","erstzulassung","kennzeichen","fin","letzterTuev","versicherung","notiz"].forEach(k=>body[k]=$("#m_"+k).value.trim());body.tuevBis=plus2(body.letzterTuev);body.abgemeldet=$("#m_abgemeldet").checked;body.tuevPflicht=$("#m_tuevPflicht").checked;if(!body.tuevPflicht){body.letzterTuev="";body.tuevBis=""}
     if(!body.name)return;
     body.wartung=[...document.querySelectorAll(".wrow")].map(r=>({id:r.dataset.wid,name:r.querySelector(".w_name").value.trim(),intervall:r.querySelector(".w_iv")?.value.trim()||"",naechste:r.querySelector(".w_next")?.value||"",zuletzt:(r.querySelector(".w_last")||r.querySelector(".w_zul")).value,teil:r.querySelector(".w_teil").value.trim(),menge:r.querySelector(".w_menge").value.trim()})).filter(p=>p.name);
     body.beispiel=false;
@@ -415,7 +422,7 @@ function entryForm(mid){
   S.open={type:"eform",id:mid};
   openSheet(`<div class="sheet-head"><div><span class="label">${esc(m.name)}</span><h2>Erledigt eintragen</h2></div><button class="ghost" data-act="back">Abbrechen</button></div>
   <form id="ef"><div class="fields">
-   <label class="f"><span class="label">Art</span><select id="e_art">${ARTEN.map(a=>`<option>${a}</option>`).join("")}</select></label>
+   <label class="f"><span class="label">Art</span><select id="e_art">${ARTEN.filter(a=>a!=="TÜV / HU"||hatTuev(m)).map(a=>`<option>${a}</option>`).join("")}</select></label>
    <label class="f"><span class="label">Datum</span><input id="e_datum" type="date" required value="${iso(new Date())}"></label>
    <fieldset class="f full checks" id="e_wbox"><legend class="label">Was wurde gemacht?</legend>
      ${ps.length?ps.map(p=>`<label class="check"><input type="checkbox" value="${esc(p.id)}" class="e_p"><span>${esc(p.name)}${nurZuletzt(p)?` <small class="nb">· wird als „zuletzt gemacht“ gespeichert</small>`:p.intervall?` <small data-iv="${esc(p.intervall)}">· nächster Termin dann ${fmtMY(addYM(iso(new Date()),p.intervall))}</small>`:""}</span></label>`).join(""):`<span class="note">Diese Maschine hat noch keine Wartungspunkte.</span>`}
