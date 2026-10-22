@@ -38,9 +38,9 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .wrap{max-width:980px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 header.band{background:var(--band);color:var(--band-ink)}
 header.band .wrap{padding-block:14px 18px;display:flex;flex-wrap:wrap;gap:12px 20px;align-items:flex-end;justify-content:space-between}
-h1{font-family:var(--f-display);font-weight:700;font-size:clamp(2.6rem,13vw,4.8rem);line-height:.95;margin:0;white-space:nowrap;letter-spacing:.01em;text-wrap:balance}
+h1{font-family:var(--f-display);font-weight:700;font-size:clamp(2.6rem,13vw,4.8rem);line-height:1;flex:1 1 auto;min-width:0;margin:0;white-space:nowrap;letter-spacing:.01em;text-wrap:balance}
 .brand{flex:1 1 100%;display:flex;align-items:flex-start;padding-top:4px;justify-content:space-between;gap:16px;min-width:0}
-.brand img{height:118px;width:auto;max-width:46%;min-width:80px;object-fit:contain;object-position:right top;flex:0 1 auto}
+.brand img{height:118px;width:auto;object-fit:contain;flex:0 0 auto}
 @media (min-width:700px){.brand img{height:160px}}
 #pushBtn.on{background:var(--ok-bg);color:var(--ok);border-color:transparent}
 .signatur{text-align:center;color:var(--muted);font-size:.82rem;letter-spacing:.04em;margin:8px 0 0}
@@ -295,6 +295,19 @@ function gruppiert(list,keyFn,order,card){
   if(keys.length===1)return `<div class="grid">${by[keys[0]].map(card).join("")}</div>`;
   return keys.map(k=>`<h3 class="ghead">${esc(k)} <span>${by[k].length}</span></h3><div class="grid">${by[k].map(card).join("")}</div>`).join("");
 }
+/* Titel so groß wie möglich neben dem Logo, mittig auf Höhe des Ringelschwanzes */
+function fitTitle(){
+  const b=document.querySelector(".brand");if(!b)return;const h=b.querySelector("h1"),img=document.getElementById("logo");
+  const lw=img&&!img.hidden?img.getBoundingClientRect().width:0,lh=img&&!img.hidden?img.getBoundingClientRect().height:0;
+  const avail=b.clientWidth-lw-(lw?14:0);if(avail<=0)return;
+  h.style.fontSize="100px";const r=document.createRange();r.selectNodeContents(h);const w=r.getBoundingClientRect().width||1;
+  const f=Math.max(28,Math.min(96,Math.floor(100*avail/w*0.98)));
+  h.style.fontSize=f+"px";h.style.marginTop=(lh?Math.max(0,Math.round(0.222*lh-0.56*f)):0)+"px";
+}
+addEventListener("resize",fitTitle);
+document.getElementById("logo").addEventListener("load",fitTitle);
+document.fonts&&document.fonts.ready.then(fitTitle);
+setTimeout(fitTitle,0);
 function render(){
   const all=S.m.flatMap(m=>termine(m).filter(t=>t.typ==="TÜV / HU").map(t=>({...t,m})));
   const over=all.filter(t=>t.d<0).length, soon=all.filter(t=>t.d>=0&&t.d<=30).length;
