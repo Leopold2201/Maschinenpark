@@ -263,6 +263,7 @@ const mengeHint=n=>/abschmier/i.test(n)?"z. B. Fett, Sorte":/öl/i.test(n)?"z. B
 /* Abschmieren: kein Intervall, nur „zuletzt gemacht“ */
 const nurZuletzt=p=>/abschmier/i.test(p.name||"");
 const seit=s=>{const d=-days(parse(s));return d<=0?"heute":d===1?"gestern":d<60?`vor ${d} Tagen`:d<730?`vor ${Math.round(d/30.4)} Monaten`:`vor ${Math.round(d/365)} Jahren`};
+const seitM=s=>{const[y,m]=ym(s).split("-").map(Number);const t=new Date();const n=(t.getFullYear()*12+t.getMonth())-(y*12+m-1);return n<=0?"diesen Monat":n===1?"letzten Monat":n<24?`vor ${n} Monaten`:`vor ${Math.floor(n/12)} Jahren`};
 const iv=n=>!n?"":n==1?"jeden Monat":`alle ${n} Monate`;
 
 /* ältere Einträge mit einem einzigen Wartungstermin weiter anzeigen */
@@ -341,7 +342,7 @@ function drawDetail(){
   <div><div class="sechead" style="margin-bottom:6px"><h2 style="font-size:1.15rem">Wartung</h2></div>
   ${ps.length?`<ul class="wlist">${ps.map(p=>{
     const extra=`${p.teil?`<small class="teil">Filter: <b>${esc(p.teil)}</b></small>`:""}${p.menge?`<small class="teil">Füllmenge: <b>${esc(p.menge)}</b></small>`:""}`;
-    if(nurZuletzt(p))return `<li><span class="stripe s-none"></span><span class="wn"><b>${esc(p.name)}</b><small>zuletzt gemacht</small>${extra}</span><span class="wd">${p.zuletzt?fmtD(p.zuletzt):"–"}</span><span class="pill none">${p.zuletzt?seit(p.zuletzt):"noch nicht eingetragen"}</span></li>`;
+    if(nurZuletzt(p))return `<li><span class="stripe s-none"></span><span class="wn"><b>${esc(p.name)}</b><small>zuletzt gemacht</small>${extra}</span><span class="wd">${p.zuletzt?fmtMY(p.zuletzt):"–"}</span><span class="pill none">${p.zuletzt?seitM(p.zuletzt):"noch nicht eingetragen"}</span></li>`;
     const d=p.naechste?dueW(p.naechste):null;
     return `<li><span class="stripe s-${lvl(d)}"></span><span class="wn"><b>${esc(p.name)}</b><small>${esc(iv(p.intervall))||"kein Intervall"}${p.zuletzt?` · zuletzt ${fmtD(p.zuletzt)}`:""}</small>${extra}</span><span class="wd">${p.naechste?fmtMY(p.naechste):"–"}</span><span class="pill ${lvl(d)}">${p.naechste?rel(d):"kein Termin"}</span></li>`}).join("")}</ul>`:`<div class="empty">Keine Wartungspunkte. Über <b>Bearbeiten</b> kannst du Motoröl, Getriebeöl, Abschmieren und weitere anlegen.</div>`}</div>
   <dl class="facts">${fact("Erstzulassung",ez(m.erstzulassung))}${fact("Hersteller",m.hersteller)}${fact("Modell",m.modell)}${fact("Baujahr",m.baujahr)}${fact("Kennzeichen",m.kennzeichen)}${fact("Fahrgestell-Nr.",m.fin)}${fact("Versicherung",m.versicherung)}${fact("Notizen",m.notiz)}</dl>
@@ -355,7 +356,7 @@ function drawDetail(){
 
 function wRow(p){const z=nurZuletzt(p);return `<div class="wrow" data-wid="${esc(p.id)}">
   <label class="f"><span class="label">Wartungspunkt</span><input class="w_name" value="${esc(p.name)}" placeholder="z. B. Achsöl vorne"></label>
-  ${z?`<label class="f wlast"><span class="label">Zuletzt gemacht</span><input class="w_last" type="date" value="${esc(p.zuletzt||"")}"></label>`:
+  ${z?`<label class="f wlast"><span class="label">Zuletzt gemacht</span><input class="w_last" type="month" value="${esc(ym(p.zuletzt||""))}"></label>`:
   `<label class="f"><span class="label">Intervall (Monate)</span><input class="w_iv" type="number" min="1" max="120" value="${esc(p.intervall)}"></label>
   <label class="f"><span class="label">Nächster Termin</span><input class="w_next" type="month" value="${esc(ym(p.naechste))}"></label>`}
   <input type="hidden" class="w_zul" value="${esc(p.zuletzt||"")}">
@@ -435,7 +436,7 @@ function entryForm(mid){
     try{
       await S.db.collection("eintraege").add({maschineId:mid,art,datum,punkte:ps.filter(p=>sel.includes(p.id)).map(p=>p.name),text:$("#e_text").value.trim()});
       const upd={};
-      if(sel.length){upd.wartung=ps.map(p=>!sel.includes(p.id)?{...p}:nurZuletzt(p)?{...p,zuletzt:datum,naechste:"",intervall:""}:{...p,zuletzt:datum,...(p.intervall?{naechste:addYM(datum,p.intervall)}:{})});if(!Array.isArray(m.wartung)){upd.naechsteWartung="";upd.intervall=""}}
+      if(sel.length){upd.wartung=ps.map(p=>!sel.includes(p.id)?{...p}:nurZuletzt(p)?{...p,zuletzt:ym(datum),naechste:"",intervall:""}:{...p,zuletzt:datum,...(p.intervall?{naechste:addYM(datum,p.intervall)}:{})});if(!Array.isArray(m.wartung)){upd.naechsteWartung="";upd.intervall=""}}
       if(art==="TÜV / HU"&&datum){upd.letzterTuev=datum.slice(0,7);upd.tuevBis=plus2(upd.letzterTuev)}
       if(Object.keys(upd).length)await S.db.doc("maschinen/"+mid).update(upd);
       S.open={type:"detail",id:mid};drawDetail();
