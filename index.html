@@ -139,13 +139,13 @@ form{display:grid;gap:12px}
 .wlist .wd{font-size:.9rem}
 @media (max-width:480px){.wlist li{grid-template-columns:6px 1fr auto}.wlist .wd{grid-column:2;grid-row:2;color:var(--muted);font-size:.85rem}.wlist .pill{grid-row:1/3;grid-column:3}}
 .s-none{background:var(--line)}
-.wrow .wlast{grid-column:2/4}
+.wrow{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;align-items:end;padding:10px 0;border-top:1px solid var(--line)}
+.wrow .wname{grid-column:1/3}.wrow .wmodus{grid-column:3/4}.wrow .wdel{grid-column:4;grid-row:1;padding-bottom:10px}
+.wrow .wiv{grid-column:1/2}.wrow .wnext{grid-column:2/3}.wrow .wlast{grid-column:1/3}
 .wrow .wteil{grid-column:1/3}.wrow .wmenge{grid-column:3/5}
-@media (min-width:561px){.wrow .wdel{grid-row:1;grid-column:4}}
+.wrow .wfix{grid-column:3/4;align-self:center;color:var(--muted);font-size:.85rem}
+@media (max-width:560px){.wrow{grid-template-columns:1fr 1fr}.wrow .wname,.wrow .wmodus,.wrow .wlast,.wrow .wteil,.wrow .wmenge,.wrow .wfix{grid-column:1/-1}.wrow .wiv{grid-column:1/2}.wrow .wnext{grid-column:2/3}.wrow .wdel{grid-column:1/-1;grid-row:auto;justify-self:start;padding:0}}
 .wlist .teil{display:block;color:var(--ink)}.wlist .teil b{display:inline;font-weight:600;user-select:all}
-.wrow{display:grid;grid-template-columns:2fr 1fr 1.3fr auto;gap:10px;align-items:end;padding:10px 0;border-top:1px solid var(--line)}
-.wrow .wdel{padding-bottom:10px}
-@media (max-width:560px){.wrow .wteil,.wrow .wmenge,.wrow .wlast{grid-column:1/-1}.wrow{grid-template-columns:1fr 1fr}.wrow .f:first-child{grid-column:1/-1}.wrow .wdel{grid-column:1/-1;justify-self:start;padding:0}}
 fieldset.checks{border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin:0;display:grid;gap:8px;background:var(--surface)}
 fieldset.checks small{color:var(--muted)}
 .hist li{grid-template-columns:auto 1fr auto}
@@ -261,7 +261,8 @@ const letzter=m=>m.letzterTuev||(m.tuevBis?`${+m.tuevBis.slice(0,4)-2}${m.tuevBi
 const teilHint=n=>/motoröl/i.test(n)?"Ölfilter, z. B. 03L 115 562":/diesel/i.test(n)?"Dieselfilter-Einsatz":/hydraulik/i.test(n)?"Hydraulikfilter":/getriebe/i.test(n)?"Getriebeölfilter, falls vorhanden":/luft/i.test(n)?"Luftfilter":"Filter oder Teilenummer";
 const mengeHint=n=>/abschmier/i.test(n)?"z. B. Fett, Sorte":/öl/i.test(n)?"z. B. 4,3 l · 5W-30":"falls nötig";
 /* Abschmieren: kein Intervall, nur „zuletzt gemacht“ */
-const nurZuletzt=p=>/abschmier/i.test(p.name||"");
+const istAbschmieren=p=>/abschmier/i.test(p.name||"");
+const nurZuletzt=p=>istAbschmieren(p)||p.modus==="zuletzt";
 const seit=s=>{const d=-days(parse(s));return d<=0?"heute":d===1?"gestern":d<60?`vor ${d} Tagen`:d<730?`vor ${Math.round(d/30.4)} Monaten`:`vor ${Math.round(d/365)} Jahren`};
 const seitM=s=>{const[y,m]=ym(s).split("-").map(Number);const t=new Date();const n=(t.getFullYear()*12+t.getMonth())-(y*12+m-1);return n<=0?"diesen Monat":n===1?"letzten Monat":n<24?`vor ${n} Monaten`:`vor ${Math.floor(n/12)} Jahren`};
 /* TÜV-pflichtig? Alte Einträge ohne Angabe gelten als ja. Neue Geräte (außer Anhänger) standardmäßig nein. */
@@ -347,7 +348,7 @@ function drawDetail(){
     const extra=`${p.teil?`<small class="teil">Filter: <b>${esc(p.teil)}</b></small>`:""}${p.menge?`<small class="teil">Füllmenge: <b>${esc(p.menge)}</b></small>`:""}`;
     if(nurZuletzt(p))return `<li><span class="stripe s-none"></span><span class="wn"><b>${esc(p.name)}</b><small>zuletzt gemacht</small>${extra}</span><span class="wd">${p.zuletzt?fmtMY(p.zuletzt):"–"}</span><span class="pill none">${p.zuletzt?seitM(p.zuletzt):"noch nicht eingetragen"}</span></li>`;
     const d=p.naechste?dueW(p.naechste):null;
-    return `<li><span class="stripe s-${lvl(d)}"></span><span class="wn"><b>${esc(p.name)}</b><small>${esc(iv(p.intervall))||"kein Intervall"}${p.zuletzt?` · zuletzt ${fmtD(p.zuletzt)}`:""}</small>${extra}</span><span class="wd">${p.naechste?fmtMY(p.naechste):"–"}</span><span class="pill ${lvl(d)}">${p.naechste?rel(d):"kein Termin"}</span></li>`}).join("")}</ul>`:`<div class="empty">Keine Wartungspunkte. Über <b>Bearbeiten</b> kannst du Motoröl, Getriebeöl, Abschmieren und weitere anlegen.</div>`}</div>
+    return `<li><span class="stripe s-${lvl(d)}"></span><span class="wn"><b>${esc(p.name)}</b><small>${esc(iv(p.intervall))||"kein Intervall"}${p.zuletzt?` · zuletzt ${p.zuletzt.length>7?fmtD(p.zuletzt):fmtMY(p.zuletzt)}`:""}</small>${extra}</span><span class="wd">${p.naechste?fmtMY(p.naechste):"–"}</span><span class="pill ${lvl(d)}">${p.naechste?rel(d):"kein Termin"}</span></li>`}).join("")}</ul>`:`<div class="empty">Keine Wartungspunkte. Über <b>Bearbeiten</b> kannst du Motoröl, Getriebeöl, Abschmieren und weitere anlegen.</div>`}</div>
   <dl class="facts">${fact("Erstzulassung",ez(m.erstzulassung))}${fact("Hersteller",m.hersteller)}${fact("Modell",m.modell)}${fact("Baujahr",m.baujahr)}${fact("Kennzeichen",m.kennzeichen)}${fact("Fahrgestell-Nr.",m.fin)}${fact("Versicherung",m.versicherung)}${fact("Notizen",m.notiz)}</dl>
   <div class="row" style="justify-content:flex-start">${S.canWrite?`<button class="primary" data-act="entry">+ Erledigt eintragen</button><button data-act="edit">Bearbeiten</button>`:""}</div>
   <div><div class="sechead" style="margin-bottom:4px"><h2 style="font-size:1.15rem">Verlauf</h2></div>
@@ -357,11 +358,13 @@ function drawDetail(){
   S.open={type:"detail",id:m.id};
 }
 
-function wRow(p){const z=nurZuletzt(p);return `<div class="wrow" data-wid="${esc(p.id)}">
-  <label class="f"><span class="label">Wartungspunkt</span><input class="w_name" value="${esc(p.name)}" placeholder="z. B. Achsöl vorne"></label>
-  ${z?`<label class="f wlast"><span class="label">Zuletzt gemacht</span><input class="w_last" type="month" value="${esc(ym(p.zuletzt||""))}"></label>`:
-  `<label class="f"><span class="label">Intervall (Monate)</span><input class="w_iv" type="number" min="1" max="120" value="${esc(p.intervall)}"></label>
-  <label class="f"><span class="label">Nächster Termin</span><input class="w_next" type="month" value="${esc(ym(p.naechste))}"></label>`}
+function wRow(p){const fix=istAbschmieren(p),z=nurZuletzt(p);return `<div class="wrow" data-wid="${esc(p.id)}">
+  <label class="f wname"><span class="label">Wartungspunkt</span><input class="w_name" value="${esc(p.name)}" placeholder="z. B. Achsöl vorne"></label>
+  ${fix?`<span class="wfix">nur „zuletzt gemacht“</span><input type="hidden" class="w_modus" value="zuletzt">`:
+  `<label class="f wmodus"><span class="label">Erfassen als</span><select class="w_modus"><option value="intervall" ${z?"":"selected"}>Intervall</option><option value="zuletzt" ${z?"selected":""}>Nur zuletzt gemacht</option></select></label>`}
+  <label class="f wiv" ${z?"hidden":""}><span class="label">Intervall (Monate)</span><input class="w_iv" type="number" min="1" max="120" value="${esc(p.intervall)}"></label>
+  <label class="f wnext" ${z?"hidden":""}><span class="label">Nächster Termin</span><input class="w_next" type="month" value="${esc(ym(p.naechste))}"></label>
+  <label class="f wlast" ${z?"":"hidden"}><span class="label">Zuletzt gemacht</span><input class="w_last" type="month" value="${esc(ym(p.zuletzt||""))}"></label>
   <input type="hidden" class="w_zul" value="${esc(p.zuletzt||"")}">
   <label class="f wteil"><span class="label">Filter / Teile-Nr.</span><input class="w_teil" value="${esc(p.teil||"")}" placeholder="${esc(teilHint(p.name))}"></label>
   <label class="f wmenge"><span class="label">Füllmenge / Sorte</span><input class="w_menge" value="${esc(p.menge||"")}" placeholder="${esc(mengeHint(p.name))}"></label>
@@ -399,6 +402,9 @@ function machineForm(m){
   $("#m_kategorie").addEventListener("change",e=>{if(!m.id&&!wTouched)$("#wrows").innerHTML=stdFuer(e.target.value).map(wRow).join("")});
   $("#wadd").addEventListener("click",()=>{$("#wrows").insertAdjacentHTML("beforeend",wRow({id:uid(),name:"",intervall:"",naechste:""}));$("#wrows").lastElementChild.querySelector(".w_name").focus()});
   $("#wrows").addEventListener("click",e=>{if(e.target.closest(".wdel"))e.target.closest(".wrow").remove()});
+  $("#wrows").addEventListener("change",e=>{if(!e.target.matches(".w_modus"))return;const r=e.target.closest(".wrow"),z=e.target.value==="zuletzt";
+    r.querySelector(".wiv").hidden=z;r.querySelector(".wnext").hidden=z;r.querySelector(".wlast").hidden=!z;
+    if(z&&!r.querySelector(".w_last").value)r.querySelector(".w_last").value=ym(r.querySelector(".w_zul").value)});
   const tuevSync=()=>{$("#m_tuevBox").hidden=!$("#m_tuevPflicht").checked};tuevSync();
   $("#m_tuevPflicht").addEventListener("change",tuevSync);
   $("#m_kategorie").addEventListener("change",e=>{if(!m.id){$("#m_tuevPflicht").checked=tuevStd(e.target.value);tuevSync()}});
@@ -407,7 +413,9 @@ function machineForm(m){
     ev.preventDefault();
     const body={};["name","kategorie","hersteller","modell","baujahr","erstzulassung","kennzeichen","fin","letzterTuev","versicherung","notiz"].forEach(k=>body[k]=$("#m_"+k).value.trim());body.tuevBis=plus2(body.letzterTuev);body.abgemeldet=$("#m_abgemeldet").checked;body.tuevPflicht=$("#m_tuevPflicht").checked;if(!body.tuevPflicht){body.letzterTuev="";body.tuevBis=""}
     if(!body.name)return;
-    body.wartung=[...document.querySelectorAll(".wrow")].map(r=>({id:r.dataset.wid,name:r.querySelector(".w_name").value.trim(),intervall:r.querySelector(".w_iv")?.value.trim()||"",naechste:r.querySelector(".w_next")?.value||"",zuletzt:(r.querySelector(".w_last")||r.querySelector(".w_zul")).value,teil:r.querySelector(".w_teil").value.trim(),menge:r.querySelector(".w_menge").value.trim()})).filter(p=>p.name);
+    body.wartung=[...document.querySelectorAll(".wrow")].map(r=>({id:r.dataset.wid,name:r.querySelector(".w_name").value.trim(),...(()=>{const zz=r.querySelector(".w_modus").value==="zuletzt"||istAbschmieren({name:r.querySelector(".w_name").value});
+      return zz?{modus:"zuletzt",intervall:"",naechste:"",zuletzt:r.querySelector(".w_last").value}
+              :{modus:"intervall",intervall:r.querySelector(".w_iv").value.trim(),naechste:r.querySelector(".w_next").value,zuletzt:r.querySelector(".w_zul").value}})(),teil:r.querySelector(".w_teil").value.trim(),menge:r.querySelector(".w_menge").value.trim()})).filter(p=>p.name);
     body.beispiel=false;
     const btn=ev.submitter;btn.disabled=true;btn.textContent="Speichert…";
     try{
