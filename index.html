@@ -366,8 +366,8 @@ function wRow(p){const fix=istAbschmieren(p),z=nurZuletzt(p);return `<div class=
   <label class="f wnext" ${z?"hidden":""}><span class="label">Nächster Termin</span><input class="w_next" type="month" value="${esc(ym(p.naechste))}"></label>
   <label class="f wlast" ${z?"":"hidden"}><span class="label">Zuletzt gemacht</span><input class="w_last" type="month" value="${esc(ym(p.zuletzt||""))}"></label>
   <input type="hidden" class="w_zul" value="${esc(p.zuletzt||"")}">
-  <label class="f wteil"><span class="label">Filter / Teile-Nr.</span><input class="w_teil" value="${esc(p.teil||"")}" placeholder="${esc(teilHint(p.name))}"></label>
-  <label class="f wmenge"><span class="label">Füllmenge / Sorte</span><input class="w_menge" value="${esc(p.menge||"")}" placeholder="${esc(mengeHint(p.name))}"></label>
+  <label class="f wteil" ${fix?"hidden":""}><span class="label">Filter / Teile-Nr.</span><input class="w_teil" value="${esc(p.teil||"")}" placeholder="${esc(teilHint(p.name))}"></label>
+  <label class="f wmenge" ${fix?"hidden":""}><span class="label">Füllmenge / Sorte</span><input class="w_menge" value="${esc(p.menge||"")}" placeholder="${esc(mengeHint(p.name))}"></label>
   <button type="button" class="linkbtn wdel" aria-label="Wartungspunkt entfernen">Entfernen</button></div>`}
 
 function machineForm(m){
