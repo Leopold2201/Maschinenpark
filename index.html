@@ -40,8 +40,9 @@ header.band{background:var(--band);color:var(--band-ink)}
 header.band .wrap{padding-block:22px 18px;display:flex;flex-wrap:wrap;gap:12px 20px;align-items:flex-end;justify-content:space-between}
 h1{font-family:var(--f-display);font-weight:700;font-size:2.1rem;line-height:1;margin:0;letter-spacing:.01em;text-wrap:balance}
 .brand{flex:1 1 100%;display:flex;align-items:center;justify-content:space-between;gap:16px;min-width:0}
-.brand img{height:80px;width:auto;max-width:40%;object-fit:contain;flex:0 0 auto}
-@media (min-width:700px){.brand img{height:104px}}
+.brand img{height:128px;width:auto;max-width:46%;object-fit:contain;flex:0 0 auto}
+@media (min-width:700px){.brand img{height:160px}}
+#pushBtn.on{background:var(--ok-bg);color:var(--ok);border-color:transparent}
 .signatur{text-align:center;color:var(--muted);font-size:.82rem;letter-spacing:.04em;margin:8px 0 0}
 .tally{display:flex;gap:8px;flex-wrap:wrap}
 .tally div{border:1px solid color-mix(in srgb,var(--band-ink) 25%,transparent);border-radius:8px;padding:6px 12px;min-width:84px}
@@ -158,7 +159,8 @@ body{margin:0}
 img{max-width:100%}[hidden]{display:none!important}
 .hbtn{background:transparent;color:var(--band-ink);border-color:color-mix(in srgb,var(--band-ink) 35%,transparent);font-size:.85rem;padding:7px 12px}
 .hbtn.on{background:color-mix(in srgb,var(--band-ink) 14%,transparent)}
-.foot{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:space-between}
+.foot{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between;border-top:1px solid var(--line);padding-top:16px}
+.foot #conn{flex:1 1 100%;margin:0}
 .login{min-height:70vh;display:grid;place-items:center;padding-block:32px}
 .login form{width:100%;max-width:360px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px;display:grid;gap:14px}
 .login h2{font-size:1.6rem}
@@ -174,7 +176,6 @@ img{max-width:100%}[hidden]{display:none!important}
     <img id="logo" src="logo.png" alt="Logo des Betriebs" onerror="this.hidden=true">
   </div>
   <div class="tally" id="tally"></div>
-  <button class="hbtn" id="pushBtn" hidden>Benachrichtigungen einschalten</button>
 </div></header>
 
 <section class="login wrap" id="login" hidden>
@@ -205,7 +206,7 @@ img{max-width:100%}[hidden]{display:none!important}
     <div class="tabs" id="tabs" role="tablist" aria-label="Gruppen"></div>
     <div id="grid"></div>
   </section>
-  <div class="foot"><p class="note" id="conn">Verbinde…</p><button class="linkbtn" id="logout">Abmelden</button></div>
+  <div class="foot"><p class="note" id="conn">Verbinde…</p><button id="pushBtn" hidden>Benachrichtigungen einschalten</button><button class="linkbtn" id="logout">Abmelden</button></div>
   <p class="signatur">Leopold Teigeler</p>
 </div></main>
 <div id="toast" class="toast" hidden></div>
