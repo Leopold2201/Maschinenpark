@@ -72,6 +72,9 @@ button:disabled{opacity:.5;cursor:default}
 .s-ok{background:var(--ok)} .s-warn{background:var(--warn)} .s-bad{background:var(--bad)}
 /* Maschinen */
 .toolbar{display:flex;gap:8px;flex-wrap:wrap}
+.seg{display:inline-flex;background:var(--sunk);border:1px solid var(--line);border-radius:999px;padding:2px;flex:0 0 auto}
+.seg button{border:0;background:transparent;border-radius:999px;padding:4px 11px;font-size:.8rem;font-weight:600;color:var(--muted)}
+.seg button.on{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgb(0 0 0 / .12)}
 main .wrap>section{min-width:0}
 .tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px;scrollbar-width:none}
 .tabs::-webkit-scrollbar{display:none}
@@ -190,7 +193,9 @@ img{max-width:100%}[hidden]{display:none!important}
 </section>
 <main id="app" hidden><div class="wrap">
   <section>
-    <div class="sechead"><h2>Anstehende TÜV-Termine</h2><span class="label">nächste 60 Tage &amp; überfällig</span></div>
+    <div class="sechead"><h2 id="dueTitle">Anstehende TÜV-Termine</h2>
+      <div class="seg" role="radiogroup" aria-label="Was anzeigen"><button role="radio" data-due="tuev" aria-checked="true" class="on">TÜV</button><button role="radio" data-due="wartung" aria-checked="false">Wartung</button></div></div>
+    <p class="label" style="margin:-4px 0 10px">nächste 60 Tage &amp; überfällig</p>
     <div id="due"></div>
   </section>
   <section>
@@ -237,6 +242,7 @@ const STD_JE={traktoren:[["Motoröl",12],["Dieselfilter",12],["Getriebeöl",24],
   selbstfahrer:[["Motoröl",12],["Dieselfilter",12],["Getriebeöl",24],["Hydrauliköl",24],["Abschmieren",""]],
   geraete:[["Abschmieren",""]]};
 const stdFuer=k=>(STD_JE[(GRUPPEN.find(g=>g.kats.includes(k))||GRUPPEN[3]).id]).map(([n,i])=>({id:uid(),name:n,intervall:i,naechste:""}));
+let DUE="tuev"; /* startet immer mit TÜV */
 let TAB="alle";try{TAB=localStorage.getItem("mp_tab")||"alle"}catch(_){}
 const STD_PUNKTE=[["Motoröl",12],["Dieselfilter",12],["Getriebeöl",24],["Hydrauliköl",24],["Abschmieren",""]];
 const ARTEN=["Wartung","Reparatur","TÜV / HU","Sonstiges"];
@@ -310,12 +316,14 @@ document.getElementById("logo").addEventListener("load",fitTitle);
 document.fonts&&document.fonts.ready.then(fitTitle);
 setTimeout(fitTitle,0);
 function render(){
-  const all=S.m.flatMap(m=>termine(m).filter(t=>t.typ==="TÜV / HU").map(t=>({...t,m})));
+  const all=S.m.flatMap(m=>termine(m).filter(t=>DUE==="tuev"?t.typ==="TÜV / HU":t.typ!=="TÜV / HU").map(t=>({...t,m})));
+  $("#dueTitle").textContent=DUE==="tuev"?"Anstehende TÜV-Termine":"Anstehende Wartungen";
+  document.querySelectorAll("[data-due]").forEach(b=>{const on=b.dataset.due===DUE;b.classList.toggle("on",on);b.setAttribute("aria-checked",on)});
   const over=all.filter(t=>t.d<0).length, soon=all.filter(t=>t.d>=0&&t.d<=30).length;
   $("#tally").innerHTML=`<div><b>${S.m.filter(m=>!m.abgemeldet).length}</b><span>angemeldet</span></div><div><b style="color:${over?"#ff9d92":"inherit"}">${over}</b><span>überfällig</span></div><div><b style="color:${soon?"#f6c46d":"inherit"}">${soon}</b><span>≤ 30 Tage</span></div>`;
 
   const list=all.filter(t=>t.d<=60).sort((a,b)=>a.d-b.d);
-  $("#due").innerHTML=!S.ready?`<div class="empty">Termine werden geladen…</div>`:list.length?`<ul class="due">${list.map(t=>`<li data-open="${esc(t.m.id)}" tabindex="0"><span class="stripe s-${lvl(t.d)}"></span><span class="what"><b>${esc(t.m.name)}</b><small>${esc(t.typ)} · ${esc(t.label)}</small></span><span class="pill ${lvl(t.d)}">${rel(t.d)}</span></li>`).join("")}</ul>`:`<div class="empty">${S.m.length?"Alles im grünen Bereich. In den nächsten 60 Tagen läuft kein TÜV ab.":"Sobald du Fahrzeuge mit TÜV anlegst, erscheinen ihre Termine hier."}</div>`;
+  $("#due").innerHTML=!S.ready?`<div class="empty">Termine werden geladen…</div>`:list.length?`<ul class="due">${list.map(t=>`<li data-open="${esc(t.m.id)}" tabindex="0"><span class="stripe s-${lvl(t.d)}"></span><span class="what"><b>${esc(t.m.name)}</b><small>${esc(t.typ)} · ${esc(t.label)}</small></span><span class="pill ${lvl(t.d)}">${rel(t.d)}</span></li>`).join("")}</ul>`:`<div class="empty">${S.m.length?(DUE==="tuev"?"Alles im grünen Bereich. In den nächsten 60 Tagen läuft kein TÜV ab.":"Alles im grünen Bereich. In den nächsten 60 Tagen ist keine Wartung fällig."):"Sobald du Fahrzeuge anlegst, erscheinen ihre Termine hier."}</div>`;
 
   const sichtbar=S.m.filter(m=>$("#showAb").checked||!m.abgemeldet);
   const anz=id=>sichtbar.filter(m=>id==="alle"||gruppeOf(m)===id).length;
@@ -507,6 +515,7 @@ document.addEventListener("click",async e=>{
 });
 document.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.matches("li[data-open]")&&!S.open){S.open={type:"detail",id:e.target.dataset.open};drawDetail()}});
 $("#addM").addEventListener("click",()=>machineForm());
+document.querySelector(".seg").addEventListener("click",e=>{const b=e.target.closest("[data-due]");if(!b||b.dataset.due===DUE)return;DUE=b.dataset.due;render()});
 $("#tabs").addEventListener("click",e=>{const b=e.target.closest("[data-tab]");if(!b)return;TAB=b.dataset.tab;$("#fcat").value="";try{localStorage.setItem("mp_tab",TAB)}catch(_){}render()});
 $("#q").addEventListener("input",render);$("#fcat").addEventListener("change",render);$("#showAb").addEventListener("change",render);
 
