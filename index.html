@@ -321,7 +321,7 @@ function render(){
   $("#dueTitle").textContent=DUE==="tuev"?"Anstehende TÜV-Termine":"Anstehende Wartungen";
   document.querySelectorAll("[data-due]").forEach(b=>{const on=b.dataset.due===DUE;b.classList.toggle("on",on);b.setAttribute("aria-checked",on)});
   const over=all.filter(t=>t.d<0).length, soon=all.filter(t=>t.d>=0&&t.d<=30).length;
-  $("#tally").innerHTML=`<div><b>${S.m.filter(m=>!m.abgemeldet).length}</b><span>angemeldet</span></div><div><b style="color:${over?"#ff9d92":"inherit"}">${over}</b><span>überfällig</span></div><div><b style="color:${soon?"#f6c46d":"inherit"}">${soon}</b><span>≤ 30 Tage</span></div>`;
+  $("#tally").innerHTML=`<div><b>${S.m.filter(m=>!m.abgemeldet&&hatTuev(m)).length}</b><span>mit TÜV</span></div><div><b style="color:${over?"#ff9d92":"inherit"}">${over}</b><span>überfällig</span></div><div><b style="color:${soon?"#f6c46d":"inherit"}">${soon}</b><span>≤ 30 Tage</span></div>`;
 
   const list=all.filter(t=>t.d<=60).sort((a,b)=>a.d-b.d);
   $("#due").innerHTML=!S.ready?`<div class="empty">Termine werden geladen…</div>`:list.length?`<ul class="due">${list.map(t=>`<li data-open="${esc(t.m.id)}" tabindex="0"><span class="stripe s-${lvl(t.d)}"></span><span class="what"><b>${esc(t.m.name)}</b><small>${esc(t.typ)} · ${esc(t.label)}</small></span><span class="pill ${lvl(t.d)}">${rel(t.d)}</span></li>`).join("")}</ul>`:`<div class="empty">${S.m.length?(DUE==="tuev"?"Alles im grünen Bereich. In den nächsten 60 Tagen läuft kein TÜV ab.":"Alles im grünen Bereich. In den nächsten 60 Tagen ist keine Wartung fällig."):"Sobald du Fahrzeuge anlegst, erscheinen ihre Termine hier."}</div>`;
