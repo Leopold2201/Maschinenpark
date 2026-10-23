@@ -333,7 +333,7 @@ function render(){
   const cats=[...new Set(inTab.map(katOf))].sort((a,b)=>KATS.indexOf(a)-KATS.indexOf(b));
   const fc=$("#fcat"),cur=fc.value;
   fc.innerHTML=`<option value="">Alle Unterkategorien</option>`+cats.map(c=>`<option ${c===cur?"selected":""}>${esc(c)}</option>`).join("");
-  fc.hidden=cats.length<2;
+  fc.hidden=true;fc.value=""; /* Unterkategorie-Filter wird nicht mehr gebraucht */
   const q=$("#q").value.trim().toLowerCase();
   const ms=inTab.filter(m=>(!fc.value||katOf(m)===fc.value)&&(!q||[m.name,m.hersteller,m.modell,m.kennzeichen].join(" ").toLowerCase().includes(q)))
     .sort((a,b)=>(!!a.abgemeldet-!!b.abgemeldet)||ORD[worst(a)]-ORD[worst(b)]||String(a.name).localeCompare(b.name,"de"));
