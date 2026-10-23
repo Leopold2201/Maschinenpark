@@ -3,7 +3,7 @@ importScripts("firebase-config.js");
 importScripts("https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js");
 importScripts("https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js");
 
-const CACHE = "maschinenpark-v7";
+const CACHE = "maschinenpark-v8";
 const SHELL = ["./", "index.html", "firebase-config.js", "manifest.webmanifest",
   "icon-192.png", "icon-512.png", "apple-touch-icon.png", "logo.png"];
 
@@ -16,10 +16,24 @@ self.addEventListener("activate", e => {
     .then(() => self.clients.claim()));
 });
 
-// Eigene Dateien: erst Netz (damit Updates sofort ankommen), ohne Netz aus dem Cache.
+// Firebase-Bibliotheken und Schriften: einmal laden, dann aus dem Speicher (auch offline).
+const EXTERN = ["www.gstatic.com", "fonts.googleapis.com", "fonts.gstatic.com"];
+const SDK = ["app", "auth", "firestore", "messaging"].map(n => `https://www.gstatic.com/firebasejs/10.12.2/firebase-${n}-compat.js`);
+self.addEventListener("install", e => {
+  e.waitUntil(caches.open(CACHE).then(c => Promise.allSettled(SDK.map(u => c.add(new Request(u, { mode: "no-cors" }))))));
+});
+
 self.addEventListener("fetch", e => {
   const url = new URL(e.request.url);
-  if (e.request.method !== "GET" || url.origin !== location.origin) return;
+  if (e.request.method !== "GET") return;
+  if (EXTERN.includes(url.hostname)) {
+    e.respondWith(caches.match(e.request, { ignoreVary: true }).then(hit => hit || fetch(e.request).then(res => {
+      const copy = res.clone(); caches.open(CACHE).then(c => c.put(e.request, copy)); return res;
+    })));
+    return;
+  }
+  // Eigene Dateien: erst Netz (damit Updates sofort ankommen), ohne Netz aus dem Cache.
+  if (url.origin !== location.origin) return;
   e.respondWith(
     fetch(e.request).then(res => {
       const copy = res.clone();
