@@ -72,6 +72,7 @@ button:disabled{opacity:.5;cursor:default}
 .s-ok{background:var(--ok)} .s-warn{background:var(--warn)} .s-bad{background:var(--bad)}
 /* Maschinen */
 .toolbar{display:flex;gap:8px;flex-wrap:wrap}
+.sechead.stack{flex-direction:column;align-items:flex-start;gap:8px}
 .seg{display:inline-flex;background:var(--sunk);border:1px solid var(--line);border-radius:999px;padding:2px;flex:0 0 auto}
 .seg button{border:0;background:transparent;border-radius:999px;padding:4px 11px;font-size:.8rem;font-weight:600;color:var(--muted)}
 .seg button.on{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgb(0 0 0 / .12)}
@@ -193,7 +194,7 @@ img{max-width:100%}[hidden]{display:none!important}
 </section>
 <main id="app" hidden><div class="wrap">
   <section>
-    <div class="sechead"><h2 id="dueTitle">Anstehende TÜV-Termine</h2>
+    <div class="sechead stack"><h2 id="dueTitle">Anstehende TÜV-Termine</h2>
       <div class="seg" role="radiogroup" aria-label="Was anzeigen"><button role="radio" data-due="tuev" aria-checked="true" class="on">TÜV</button><button role="radio" data-due="wartung" aria-checked="false">Wartung</button></div></div>
     <p class="label" style="margin:-4px 0 10px">nächste 60 Tage &amp; überfällig</p>
     <div id="due"></div>
