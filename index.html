@@ -150,6 +150,13 @@ form{display:grid;gap:12px}
 .wrow{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;align-items:end;padding:10px 0;border-top:1px solid var(--line)}
 .wrow .wname{grid-column:1/3}.wrow .wmodus{grid-column:3/4}.wrow .wdel{grid-column:4;grid-row:1;padding-bottom:10px}
 .wrow .wiv{grid-column:1/2}.wrow .wnext{grid-column:2/3}.wrow .wlast{grid-column:1/3}
+.repbtn{display:flex;width:100%;align-items:center;justify-content:space-between;gap:12px;text-align:left;padding:12px 14px;border-radius:var(--r);font-weight:400}
+.repbtn b{display:block}.repbtn small{display:block;color:var(--muted);margin-top:2px;overflow-wrap:anywhere}
+.repbtn .cnt{flex:0 0 auto;min-width:28px;text-align:center;border-radius:999px;background:var(--sunk);padding:2px 8px;font-weight:600}
+.replist{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.replist li{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;display:grid;gap:6px;justify-items:start}
+.replist .rh{display:flex;gap:8px;align-items:center}.replist .d{color:var(--muted);font-size:.85rem}
+.replist p{margin:0;overflow-wrap:anywhere}
 .wrow .wlager{grid-column:1/-1}
 .lager{display:block;width:max-content;margin-top:4px;font-size:.75rem;font-weight:600;padding:2px 9px;border-radius:999px;border:1px solid var(--line);background:var(--sunk);color:var(--muted)}
 .lager.ja{background:var(--ok-bg);color:var(--ok);border-color:transparent}
@@ -285,6 +292,7 @@ const seitM=s=>{const[y,m]=ym(s).split("-").map(Number);const t=new Date();const
 /* TÜV-pflichtig? Alte Einträge ohne Angabe gelten als ja. Neue Geräte (außer Anhänger) standardmäßig nein. */
 const hatTuev=m=>m.tuevPflicht!==false;
 const tuevStd=k=>!(GRUPPEN[3].kats.includes(k)&&k!=="Anhänger"&&k!=="Pflanzenschutz");
+const istRep=e=>e.art==="Reparatur"||e.art==="Sonstiges";
 const iv=n=>!n?"":n==1?"jeden Monat":`alle ${n} Monate`;
 
 /* ältere Einträge mit einem einzigen Wartungstermin weiter anzeigen */
@@ -356,6 +364,7 @@ function render(){
 
   $("#addM").disabled=!S.canWrite;
   if(S.open&&S.open.type==="detail")drawDetail();
+  if(S.open&&S.open.type==="reps")drawReps();
 }
 
 /* ---------- Bögen ---------- */
@@ -383,11 +392,24 @@ function drawDetail(){
     return `<li><span class="stripe s-${lvl(d)}"></span><span class="wn"><b>${esc(p.name)}</b><small>${esc(iv(p.intervall))||"kein Intervall"}${p.zuletzt?` · zuletzt ${p.zuletzt.length>7?fmtD(p.zuletzt):fmtMY(p.zuletzt)}`:""}</small>${extra}</span><span class="wd">${p.naechste?fmtMY(p.naechste):"–"}</span><span class="pill ${lvl(d)}">${p.naechste?rel(d):"kein Termin"}</span></li>`}).join("")}</ul>`:`<div class="empty">Keine Wartungspunkte. Über <b>Bearbeiten</b> kannst du Motoröl, Getriebeöl, Abschmieren und weitere anlegen.</div>`}</div>
   <dl class="facts">${fact("Erstzulassung",ez(m.erstzulassung))}${fact("Hersteller",m.hersteller)}${fact("Modell",m.modell)}${fact("Baujahr",m.baujahr)}${fact("Kennzeichen",m.kennzeichen)}${fact("Fahrgestell-Nr.",m.fin)}${fact("Versicherung",m.versicherung)}${fact("Notizen",m.notiz)}</dl>
   <div class="row" style="justify-content:flex-start">${S.canWrite?`<button class="primary" data-act="entry">+ Erledigt eintragen</button><button data-act="edit">Bearbeiten</button>`:""}</div>
-  <div><div class="sechead" style="margin-bottom:4px"><h2 style="font-size:1.15rem">Verlauf</h2></div>
-  ${ents.length?`<ul class="hist">${ents.map(e=>`<li><span class="d">${fmtD(e.datum)}</span><span class="t"><b>${esc(e.art)}</b>${e.punkte&&e.punkte.length?`: ${esc(e.punkte.join(", "))}`:""}${e.text?` · ${esc(e.text)}`:""}</span>${S.canWrite?`<span class="x"><button class="linkbtn" data-del-e="${esc(e.id)}">Löschen</button></span>`:"<span></span>"}</li>`).join("")}</ul>`:`<div class="empty">Noch nichts eingetragen. Halte hier fest, wann Öl gewechselt, abgeschmiert oder repariert wurde.</div>`}</div>
+  ${(()=>{const r=ents.filter(istRep);return `<button class="repbtn" data-act="reps"><span><b>Reparaturen &amp; Sonstiges</b><small>${r.length?`zuletzt: ${esc((r[0].text||r[0].art).slice(0,60))} · ${fmtD(r[0].datum)}`:"noch nichts eingetragen"}</small></span><span class="cnt">${r.length}</span></button>`})()}
+  <div><div class="sechead" style="margin-bottom:4px"><h2 style="font-size:1.15rem">Verlauf Wartung &amp; TÜV</h2></div>
+  ${ents.filter(e=>!istRep(e)).length?`<ul class="hist">${ents.filter(e=>!istRep(e)).map(e=>`<li><span class="d">${fmtD(e.datum)}</span><span class="t"><b>${esc(e.art)}</b>${e.punkte&&e.punkte.length?`: ${esc(e.punkte.join(", "))}`:""}${e.text?` · ${esc(e.text)}`:""}</span>${S.canWrite?`<span class="x"><button class="linkbtn" data-del-e="${esc(e.id)}">Löschen</button></span>`:"<span></span>"}</li>`).join("")}</ul>`:`<div class="empty">Noch nichts eingetragen. Halte hier fest, wann Öl gewechselt, abgeschmiert oder der TÜV gemacht wurde.</div>`}</div>
   ${S.canWrite?`<div class="row" style="justify-content:flex-start"><button class="danger" data-act="delm">Maschine löschen</button></div>`:""}`);
   if(scroll)$(".sheet").scrollTop=scroll;
   S.open={type:"detail",id:m.id};
+}
+
+function drawReps(){
+  const m=S.m.find(x=>x.id===S.open.id);if(!m){closeSheet();return}
+  const r=S.e.filter(e=>e.maschineId===m.id&&istRep(e)).sort((a,b)=>(b.datum||"").localeCompare(a.datum||""));
+  const scroll=$(".sheet")?.scrollTop;
+  openSheet(`<div class="sheet-head"><div><span class="label">${esc(m.name)}</span><h2>Reparaturen &amp; Sonstiges</h2></div><button class="ghost" data-act="back">Zurück</button></div>
+  ${S.canWrite?`<div class="row" style="justify-content:flex-start"><button class="primary" data-act="repnew">+ Reparatur eintragen</button></div>`:""}
+  ${r.length?`<ul class="replist">${r.map(e=>`<li><div class="rh"><span class="d">${fmtD(e.datum)}</span>${e.art==="Sonstiges"?`<span class="tag">Sonstiges</span>`:""}</div><p>${esc(e.text||"(ohne Beschreibung)")}</p>${S.canWrite?`<button class="linkbtn" data-del-e="${esc(e.id)}">Löschen</button>`:""}</li>`).join("")}</ul>`:
+  `<div class="empty">Hier landen besondere Arbeiten, die nicht zur normalen Wartung gehören, zum Beispiel „Bremssattel vorne links gewechselt“.</div>`}`);
+  if(scroll)$(".sheet").scrollTop=scroll;
+  S.open={type:"reps",id:m.id};
 }
 
 function wRow(p){const fix=istAbschmieren(p),z=nurZuletzt(p);return `<div class="wrow" data-wid="${esc(p.id)}">
@@ -459,10 +481,10 @@ function machineForm(m){
   });
 }
 
-function entryForm(mid){
+function entryForm(mid,preset,from){
   const m=S.m.find(x=>x.id===mid);const ps=punkte(m);
-  S.open={type:"eform",id:mid};
-  openSheet(`<div class="sheet-head"><div><span class="label">${esc(m.name)}</span><h2>Erledigt eintragen</h2></div><button class="ghost" data-act="back">Abbrechen</button></div>
+  S.open={type:"eform",id:mid,from};
+  openSheet(`<div class="sheet-head"><div><span class="label">${esc(m.name)}</span><h2>${preset==="Reparatur"?"Reparatur eintragen":"Erledigt eintragen"}</h2></div><button class="ghost" data-act="back">Abbrechen</button></div>
   <form id="ef"><div class="fields">
    <label class="f"><span class="label">Art</span><select id="e_art">${ARTEN.filter(a=>a!=="TÜV / HU"||hatTuev(m)).map(a=>`<option>${a}</option>`).join("")}</select></label>
    <label class="f"><span class="label">Datum</span><input id="e_datum" type="date" required value="${iso(new Date())}"></label>
@@ -470,9 +492,12 @@ function entryForm(mid){
      ${ps.length?ps.map(p=>`<label class="check"><input type="checkbox" value="${esc(p.id)}" class="e_p"><span>${esc(p.name)}${nurZuletzt(p)?` <small class="nb">· wird als „zuletzt gemacht“ gespeichert</small>`:p.intervall?` <small data-iv="${esc(p.intervall)}">· nächster Termin dann ${fmtMY(addYM(iso(new Date()),p.intervall))}</small>`:""}</span></label>`).join(""):`<span class="note">Diese Maschine hat noch keine Wartungspunkte.</span>`}
    </fieldset>
    <p class="f full note" id="e_tbox" hidden>Die neue Plakette gilt automatisch ${tuevJahre(m.kategorie)} Jahre, also bis <b id="e_tuev"></b>.</p>
-   <label class="f full"><span class="label">Bemerkung</span><input id="e_text" placeholder="z. B. 15W-40, 18 l · Werkstatt Müller"></label>
+   <label class="f full"><span class="label" id="e_tlabel">Bemerkung</span><input id="e_text" placeholder="z. B. 15W-40, 18 l · Werkstatt Müller"></label>
   </div><p class="err" id="eferr" hidden></p><div class="row"><button class="primary" type="submit">Speichern</button></div></form>`);
+  if(preset)$("#e_art").value=preset;
   const sync=()=>{const a=$("#e_art").value;$("#e_wbox").hidden=a!=="Wartung";$("#e_tbox").hidden=a!=="TÜV / HU";
+    const rp=a==="Reparatur"||a==="Sonstiges";$("#e_tlabel").textContent=rp?"Was wurde gemacht? *":"Bemerkung";$("#e_text").required=rp;
+    $("#e_text").placeholder=rp?"z. B. Bremssattel vorne links gewechselt":"z. B. 15W-40, 18 l · Werkstatt Müller";
     if($("#e_datum").value)$("#e_tuev").textContent=fmtM(plusJ($("#e_datum").value.slice(0,7),tuevJahre(m.kategorie)));
     const dt=$("#e_datum").value;document.querySelectorAll("#e_wbox small[data-iv]").forEach(s=>{if(dt)s.textContent=`· nächster Termin dann ${fmtMY(addYM(dt,s.dataset.iv))}`})};
   $("#e_art").addEventListener("change",sync);$("#e_datum").addEventListener("change",sync);sync();
@@ -488,7 +513,7 @@ function entryForm(mid){
       if(sel.length){upd.wartung=ps.map(p=>!sel.includes(p.id)?{...p}:nurZuletzt(p)?{...p,zuletzt:ym(datum),naechste:"",intervall:""}:{...p,zuletzt:datum,...(p.intervall?{naechste:addYM(datum,p.intervall)}:{})});if(!Array.isArray(m.wartung)){upd.naechsteWartung="";upd.intervall=""}}
       if(art==="TÜV / HU"&&datum){upd.letzterTuev=datum.slice(0,7);upd.tuevBis=plusJ(upd.letzterTuev,tuevJahre(m.kategorie))}
       if(Object.keys(upd).length)await S.db.doc("maschinen/"+mid).update(upd);
-      S.open={type:"detail",id:mid};drawDetail();
+      if(from==="reps"||art==="Reparatur"||art==="Sonstiges"){S.open={type:"reps",id:mid};drawReps()}else{S.open={type:"detail",id:mid};drawDetail()}
     }catch(e){showErr("#eferr",e);btn.disabled=false;btn.textContent="Speichern"}
   });
 }
@@ -509,7 +534,9 @@ document.addEventListener("click",async e=>{
   const a=e.target.closest("[data-act]");
   if(a){const act=a.dataset.act,id=S.open&&S.open.id;
     if(act==="close")closeSheet();
-    if(act==="back"){if(id){S.open={type:"detail",id};drawDetail()}else closeSheet()}
+    if(act==="back"){const from=S.open&&S.open.from;if(id&&from==="reps"){S.open={type:"reps",id};drawReps()}else if(id){S.open={type:"detail",id};drawDetail()}else closeSheet()}
+    if(act==="reps"){S.open={type:"reps",id};drawReps()}
+    if(act==="repnew")entryForm(id,"Reparatur","reps");
     if(act==="edit")machineForm(S.m.find(x=>x.id===id));
     if(act==="entry")entryForm(id);
     if(act==="delm")arm(a,"Wirklich löschen? Nochmal tippen",async()=>{a.disabled=true;
