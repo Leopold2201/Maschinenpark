@@ -292,6 +292,7 @@ const seitM=s=>{const[y,m]=ym(s).split("-").map(Number);const t=new Date();const
 /* TÜV-pflichtig? Alte Einträge ohne Angabe gelten als ja. Neue Geräte (außer Anhänger) standardmäßig nein. */
 const hatTuev=m=>m.tuevPflicht!==false;
 const tuevStd=k=>!(GRUPPEN[3].kats.includes(k)&&k!=="Anhänger"&&k!=="Pflanzenschutz");
+const fmtE=s=>!s?"–":s.length>7?fmtD(s):fmtM(s); /* Einträge: neu nur Monat/Jahr, alte mit Tag */
 const istRep=e=>e.art==="Reparatur"||e.art==="Sonstiges";
 const iv=n=>!n?"":n==1?"jeden Monat":`alle ${n} Monate`;
 
@@ -392,9 +393,9 @@ function drawDetail(){
     return `<li><span class="stripe s-${lvl(d)}"></span><span class="wn"><b>${esc(p.name)}</b><small>${esc(iv(p.intervall))||"kein Intervall"}${p.zuletzt?` · zuletzt ${p.zuletzt.length>7?fmtD(p.zuletzt):fmtMY(p.zuletzt)}`:""}</small>${extra}</span><span class="wd">${p.naechste?fmtMY(p.naechste):"–"}</span><span class="pill ${lvl(d)}">${p.naechste?rel(d):"kein Termin"}</span></li>`}).join("")}</ul>`:`<div class="empty">Keine Wartungspunkte. Über <b>Bearbeiten</b> kannst du Motoröl, Getriebeöl, Abschmieren und weitere anlegen.</div>`}</div>
   <dl class="facts">${fact("Erstzulassung",ez(m.erstzulassung))}${fact("Hersteller",m.hersteller)}${fact("Modell",m.modell)}${fact("Baujahr",m.baujahr)}${fact("Kennzeichen",m.kennzeichen)}${fact("Fahrgestell-Nr.",m.fin)}${fact("Versicherung",m.versicherung)}${fact("Notizen",m.notiz)}</dl>
   <div class="row" style="justify-content:flex-start">${S.canWrite?`<button class="primary" data-act="entry">+ Erledigt eintragen</button><button data-act="edit">Bearbeiten</button>`:""}</div>
-  ${(()=>{const r=ents.filter(istRep);return `<button class="repbtn" data-act="reps"><span><b>Reparaturen &amp; Sonstiges</b><small>${r.length?`zuletzt: ${esc((r[0].text||r[0].art).slice(0,60))} · ${fmtD(r[0].datum)}`:"noch nichts eingetragen"}</small></span><span class="cnt">${r.length}</span></button>`})()}
+  ${(()=>{const r=ents.filter(istRep);return `<button class="repbtn" data-act="reps"><span><b>Reparaturen &amp; Sonstiges</b><small>${r.length?`zuletzt: ${esc((r[0].text||r[0].art).slice(0,60))} · ${fmtE(r[0].datum)}`:"noch nichts eingetragen"}</small></span><span class="cnt">${r.length}</span></button>`})()}
   <div><div class="sechead" style="margin-bottom:4px"><h2 style="font-size:1.15rem">Verlauf Wartung &amp; TÜV</h2></div>
-  ${ents.filter(e=>!istRep(e)).length?`<ul class="hist">${ents.filter(e=>!istRep(e)).map(e=>`<li><span class="d">${fmtD(e.datum)}</span><span class="t"><b>${esc(e.art)}</b>${e.punkte&&e.punkte.length?`: ${esc(e.punkte.join(", "))}`:""}${e.text?` · ${esc(e.text)}`:""}</span>${S.canWrite?`<span class="x"><button class="linkbtn" data-del-e="${esc(e.id)}">Löschen</button></span>`:"<span></span>"}</li>`).join("")}</ul>`:`<div class="empty">Noch nichts eingetragen. Halte hier fest, wann Öl gewechselt, abgeschmiert oder der TÜV gemacht wurde.</div>`}</div>
+  ${ents.filter(e=>!istRep(e)).length?`<ul class="hist">${ents.filter(e=>!istRep(e)).map(e=>`<li><span class="d">${fmtE(e.datum)}</span><span class="t"><b>${esc(e.art)}</b>${e.punkte&&e.punkte.length?`: ${esc(e.punkte.join(", "))}`:""}${e.text?` · ${esc(e.text)}`:""}</span>${S.canWrite?`<span class="x"><button class="linkbtn" data-del-e="${esc(e.id)}">Löschen</button></span>`:"<span></span>"}</li>`).join("")}</ul>`:`<div class="empty">Noch nichts eingetragen. Halte hier fest, wann Öl gewechselt, abgeschmiert oder der TÜV gemacht wurde.</div>`}</div>
   ${S.canWrite?`<div class="row" style="justify-content:flex-start"><button class="danger" data-act="delm">Maschine löschen</button></div>`:""}`);
   if(scroll)$(".sheet").scrollTop=scroll;
   S.open={type:"detail",id:m.id};
@@ -406,7 +407,7 @@ function drawReps(){
   const scroll=$(".sheet")?.scrollTop;
   openSheet(`<div class="sheet-head"><div><span class="label">${esc(m.name)}</span><h2>Reparaturen &amp; Sonstiges</h2></div><button class="ghost" data-act="back">Zurück</button></div>
   ${S.canWrite?`<div class="row" style="justify-content:flex-start"><button class="primary" data-act="repnew">+ Reparatur eintragen</button></div>`:""}
-  ${r.length?`<ul class="replist">${r.map(e=>`<li><div class="rh"><span class="d">${fmtD(e.datum)}</span>${e.art==="Sonstiges"?`<span class="tag">Sonstiges</span>`:""}</div><p>${esc(e.text||"(ohne Beschreibung)")}</p>${S.canWrite?`<button class="linkbtn" data-del-e="${esc(e.id)}">Löschen</button>`:""}</li>`).join("")}</ul>`:
+  ${r.length?`<ul class="replist">${r.map(e=>`<li><div class="rh"><span class="d">${fmtE(e.datum)}</span>${e.art==="Sonstiges"?`<span class="tag">Sonstiges</span>`:""}</div><p>${esc(e.text||"(ohne Beschreibung)")}</p>${S.canWrite?`<button class="linkbtn" data-del-e="${esc(e.id)}">Löschen</button>`:""}</li>`).join("")}</ul>`:
   `<div class="empty">Hier landen besondere Arbeiten, die nicht zur normalen Wartung gehören, zum Beispiel „Bremssattel vorne links gewechselt“.</div>`}`);
   if(scroll)$(".sheet").scrollTop=scroll;
   S.open={type:"reps",id:m.id};
@@ -487,7 +488,7 @@ function entryForm(mid,preset,from){
   openSheet(`<div class="sheet-head"><div><span class="label">${esc(m.name)}</span><h2>${preset==="Reparatur"?"Reparatur eintragen":"Erledigt eintragen"}</h2></div><button class="ghost" data-act="back">Abbrechen</button></div>
   <form id="ef"><div class="fields">
    <label class="f"><span class="label">Art</span><select id="e_art">${ARTEN.filter(a=>a!=="TÜV / HU"||hatTuev(m)).map(a=>`<option>${a}</option>`).join("")}</select></label>
-   <label class="f"><span class="label">Datum</span><input id="e_datum" type="date" required value="${iso(new Date())}"></label>
+   <label class="f"><span class="label">Monat</span><input id="e_datum" type="month" required value="${iso(new Date()).slice(0,7)}"></label>
    <fieldset class="f full checks" id="e_wbox"><legend class="label">Was wurde gemacht?</legend>
      ${ps.length?ps.map(p=>`<label class="check"><input type="checkbox" value="${esc(p.id)}" class="e_p"><span>${esc(p.name)}${nurZuletzt(p)?` <small class="nb">· wird als „zuletzt gemacht“ gespeichert</small>`:p.intervall?` <small data-iv="${esc(p.intervall)}">· nächster Termin dann ${fmtMY(addYM(iso(new Date()),p.intervall))}</small>`:""}</span></label>`).join(""):`<span class="note">Diese Maschine hat noch keine Wartungspunkte.</span>`}
    </fieldset>
