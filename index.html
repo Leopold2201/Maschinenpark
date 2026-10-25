@@ -153,6 +153,13 @@ form{display:grid;gap:12px}
 .repbtn{display:flex;width:100%;align-items:center;justify-content:space-between;gap:12px;text-align:left;padding:12px 14px;border-radius:var(--r);font-weight:400}
 .repbtn b{display:block}.repbtn small{display:block;color:var(--muted);margin-top:2px;overflow-wrap:anywhere}
 .repbtn .cnt{flex:0 0 auto;min-width:28px;text-align:center;border-radius:999px;background:var(--sunk);padding:2px 8px;font-weight:600}
+.docs{display:grid;gap:4px}
+.doclist{list-style:none;margin:0;padding:0;border:1px solid var(--line);border-radius:var(--r);background:var(--surface);overflow:hidden}
+.doclist li{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 14px;border-top:1px solid var(--line)}
+.doclist li:first-child{border-top:0}
+.doclist a{color:var(--accent);font-weight:600;overflow-wrap:anywhere;min-width:0}
+.docf{display:grid;gap:8px;margin-top:8px}
+.docf input{font:inherit;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);width:100%}
 .replist{list-style:none;margin:0;padding:0;display:grid;gap:10px}
 .replist li{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;display:grid;gap:6px;justify-items:start}
 .replist .rh{display:flex;gap:8px;align-items:center}.replist .d{color:var(--muted);font-size:.85rem}
@@ -393,6 +400,9 @@ function drawDetail(){
     return `<li><span class="stripe s-${lvl(d)}"></span><span class="wn"><b>${esc(p.name)}</b><small>${esc(iv(p.intervall))||"kein Intervall"}${p.zuletzt?` · zuletzt ${p.zuletzt.length>7?fmtD(p.zuletzt):fmtMY(p.zuletzt)}`:""}</small>${extra}</span><span class="wd">${p.naechste?fmtMY(p.naechste):"–"}</span><span class="pill ${lvl(d)}">${p.naechste?rel(d):"kein Termin"}</span></li>`}).join("")}</ul>`:`<div class="empty">Keine Wartungspunkte. Über <b>Bearbeiten</b> kannst du Motoröl, Getriebeöl, Abschmieren und weitere anlegen.</div>`}</div>
   <dl class="facts">${fact("Erstzulassung",ez(m.erstzulassung))}${fact("Hersteller",m.hersteller)}${fact("Modell",m.modell)}${fact("Baujahr",m.baujahr)}${fact("Kennzeichen",m.kennzeichen)}${fact("Fahrgestell-Nr.",m.fin)}${fact("Versicherung",m.versicherung)}${fact("Notizen",m.notiz)}</dl>
   <div class="row" style="justify-content:flex-start">${S.canWrite?`<button class="primary" data-act="entry">+ Erledigt eintragen</button><button data-act="edit">Bearbeiten</button>`:""}</div>
+  <div class="docs"><div class="sechead" style="margin-bottom:6px"><h2 style="font-size:1.15rem">Unterlagen</h2>${S.canWrite?`<button class="linkbtn" data-act="docadd">+ Link hinzufügen</button>`:""}</div>
+  ${(m.docs||[]).length?`<ul class="doclist">${m.docs.map(d=>`<li><a href="${esc(d.url)}" target="_blank" rel="noopener">${esc(d.name||d.url)}</a>${S.canWrite?`<button class="linkbtn" data-deldoc="${esc(d.id)}">Entfernen</button>`:""}</li>`).join("")}</ul>`:`<p class="note" style="margin:0">Noch keine Unterlagen. Hier kannst du Links zu Ersatzteillisten, Anleitungen oder Google-Drive-Ordnern hinterlegen.</p>`}
+  <form id="docf" class="docf" hidden><input id="d_name" placeholder="Name, z. B. Ersatzteilliste JD Parts" maxlength="80"><input id="d_url" type="url" required placeholder="https://…"><div class="row"><button type="button" class="ghost" data-act="doccancel">Abbrechen</button><button class="primary" type="submit">Speichern</button></div></form></div>
   ${(()=>{const r=ents.filter(istRep);return `<button class="repbtn" data-act="reps"><span><b>Reparaturen &amp; Sonstiges</b><small>${r.length?`zuletzt: ${esc((r[0].text||r[0].art).slice(0,60))} · ${fmtE(r[0].datum)}`:"noch nichts eingetragen"}</small></span><span class="cnt">${r.length}</span></button>`})()}
   <div><div class="sechead" style="margin-bottom:4px"><h2 style="font-size:1.15rem">Verlauf Wartung &amp; TÜV</h2></div>
   ${ents.filter(e=>!istRep(e)).length?`<ul class="hist">${ents.filter(e=>!istRep(e)).map(e=>`<li><span class="d">${fmtE(e.datum)}</span><span class="t"><b>${esc(e.art)}</b>${e.punkte&&e.punkte.length?`: ${esc(e.punkte.join(", "))}`:""}${e.text?` · ${esc(e.text)}`:""}</span>${S.canWrite?`<span class="x"><button class="linkbtn" data-del-e="${esc(e.id)}">Löschen</button></span>`:"<span></span>"}</li>`).join("")}</ul>`:`<div class="empty">Noch nichts eingetragen. Halte hier fest, wann Öl gewechselt, abgeschmiert oder der TÜV gemacht wurde.</div>`}</div>
@@ -401,6 +411,14 @@ function drawDetail(){
   S.open={type:"detail",id:m.id};
 }
 
+document.addEventListener("submit",async e=>{
+  if(e.target.id!=="docf")return;e.preventDefault();
+  const m=S.m.find(x=>x.id===S.open?.id);if(!m)return;
+  let url=$("#d_url").value.trim();if(!/^https?:\/\//i.test(url))url="https://"+url;
+  const name=$("#d_name").value.trim()||new URL(url).hostname;
+  const btn=e.submitter;btn.disabled=true;
+  try{await S.db.doc("maschinen/"+m.id).update({docs:[...(m.docs||[]),{id:uid(),name,url}]})}catch(err){btn.disabled=false;toast("Konnte nicht gespeichert werden.")}
+});
 function drawReps(){
   const m=S.m.find(x=>x.id===S.open.id);if(!m){closeSheet();return}
   const r=S.e.filter(e=>e.maschineId===m.id&&istRep(e)).sort((a,b)=>(b.datum||"").localeCompare(a.datum||""));
@@ -536,6 +554,8 @@ document.addEventListener("click",async e=>{
   if(a){const act=a.dataset.act,id=S.open&&S.open.id;
     if(act==="close")closeSheet();
     if(act==="back"){const from=S.open&&S.open.from;if(id&&from==="reps"){S.open={type:"reps",id};drawReps()}else if(id){S.open={type:"detail",id};drawDetail()}else closeSheet()}
+    if(act==="docadd"){$("#docf").hidden=false;$("#d_url").focus()}
+    if(act==="doccancel"){$("#docf").hidden=true}
     if(act==="reps"){S.open={type:"reps",id};drawReps()}
     if(act==="repnew")entryForm(id,"Reparatur","reps");
     if(act==="edit")machineForm(S.m.find(x=>x.id===id));
@@ -544,6 +564,8 @@ document.addEventListener("click",async e=>{
       try{for(const en of S.e.filter(x=>x.maschineId===id))await S.db.doc("eintraege/"+en.id).delete();
         await S.db.doc("maschinen/"+id).delete();closeSheet()}catch(err){a.disabled=false;a.textContent="Löschen fehlgeschlagen"}});
     return}
+  const dd=e.target.closest("[data-deldoc]");
+  if(dd&&S.open&&S.canWrite){const m=S.m.find(x=>x.id===S.open.id);if(!m)return;arm(dd,"Sicher? Nochmal tippen",async()=>{dd.disabled=true;try{await S.db.doc("maschinen/"+m.id).update({docs:(m.docs||[]).filter(d=>d.id!==dd.dataset.deldoc)})}catch(err){toast("Konnte nicht gespeichert werden.")}});return}
   const lg=e.target.closest("[data-lager]");
   if(lg&&S.open&&S.canWrite){const m=S.m.find(x=>x.id===S.open.id);if(!m||!Array.isArray(m.wartung))return;lg.disabled=true;
     try{await S.db.doc("maschinen/"+m.id).update({wartung:m.wartung.map(p=>p.id===lg.dataset.lager?{...p,lager:!p.lager}:p)})}catch(err){toast("Konnte nicht gespeichert werden.");lg.disabled=false}return}
@@ -602,6 +624,13 @@ async function migrate(){
       for(const m of S.m)if(Array.isArray(m.wartung)&&m.wartung.some(p=>p.name==="Dieselfilter"))
         b2.update(S.db.doc("maschinen/"+m.id),{wartung:m.wartung.map(p=>p.name==="Dieselfilter"?{...p,name:"Kraftstofffilter",teil:p.teil||""}:p)});
       b2.set(ref,{kraftstoff:true,dieselfilter:true},{merge:true});await b2.commit();
+    }
+    /* Einmalig hinterlegte Unterlagen */
+    const SEED_DOCS=[["jd6140m","traktor-2","Ersatzteilliste JD Parts (6140M)","https://share.google/p0KvNNjjdh4TqtJyv"]];
+    for(const[key,mid,name,url] of SEED_DOCS){
+      if(done["doc_"+key])continue;const m=S.m.find(x=>x.id===mid);
+      if(m&&!(m.docs||[]).some(d=>d.url===url))await S.db.doc("maschinen/"+mid).update({docs:[...(m.docs||[]),{id:uid(),name,url}]});
+      await ref.set({["doc_"+key]:true},{merge:true});
     }
     if(done.dieselfilter)return;
     const b=S.db.batch();let n=0;
