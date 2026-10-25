@@ -158,6 +158,10 @@ form{display:grid;gap:12px}
 .doclist li{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 14px;border-top:1px solid var(--line)}
 .doclist li:first-child{border-top:0}
 .doclist a{color:var(--accent);font-weight:600;overflow-wrap:anywhere;min-width:0}
+.docacts{display:flex;gap:14px;align-items:center}
+.upl{cursor:pointer}
+.doclink{background:none;border:0;padding:0;color:var(--accent);font-weight:600;text-align:left;overflow-wrap:anywhere;min-width:0;text-decoration:underline}
+.doclink small{color:var(--muted);font-weight:400;text-decoration:none}
 .docf{display:grid;gap:8px;margin-top:8px}
 .docf input{font:inherit;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);width:100%}
 .replist{list-style:none;margin:0;padding:0;display:grid;gap:10px}
@@ -400,8 +404,9 @@ function drawDetail(){
     return `<li><span class="stripe s-${lvl(d)}"></span><span class="wn"><b>${esc(p.name)}</b><small>${esc(iv(p.intervall))||"kein Intervall"}${p.zuletzt?` · zuletzt ${p.zuletzt.length>7?fmtD(p.zuletzt):fmtMY(p.zuletzt)}`:""}</small>${extra}</span><span class="wd">${p.naechste?fmtMY(p.naechste):"–"}</span><span class="pill ${lvl(d)}">${p.naechste?rel(d):"kein Termin"}</span></li>`}).join("")}</ul>`:`<div class="empty">Keine Wartungspunkte. Über <b>Bearbeiten</b> kannst du Motoröl, Getriebeöl, Abschmieren und weitere anlegen.</div>`}</div>
   <dl class="facts">${fact("Erstzulassung",ez(m.erstzulassung))}${fact("Hersteller",m.hersteller)}${fact("Modell",m.modell)}${fact("Baujahr",m.baujahr)}${fact("Kennzeichen",m.kennzeichen)}${fact("Fahrgestell-Nr.",m.fin)}${fact("Versicherung",m.versicherung)}${fact("Notizen",m.notiz)}</dl>
   <div class="row" style="justify-content:flex-start">${S.canWrite?`<button class="primary" data-act="entry">+ Erledigt eintragen</button><button data-act="edit">Bearbeiten</button>`:""}</div>
-  <div class="docs"><div class="sechead" style="margin-bottom:6px"><h2 style="font-size:1.15rem">Unterlagen</h2>${S.canWrite?`<button class="linkbtn" data-act="docadd">+ Link hinzufügen</button>`:""}</div>
-  ${(m.docs||[]).length?`<ul class="doclist">${m.docs.map(d=>`<li><a href="${esc(d.url)}" target="_blank" rel="noopener">${esc(d.name||d.url)}</a>${S.canWrite?`<button class="linkbtn" data-deldoc="${esc(d.id)}">Entfernen</button>`:""}</li>`).join("")}</ul>`:`<p class="note" style="margin:0">Noch keine Unterlagen. Hier kannst du Links zu Ersatzteillisten, Anleitungen oder Google-Drive-Ordnern hinterlegen.</p>`}
+  <div class="docs"><div class="sechead" style="margin-bottom:6px"><h2 style="font-size:1.15rem">Unterlagen</h2>${S.canWrite?`<span class="docacts"><label class="linkbtn upl">+ Datei hochladen<input type="file" id="d_file" accept="application/pdf,image/*" hidden></label><button class="linkbtn" data-act="docadd">+ Link</button></span>`:""}</div>
+  <p class="note" id="d_status" hidden></p>
+  ${(m.docs||[]).length?`<ul class="doclist">${m.docs.map(d=>`<li>${d.fileId?`<button class="doclink" data-openfile="${esc(d.fileId)}" data-mime="${esc(d.mime||"")}" data-fname="${esc(d.name)}">${esc(d.name)} <small>${d.size?Math.max(1,Math.round(d.size/1024))+" KB":""}</small></button>`:`<a href="${esc(d.url)}" target="_blank" rel="noopener">${esc(d.name||d.url)}</a>`}${S.canWrite?`<button class="linkbtn" data-deldoc="${esc(d.id)}">Entfernen</button>`:""}</li>`).join("")}</ul>`:`<p class="note" style="margin:0">Noch keine Unterlagen. Hier kannst du PDFs oder Fotos hochladen, zum Beispiel Ersatzteillisten oder Anleitungen, oder Links hinterlegen.</p>`}
   <form id="docf" class="docf" hidden><input id="d_name" placeholder="Name, z. B. Ersatzteilliste JD Parts" maxlength="80"><input id="d_url" type="url" required placeholder="https://…"><div class="row"><button type="button" class="ghost" data-act="doccancel">Abbrechen</button><button class="primary" type="submit">Speichern</button></div></form></div>
   ${(()=>{const r=ents.filter(istRep);return `<button class="repbtn" data-act="reps"><span><b>Reparaturen &amp; Sonstiges</b><small>${r.length?`zuletzt: ${esc((r[0].text||r[0].art).slice(0,60))} · ${fmtE(r[0].datum)}`:"noch nichts eingetragen"}</small></span><span class="cnt">${r.length}</span></button>`})()}
   <div><div class="sechead" style="margin-bottom:4px"><h2 style="font-size:1.15rem">Verlauf Wartung &amp; TÜV</h2></div>
@@ -419,6 +424,36 @@ document.addEventListener("submit",async e=>{
   const btn=e.submitter;btn.disabled=true;
   try{await S.db.doc("maschinen/"+m.id).update({docs:[...(m.docs||[]),{id:uid(),name,url}]})}catch(err){btn.disabled=false;toast("Konnte nicht gespeichert werden.")}
 });
+/* Dateien (PDF/Fotos) direkt in der Datenbank: in Stücke à 700 KB geteilt, max. 8 MB */
+const TEIL=700000;
+const b64=buf=>{let s="";const a=new Uint8Array(buf);for(let i=0;i<a.length;i+=0x8000)s+=String.fromCharCode.apply(null,a.subarray(i,i+0x8000));return btoa(s)};
+document.addEventListener("change",async e=>{
+  if(e.target.id!=="d_file"||!e.target.files[0])return;
+  const f=e.target.files[0];e.target.value="";const m=S.m.find(x=>x.id===S.open?.id);if(!m)return;
+  const st=$("#d_status");st.hidden=false;
+  if(f.size>8*1024*1024){st.textContent="Die Datei ist größer als 8 MB. Bitte eine kleinere Datei nehmen oder als Link hinterlegen.";return}
+  st.textContent="Wird hochgeladen…";
+  try{
+    const data=b64(await f.arrayBuffer());const fileId=uid()+uid();const n=Math.ceil(data.length/TEIL);
+    for(let i=0;i<n;i++){await S.db.doc(`dateien/${fileId}_${i}`).set({i,data:data.slice(i*TEIL,(i+1)*TEIL)});st.textContent=`Wird hochgeladen… ${Math.round((i+1)/n*100)} %`}
+    const name=f.name.replace(/\.[^.]+$/,"").replace(/[_]+/g," ").slice(0,80)||"Datei";
+    await S.db.doc("maschinen/"+m.id).update({docs:[...(m.docs||[]),{id:uid(),name,fileId,teile:n,mime:f.type||"application/pdf",size:f.size}]});
+    st.hidden=true;toast("Datei gespeichert.");
+  }catch(err){st.hidden=false;st.textContent="Hochladen hat nicht geklappt. Prüf die Verbindung und versuch es noch einmal."}
+});
+async function openFile(fileId,mime,name,btn){
+  const doc=S.m.flatMap(m=>m.docs||[]).find(d=>d.fileId===fileId);if(!doc)return;
+  btn.disabled=true;const old=btn.innerHTML;btn.textContent="Wird geladen…";
+  try{
+    let data="";for(let i=0;i<doc.teile;i++){const sn=await S.db.doc(`dateien/${fileId}_${i}`).get();if(!sn.exists)throw 0;data+=sn.data().data}
+    const bin=atob(data);const arr=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);
+    const url=URL.createObjectURL(new Blob([arr],{type:mime||"application/pdf"}));
+    const a=document.createElement("a");a.href=url;a.target="_blank";a.rel="noopener";
+    if(!/^image\//.test(mime))a.download=(name||"Datei")+(/pdf/.test(mime)?".pdf":"");
+    document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
+  }catch(err){toast("Datei konnte nicht geladen werden. Ohne Netz geht das nur, wenn sie vorher schon einmal geöffnet wurde.")}
+  btn.disabled=false;btn.innerHTML=old;
+}
 function drawReps(){
   const m=S.m.find(x=>x.id===S.open.id);if(!m){closeSheet();return}
   const r=S.e.filter(e=>e.maschineId===m.id&&istRep(e)).sort((a,b)=>(b.datum||"").localeCompare(a.datum||""));
@@ -565,7 +600,11 @@ document.addEventListener("click",async e=>{
         await S.db.doc("maschinen/"+id).delete();closeSheet()}catch(err){a.disabled=false;a.textContent="Löschen fehlgeschlagen"}});
     return}
   const dd=e.target.closest("[data-deldoc]");
-  if(dd&&S.open&&S.canWrite){const m=S.m.find(x=>x.id===S.open.id);if(!m)return;arm(dd,"Sicher? Nochmal tippen",async()=>{dd.disabled=true;try{await S.db.doc("maschinen/"+m.id).update({docs:(m.docs||[]).filter(d=>d.id!==dd.dataset.deldoc)})}catch(err){toast("Konnte nicht gespeichert werden.")}});return}
+  if(dd&&S.open&&S.canWrite){const m=S.m.find(x=>x.id===S.open.id);if(!m)return;arm(dd,"Sicher? Nochmal tippen",async()=>{dd.disabled=true;try{const doc=(m.docs||[]).find(d=>d.id===dd.dataset.deldoc);
+      await S.db.doc("maschinen/"+m.id).update({docs:(m.docs||[]).filter(d=>d.id!==dd.dataset.deldoc)});
+      if(doc&&doc.fileId){for(let i=0;i<(doc.teile||0);i++)await S.db.doc(`dateien/${doc.fileId}_${i}`).delete()}}catch(err){toast("Konnte nicht gespeichert werden.")}});return}
+  const of=e.target.closest("[data-openfile]");
+  if(of){openFile(of.dataset.openfile,of.dataset.mime,of.dataset.fname,of);return}
   const lg=e.target.closest("[data-lager]");
   if(lg&&S.open&&S.canWrite){const m=S.m.find(x=>x.id===S.open.id);if(!m||!Array.isArray(m.wartung))return;lg.disabled=true;
     try{await S.db.doc("maschinen/"+m.id).update({wartung:m.wartung.map(p=>p.id===lg.dataset.lager?{...p,lager:!p.lager}:p)})}catch(err){toast("Konnte nicht gespeichert werden.");lg.disabled=false}return}
