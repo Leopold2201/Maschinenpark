@@ -627,7 +627,8 @@ async function migrate(){
     }
     /* Einmalig hinterlegte Unterlagen */
     const SEED_DOCS=[["jd6140m","traktor-2","Ersatzteilliste JD Parts (6140M)","https://share.google/p0KvNNjjdh4TqtJyv"],
-      ["jd4240filter","jd-4240","Filterübersicht Serie 40 (PDF)","docs/jd-serie40-filteruebersicht.pdf"]];
+      ["jd4240filter","jd-4240","Filterübersicht Serie 40 (PDF)","docs/jd-serie40-filteruebersicht.pdf"],
+      ["jd4240licht","jd-4240","Beleuchtung Serie 40 (PDF)","docs/jd-serie40-beleuchtung.pdf"]];
     for(const[key,mid,name,url] of SEED_DOCS){
       if(done["doc_"+key])continue;const m=S.m.find(x=>x.id===mid);
       if(m&&!(m.docs||[]).some(d=>d.url===url))await S.db.doc("maschinen/"+mid).update({docs:[...(m.docs||[]),{id:uid(),name,url}]});
