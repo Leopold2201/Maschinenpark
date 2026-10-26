@@ -863,6 +863,12 @@ async function migrate(){
       const b6=S.db.batch();const heute=iso(new Date());for(const[id,d] of Object.entries(S6))b6.set(S.db.doc("lager/"+id),{...d,aktualisiert:heute});
       b6.set(ref,{lager_filter6:true},{merge:true});await b6.commit();toast("5 weitere Filter ins Lager übernommen.");
     }
+    if(!done.lager_fix7){ /* RE64450: laut Händlerseite für JD-Serie 10/20/30/35/40 */
+      await S.db.doc("lager/seed6-re64450").set({name:"Filter John Deere RE64450 (Serie 10–40)",
+        maschinen:["jd-510","jd-710s","jd-2020","jd-3020","jd-3120","jd-2130"],
+        notiz:"Passt laut Händler für JD-Serie 10, 20, 30, 35, 40 (u. a. 510, 710, 2020, 3020, 3120, 2130). Maße: Ø außen 114 mm, innen 58/12,2 mm, Höhe 134/142 mm"},{merge:true});
+      await ref.set({lager_fix7:true},{merge:true});
+    }
     if(done.dieselfilter)return;
     const b=S.db.batch();let n=0;
     for(const m of S.m){
