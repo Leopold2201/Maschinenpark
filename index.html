@@ -807,6 +807,12 @@ async function migrate(){
       await S.db.doc("lager/seed3-varta99321").set({name:"Filtereinsatz VARTA 99321/H9.28/10",kat:"Filter",teil:"99321/H9.28/10",menge:2,einheit:"Stk",min:"",ort:"",maschinen:[],passt:"",notiz:"Karton: „élément filtrant“",aktualisiert:iso(new Date())});
       await ref.set({lager_filter3:true},{merge:true});
     }
+    if(!done.lager_fix4){ /* Donaldson: im Karton war P551910 statt P584000 */
+      await S.db.doc("lager/seed1-p584000").delete();
+      await S.db.doc("lager/seed4-p551910").set({name:"Motorölfilter Donaldson P551910",kat:"Filter",teil:"P551910",menge:1,einheit:"Stk",min:"",ort:"",
+        maschinen:["traktor-1","t5gpz8672ximckuu1g2f"],passt:"",notiz:"Ersetzt John Deere RE539279 / RE555072 – passt u. a. für 6155R, 6150M, 6155M, 6140R",aktualisiert:iso(new Date())});
+      await ref.set({lager_fix4:true},{merge:true});
+    }
     if(done.dieselfilter)return;
     const b=S.db.batch();let n=0;
     for(const m of S.m){
