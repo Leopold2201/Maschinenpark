@@ -72,6 +72,25 @@ button:disabled{opacity:.5;cursor:default}
 .s-ok{background:var(--ok)} .s-warn{background:var(--warn)} .s-bad{background:var(--bad)}
 /* Maschinen */
 .toolbar{display:flex;gap:8px;flex-wrap:wrap}
+.viewnav{display:grid;grid-template-columns:1fr 1fr;background:var(--sunk);border:1px solid var(--line);border-radius:12px;padding:3px;position:sticky;top:env(safe-area-inset-top,0px);z-index:5}
+.viewnav button{border:0;background:transparent;border-radius:9px;padding:10px;font-weight:700;font-family:var(--f-display);font-size:1.05rem;letter-spacing:.03em;color:var(--muted)}
+.viewnav button.on{background:var(--accent);color:var(--accent-ink)}
+.vgrid{display:grid;gap:28px;min-width:0}
+.vgrid>section,#vLager{min-width:0}
+.llist{display:grid;gap:8px}
+.lrow{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:8px 8px 8px 14px}
+.lrow.low{border-color:color-mix(in srgb,var(--warn) 55%,var(--line))}
+.linfo{flex:1 1 auto;min-width:0;background:none;border:0;padding:4px 0;text-align:left;font-weight:400;display:grid;gap:2px;justify-items:start}
+.linfo b{overflow-wrap:anywhere}.linfo small{color:var(--muted);overflow-wrap:anywhere}
+.qty{flex:0 0 auto;display:flex;align-items:center;gap:6px}
+.qty span{min-width:64px;text-align:center;font-variant-numeric:tabular-nums}
+.qty button{width:38px;height:38px;padding:0;border-radius:50%;font-size:1.25rem;line-height:1}
+.nachbox{background:var(--warn-bg);border-radius:var(--r);padding:12px 14px;margin-bottom:14px}
+.nachbox .nh{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:6px}
+.nachbox ul{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.nachbox li{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.nachbox small{color:var(--muted)}
+.linkbtn.plain{color:var(--ink);font-weight:600;font-size:inherit;text-decoration:none}
 .sechead.stack{flex-direction:column;align-items:flex-start;gap:8px}
 .seg{display:inline-flex;background:var(--sunk);border:1px solid var(--line);border-radius:999px;padding:2px;flex:0 0 auto}
 .seg button{border:0;background:transparent;border-radius:999px;padding:4px 11px;font-size:.8rem;font-weight:600;color:var(--muted)}
@@ -214,6 +233,8 @@ img{max-width:100%}[hidden]{display:none!important}
   </form>
 </section>
 <main id="app" hidden><div class="wrap">
+  <nav class="viewnav" role="tablist" aria-label="Bereich"><button role="tab" data-view="maschinen" class="on" aria-selected="true">Maschinen</button><button role="tab" data-view="lager" aria-selected="false">Lager</button></nav>
+  <div id="vMasch" class="vgrid">
   <section>
     <div class="sechead stack"><h2 id="dueTitle">Anstehende TÜV-Termine</h2>
       <div class="seg" role="radiogroup" aria-label="Was anzeigen"><button role="radio" data-due="tuev" aria-checked="true" class="on">TÜV</button><button role="radio" data-due="wartung" aria-checked="false">Wartung</button></div></div>
@@ -232,6 +253,19 @@ img{max-width:100%}[hidden]{display:none!important}
     </div>
     <div class="tabs" id="tabs" role="tablist" aria-label="Gruppen"></div>
     <div id="grid"></div>
+  </section>
+  </div>
+  <section id="vLager" hidden>
+    <div class="sechead">
+      <h2>Lager</h2>
+      <div class="toolbar">
+        <input id="lq" type="search" placeholder="Artikel oder Teilenummer suchen…" aria-label="Lager durchsuchen">
+        <button class="primary" id="addL">+ Artikel</button>
+      </div>
+    </div>
+    <div class="tabs" id="ltabs" role="tablist" aria-label="Lagerbereiche"></div>
+    <div id="lnach"></div>
+    <div id="llist"></div>
   </section>
   <div class="foot"><p class="note" id="conn">Verbinde…</p><button id="pushBtn" hidden>Benachrichtigungen einschalten</button><button class="linkbtn" id="logout">Abmelden</button></div>
   <p class="signatur">Leopold Teigeler</p>
@@ -268,7 +302,15 @@ let DUE="tuev"; /* startet immer mit TÜV */
 let TAB="alle";try{TAB=localStorage.getItem("mp_tab")||"alle"}catch(_){}
 const STD_PUNKTE=[["Motoröl",12],["Kraftstofffilter",12],["Getriebeöl",24],["Hydrauliköl",24],["Abschmieren",""]];
 const ARTEN=["Wartung","Reparatur","TÜV / HU","Sonstiges"];
-const S={m:[],e:[],ready:false,canWrite:true,open:null,db:null};
+const S={m:[],e:[],l:[],ready:false,canWrite:true,open:null,db:null};
+/* Lager */
+const LKATS=["Öle & Fette","Filter","Ersatzteile","Sonstiges"];
+const EINHEITEN=["Stk","l","kg","Kanister","Eimer","Packung"];
+let VIEW="maschinen",LTAB="alle";
+const nrm=t=>String(t||"").toLowerCase().replace(/[^a-z0-9]/g,"");
+const fmtN=n=>(Math.round((+n||0)*100)/100).toLocaleString("de-DE");
+const knapp=a=>(+a.min>0)&&(+a.menge||0)<=(+a.min);
+const lagerZu=teil=>{const k=nrm(teil);return k?S.l.find(a=>nrm(a.teil)===k):null};
 const $=s=>document.querySelector(s);
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const today=()=>{const d=new Date();d.setHours(0,0,0,0);return d};
@@ -340,7 +382,54 @@ addEventListener("resize",fitTitle);
 document.getElementById("logo").addEventListener("load",fitTitle);
 document.fonts&&document.fonts.ready.then(fitTitle);
 setTimeout(fitTitle,0);
-function render(){
+function renderLager(){
+  document.querySelectorAll("[data-view]").forEach(b=>{const on=b.dataset.view===VIEW;b.classList.toggle("on",on);b.setAttribute("aria-selected",on)});
+  $("#vMasch").hidden=VIEW!=="maschinen";$("#vLager").hidden=VIEW!=="lager";
+  if(VIEW!=="lager")return;
+  const nach=S.l.filter(knapp);
+  const liter=S.l.filter(a=>a.einheit==="l").reduce((x,a)=>x+(+a.menge||0),0);
+  $("#tally").innerHTML=`<div><b>${S.l.length}</b><span>Artikel</span></div><div><b style="color:${nach.length?"#f6c46d":"inherit"}">${nach.length}</b><span>nachbestellen</span></div><div><b>${fmtN(liter)}</b><span>Liter</span></div>`;
+  const anz=k=>S.l.filter(a=>k==="alle"||(a.kat||"Sonstiges")===k).length;
+  $("#ltabs").innerHTML=[["alle","Alle"],...LKATS.map(k=>[k,k])].map(([id,n])=>`<button role="tab" class="tab${LTAB===id?" on":""}" aria-selected="${LTAB===id}" data-ltab="${esc(id)}">${esc(n)} <span>${anz(id)}</span></button>`).join("");
+  $("#lnach").innerHTML=nach.length?`<div class="nachbox"><div class="nh"><b>Nachbestellen (${nach.length})</b><button class="linkbtn" data-act="lcopy">Liste kopieren</button></div><ul>${nach.map(a=>`<li><button class="linkbtn plain" data-ledit="${esc(a.id)}">${esc(a.name)}</button>${a.teil?` <small>${esc(a.teil)}</small>`:""} <span class="pill warn">${fmtN(a.menge)} ${esc(a.einheit||"Stk")}</span></li>`).join("")}</ul></div>`:"";
+  const q=nrm($("#lq").value);
+  const list=S.l.filter(a=>(LTAB==="alle"||(a.kat||"Sonstiges")===LTAB)&&(!q||nrm([a.name,a.teil,a.ort,a.passt].join(" ")).includes(q)))
+    .sort((a,b)=>String(a.name).localeCompare(b.name,"de"));
+  const row=a=>`<div class="lrow${knapp(a)?" low":""}"><button class="linfo" data-ledit="${esc(a.id)}"><b>${esc(a.name)}</b><small>${esc([a.teil,a.ort?"Lagerort: "+a.ort:"",a.passt?"für "+a.passt:""].filter(Boolean).join(" · "))||"&nbsp;"}</small>${knapp(a)?`<span class="pill warn">nachbestellen</span>`:""}</button>
+    <div class="qty">${S.canWrite?`<button aria-label="weniger" data-ldelta="-1" data-lid="${esc(a.id)}">−</button>`:""}<span><b>${fmtN(a.menge)}</b> ${esc(a.einheit||"Stk")}</span>${S.canWrite?`<button aria-label="mehr" data-ldelta="1" data-lid="${esc(a.id)}">+</button>`:""}</div></div>`;
+  $("#llist").innerHTML=!S.ready?`<div class="empty">Lager wird geladen…</div>`:!S.l.length?`<div class="empty">Noch nichts im Lager. Tippe auf <b>+ Artikel</b> und leg zum Beispiel euer Motoröl an: Name, Menge in Litern und ab wie viel nachbestellt werden soll.</div>`:!list.length?`<div class="empty">Nichts gefunden.</div>`:
+    (LTAB==="alle"?LKATS.map(k=>{const g=list.filter(a=>(a.kat||"Sonstiges")===k);return g.length?`<h3 class="ghead">${esc(k)} <span>${g.length}</span></h3><div class="llist">${g.map(row).join("")}</div>`:""}).join(""):`<div class="llist">${list.map(row).join("")}</div>`);
+  $("#addL").disabled=!S.canWrite;
+  if(S.open&&S.open.type==="lform"&&S.open.id&&!S.l.some(a=>a.id===S.open.id))closeSheet();
+}
+
+function lagerForm(a){
+  a=a||{};S.open={type:"lform",id:a.id||null};
+  const v=k=>esc(a[k]??"");
+  openSheet(`<div class="sheet-head"><h2>${a.id?"Artikel bearbeiten":"Neuer Artikel"}</h2><button class="ghost" data-act="close">Abbrechen</button></div>
+  <form id="lf2"><div class="fields">
+   <label class="f full"><span class="label">Bezeichnung *</span><input id="l_name" required maxlength="80" value="${v("name")}" placeholder="z. B. Motoröl 15W-40, Ölfilter AR43634"></label>
+   <label class="f"><span class="label">Bereich</span><select id="l_kat">${LKATS.map(k=>`<option ${k===(a.kat||(LTAB!=="alle"?LTAB:"Filter"))?"selected":""}>${k}</option>`).join("")}</select></label>
+   <label class="f"><span class="label">Teilenummer</span><input id="l_teil" value="${v("teil")}" placeholder="z. B. AR43634"><small>Gleiche Nummer wie beim Wartungspunkt, dann zeigt die Maschine den Bestand an</small></label>
+   <label class="f"><span class="label">Bestand</span><input id="l_menge" type="number" step="any" min="0" inputmode="decimal" value="${v("menge")||0}"></label>
+   <label class="f"><span class="label">Einheit</span><select id="l_einheit">${EINHEITEN.map(e=>`<option ${e===(a.einheit||"Stk")?"selected":""}>${e}</option>`).join("")}</select></label>
+   <label class="f"><span class="label">Nachbestellen ab</span><input id="l_min" type="number" step="any" min="0" inputmode="decimal" value="${v("min")}" placeholder="z. B. 2"><small>Leer lassen, wenn egal</small></label>
+   <label class="f"><span class="label">Lagerort</span><input id="l_ort" value="${v("ort")}" placeholder="z. B. Werkstatt, Regal 2"></label>
+   <label class="f full"><span class="label">Passt für</span><input id="l_passt" list="l_maschinen" value="${v("passt")}" placeholder="z. B. Traktor 1, Traktor 3"><datalist id="l_maschinen">${S.m.map(m=>`<option value="${esc(m.name)}">`).join("")}</datalist></label>
+   <label class="f full"><span class="label">Notiz</span><input id="l_notiz" value="${v("notiz")}" placeholder="z. B. Händler, Preis"></label>
+  </div><p class="err" id="lferr" hidden></p><div class="row">${a.id?`<button type="button" class="danger" data-ldel="${esc(a.id)}" style="margin-right:auto">Löschen</button>`:""}<button class="primary" type="submit">Speichern</button></div></form>`);
+  $("#lf2").addEventListener("submit",async ev=>{
+    ev.preventDefault();
+    const body={name:$("#l_name").value.trim(),kat:$("#l_kat").value,teil:$("#l_teil").value.trim(),menge:+String($("#l_menge").value).replace(",",".")||0,
+      einheit:$("#l_einheit").value,min:$("#l_min").value===""?"":(+String($("#l_min").value).replace(",",".")||0),ort:$("#l_ort").value.trim(),passt:$("#l_passt").value.trim(),notiz:$("#l_notiz").value.trim(),aktualisiert:iso(new Date())};
+    if(!body.name)return;const btn=ev.submitter;btn.disabled=true;
+    try{if(a.id)await S.db.doc("lager/"+a.id).set(body);else await S.db.collection("lager").add(body);closeSheet()}
+    catch(e){showErr("#lferr",e);btn.disabled=false}
+  });
+}
+
+function render(){renderMasch();renderLager()}
+function renderMasch(){
   const all=S.m.flatMap(m=>termine(m).filter(t=>DUE==="tuev"?t.typ==="TÜV / HU":t.typ!=="TÜV / HU").map(t=>({...t,m})));
   $("#dueTitle").textContent=DUE==="tuev"?"Anstehende TÜV-Termine":"Anstehende Wartungen";
   document.querySelectorAll("[data-due]").forEach(b=>{const on=b.dataset.due===DUE;b.classList.toggle("on",on);b.setAttribute("aria-checked",on)});
@@ -398,7 +487,7 @@ function drawDetail(){
   ${hatTuev(m)?"":"<!--"}<div class="panel tuev"><div><span class="label">TÜV / HU</span><b>${m.tuevBis?`Plakette bis ${fmtM(m.tuevBis)}`:"nicht eingetragen"}</b>${m.tuevBis?`<small class="note">Letzter TÜV ${fmtM(letzter(m))}</small>`:""}</div>${m.abgemeldet?`<span class="pill none">abgemeldet</span>`:`<span class="pill ${lvl(tv)}">${m.tuevBis?rel(tv):"–"}</span>`}</div>${hatTuev(m)?"":"-->"}
   <div><div class="sechead" style="margin-bottom:6px"><h2 style="font-size:1.15rem">Wartung</h2></div>
   ${ps.length?`<ul class="wlist">${ps.map(p=>{
-    const extra=`${p.teil?`<small class="teil">Filter: <b>${esc(p.teil)}</b></small>`:""}${p.menge&&!ohneMenge(p)?`<small class="teil">Füllmenge: <b>${esc(p.menge)}</b></small>`:""}${istAbschmieren(p)?"":`<button type="button" class="lager${p.lager?" ja":""}" data-lager="${esc(p.id)}" ${S.canWrite?"":"disabled"} aria-pressed="${!!p.lager}">${p.lager?"✓ Auf Lager":"Nicht auf Lager"}</button>`}`;
+    const extra=`${p.teil?`<small class="teil">Filter: <b>${esc(p.teil)}</b></small>`:""}${p.menge&&!ohneMenge(p)?`<small class="teil">Füllmenge: <b>${esc(p.menge)}</b></small>`:""}${(()=>{const a=lagerZu(p.teil);return a?`<small class="teil">Im Lager: <b>${fmtN(a.menge)} ${esc(a.einheit||"Stk")}</b>${knapp(a)?" · nachbestellen":""}</small>`:""})()}${istAbschmieren(p)?"":`<button type="button" class="lager${p.lager?" ja":""}" data-lager="${esc(p.id)}" ${S.canWrite?"":"disabled"} aria-pressed="${!!p.lager}">${p.lager?"✓ Auf Lager":"Nicht auf Lager"}</button>`}`;
     if(nurZuletzt(p))return `<li><span class="stripe s-none"></span><span class="wn"><b>${esc(p.name)}</b><small>zuletzt gemacht</small>${extra}</span><span class="wd">${p.zuletzt?fmtMY(p.zuletzt):"–"}</span><span class="pill none">${p.zuletzt?seitM(p.zuletzt):"noch nicht eingetragen"}</span></li>`;
     const d=p.naechste?dueW(p.naechste):null;
     return `<li><span class="stripe s-${lvl(d)}"></span><span class="wn"><b>${esc(p.name)}</b><small>${esc(iv(p.intervall))||"kein Intervall"}${p.zuletzt?` · zuletzt ${p.zuletzt.length>7?fmtD(p.zuletzt):fmtMY(p.zuletzt)}`:""}</small>${extra}</span><span class="wd">${p.naechste?fmtMY(p.naechste):"–"}</span><span class="pill ${lvl(d)}">${p.naechste?rel(d):"kein Termin"}</span></li>`}).join("")}</ul>`:`<div class="empty">Keine Wartungspunkte. Über <b>Bearbeiten</b> kannst du Motoröl, Getriebeöl, Abschmieren und weitere anlegen.</div>`}</div>
@@ -605,6 +694,15 @@ document.addEventListener("click",async e=>{
       if(doc&&doc.fileId){for(let i=0;i<(doc.teile||0);i++)await S.db.doc(`dateien/${doc.fileId}_${i}`).delete()}}catch(err){toast("Konnte nicht gespeichert werden.")}});return}
   const of=e.target.closest("[data-openfile]");
   if(of){openFile(of.dataset.openfile,of.dataset.mime,of.dataset.fname,of);return}
+  const le=e.target.closest("[data-ledit]");
+  if(le){const a=S.l.find(x=>x.id===le.dataset.ledit);if(a){if(S.open)closeSheet();lagerForm(a)}return}
+  const ld=e.target.closest("[data-ldelta]");
+  if(ld&&S.canWrite){const a=S.l.find(x=>x.id===ld.dataset.lid);if(!a)return;const n=Math.max(0,Math.round(((+a.menge||0)+(+ld.dataset.ldelta))*100)/100);
+    a.menge=n;render();try{await S.db.doc("lager/"+a.id).update({menge:n,aktualisiert:iso(new Date())})}catch(err){toast("Konnte nicht gespeichert werden.")}return}
+  const ldel=e.target.closest("[data-ldel]");
+  if(ldel){arm(ldel,"Wirklich löschen? Nochmal tippen",async()=>{ldel.disabled=true;try{await S.db.doc("lager/"+ldel.dataset.ldel).delete();closeSheet()}catch(err){toast("Konnte nicht gelöscht werden.")}});return}
+  if(e.target.closest("[data-act=lcopy]")){const t="Nachbestellen:\n"+S.l.filter(knapp).map(a=>`- ${a.name}${a.teil?" ("+a.teil+")":""}: noch ${fmtN(a.menge)} ${a.einheit||"Stk"}`).join("\n");
+    try{await navigator.clipboard.writeText(t);toast("Liste kopiert. Du kannst sie jetzt z. B. per WhatsApp an den Händler schicken.")}catch(err){toast(t)}return}
   const lg=e.target.closest("[data-lager]");
   if(lg&&S.open&&S.canWrite){const m=S.m.find(x=>x.id===S.open.id);if(!m||!Array.isArray(m.wartung))return;lg.disabled=true;
     try{await S.db.doc("maschinen/"+m.id).update({wartung:m.wartung.map(p=>p.id===lg.dataset.lager?{...p,lager:!p.lager}:p)})}catch(err){toast("Konnte nicht gespeichert werden.");lg.disabled=false}return}
@@ -614,6 +712,10 @@ document.addEventListener("click",async e=>{
 document.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.matches("li[data-open]")&&!S.open){S.open={type:"detail",id:e.target.dataset.open};drawDetail()}});
 $("#addM").addEventListener("click",()=>machineForm());
 document.querySelector(".seg").addEventListener("click",e=>{const b=e.target.closest("[data-due]");if(!b||b.dataset.due===DUE)return;DUE=b.dataset.due;render()});
+document.querySelector(".viewnav").addEventListener("click",e=>{const b=e.target.closest("[data-view]");if(!b||b.dataset.view===VIEW)return;VIEW=b.dataset.view;scrollTo(0,0);render()});
+$("#ltabs").addEventListener("click",e=>{const b=e.target.closest("[data-ltab]");if(!b)return;LTAB=b.dataset.ltab;render()});
+$("#lq").addEventListener("input",render);
+$("#addL").addEventListener("click",()=>lagerForm());
 $("#tabs").addEventListener("click",e=>{const b=e.target.closest("[data-tab]");if(!b)return;TAB=b.dataset.tab;$("#fcat").value="";try{localStorage.setItem("mp_tab",TAB)}catch(_){}render()});
 $("#q").addEventListener("input",render);$("#fcat").addEventListener("change",render);$("#showAb").addEventListener("change",render);
 
@@ -642,12 +744,13 @@ if(!configured){
   auth.onAuthStateChanged(user=>{
     unsub.forEach(f=>f());unsub=[];
     $("#login").hidden=!!user;$("#app").hidden=!user;
-    if(!user){S.m=[];S.e=[];S.ready=false;closeSheet();return}
+    if(!user){S.m=[];S.e=[];S.l=[];S.ready=false;closeSheet();return}
     S.ready=false;render();
-    let got=0;const done=()=>{if(++got===2){S.ready=true;$("#conn").textContent="Alle Änderungen werden sofort für die ganze Familie gespeichert.";migrate()}};
+    let got=0;const done=()=>{if(++got===3){S.ready=true;$("#conn").textContent="Alle Änderungen werden sofort für die ganze Familie gespeichert.";migrate()}};
     const fail=e=>{$("#conn").textContent=e&&e.code==="permission-denied"?"Dieser Login hat keinen Zugriff auf die Hof-Daten.":"Keine Verbindung. Änderungen werden gespeichert, sobald du wieder online bist."};
     let f1=1,f2=1;
     unsub.push(S.db.collection("maschinen").onSnapshot(s=>{S.m=s.docs.map(d=>({id:d.id,...d.data()}));if(f1){f1=0;done()}render()},fail));
+    let f3=1;unsub.push(S.db.collection("lager").onSnapshot(s=>{S.l=s.docs.map(d=>({id:d.id,...d.data()}));if(f3){f3=0;done()}render()},fail));
     unsub.push(S.db.collection("eintraege").onSnapshot(s=>{S.e=s.docs.map(d=>({id:d.id,...d.data()}));if(f2){f2=0;done()}render()},fail));
     initPush(false);
   });
