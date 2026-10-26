@@ -888,6 +888,12 @@ async function migrate(){
       const bo=S.db.batch();const heute=iso(new Date());for(const[id,d] of Object.entries(OE))bo.set(S.db.doc("lager/"+id),{...d,aktualisiert:heute});
       bo.set(ref,{lager_oele1:true},{merge:true});await bo.commit();toast(`${Object.keys(OE).length} Öle ins Lager übernommen.`);
     }
+    if(!done.lager_filter10){
+      const S10={"seed10-c28603": {"name": "Luftfilter MANN C 2860/3", "teil": "C 2860/3", "menge": 1, "maschinen": ["schwarzer"], "notiz": "Für VW Caddy 14 D", "kat": "Filter", "einheit": "Stk", "min": "", "ort": "", "passt": ""}, "seed10-hu7114x": {"name": "Ölfiltereinsatz MANN HU 711/4 x", "teil": "HU 711/4 x", "menge": 1, "maschinen": [], "notiz": "", "kat": "Filter", "einheit": "Stk", "min": "", "ort": "", "passt": ""}, "seed10-w93021": {"name": "Ölfilter MANN W 930/21", "teil": "W 930/21", "menge": 2, "maschinen": [], "notiz": "", "kat": "Filter", "einheit": "Stk", "min": "", "ort": "", "passt": ""}, "seed10-febi22548": {"name": "Ölfilter Febi 22548", "teil": "22548", "menge": 1, "maschinen": ["audi-a5"], "notiz": "Für den Audi", "kat": "Filter", "einheit": "Stk", "min": "", "ort": "", "passt": ""}};
+      const b10=S.db.batch();const heute=iso(new Date());for(const[id,d] of Object.entries(S10))b10.set(S.db.doc("lager/"+id),{...d,aktualisiert:heute});
+      b10.set(S.db.doc("lager/seed6-w7195"),{menge:4,aktualisiert:heute},{merge:true});
+      b10.set(ref,{lager_filter10:true},{merge:true});await b10.commit();toast("Weitere Filter ins Lager übernommen.");
+    }
     if(done.dieselfilter)return;
     const b=S.db.batch();let n=0;
     for(const m of S.m){
