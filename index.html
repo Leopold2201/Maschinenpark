@@ -894,6 +894,10 @@ async function migrate(){
       b10.set(S.db.doc("lager/seed6-w7195"),{menge:4,aktualisiert:heute},{merge:true});
       b10.set(ref,{lager_filter10:true},{merge:true});await b10.commit();toast("Weitere Filter ins Lager übernommen.");
     }
+    if(!done.lager_fix11){
+      await S.db.doc("lager/seed6-w7195").set({maschinen:["schwarzer"],notiz:"Für VW Caddy 14 D"},{merge:true});
+      await ref.set({lager_fix11:true},{merge:true});
+    }
     if(done.dieselfilter)return;
     const b=S.db.batch();let n=0;
     for(const m of S.m){
