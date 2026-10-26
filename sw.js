@@ -3,7 +3,7 @@ importScripts("firebase-config.js");
 importScripts("https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js");
 importScripts("https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js");
 
-const CACHE = "maschinenpark-v21";
+const CACHE = "maschinenpark-v22";
 const SHELL = ["./", "index.html", "firebase-config.js", "manifest.webmanifest",
   "icon-192.png", "icon-512.png", "apple-touch-icon.png", "logo.png"];
 
@@ -17,7 +17,7 @@ self.addEventListener("activate", e => {
 });
 
 // Firebase-Bibliotheken und Schriften: einmal laden, dann aus dem Speicher (auch offline).
-const EXTERN = ["www.gstatic.com", "fonts.googleapis.com", "fonts.gstatic.com"];
+const EXTERN = ["www.gstatic.com", "fonts.googleapis.com", "fonts.gstatic.com", "cdnjs.cloudflare.com"];
 const SDK = ["app", "auth", "firestore", "messaging"].map(n => `https://www.gstatic.com/firebasejs/10.12.2/firebase-${n}-compat.js`);
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => Promise.allSettled(SDK.map(u => c.add(new Request(u, { mode: "no-cors" }))))));

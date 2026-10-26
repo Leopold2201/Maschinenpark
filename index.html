@@ -181,6 +181,13 @@ form{display:grid;gap:12px}
 .doclist li{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 14px;border-top:1px solid var(--line)}
 .doclist li:first-child{border-top:0}
 .doclist a{color:var(--accent);font-weight:600;overflow-wrap:anywhere;min-width:0}
+.viewer{position:fixed;inset:0;z-index:50;background:var(--bg);display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px)}
+.vbar{display:flex;align-items:center;gap:10px;padding:10px max(12px,env(safe-area-inset-right,0px)) 10px max(12px,env(safe-area-inset-left,0px));border-bottom:1px solid var(--line);background:var(--surface)}
+.vbar b{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vz{display:flex;gap:6px}.vz button{width:38px;height:38px;padding:0;border-radius:50%;font-size:1.2rem}
+.vbody{flex:1 1 auto;overflow:auto;padding:8px 8px calc(8px + env(safe-area-inset-bottom,0px));display:grid;gap:8px;justify-items:center;align-content:start;background:var(--sunk);-webkit-overflow-scrolling:touch}
+.vbody canvas,.vbody img{background:#fff;box-shadow:0 1px 4px rgb(0 0 0 / .2);max-width:none}
+.vbody img{max-width:100%}
 .docacts{display:flex;gap:14px;align-items:center}
 .upl{cursor:pointer}
 .doclink{background:none;border:0;padding:0;color:var(--accent);font-weight:600;text-align:left;overflow-wrap:anywhere;min-width:0;text-decoration:underline}
@@ -506,7 +513,7 @@ function drawDetail(){
   ${(()=>{const li=S.l.filter(a=>(a.maschinen||[]).includes(m.id));return li.length?`<div class="docs"><div class="sechead" style="margin-bottom:6px"><h2 style="font-size:1.15rem">Im Lager für diese Maschine</h2></div><ul class="doclist">${li.map(a=>`<li><button class="linkbtn plain" data-ledit="${esc(a.id)}">${esc(a.name)}${a.teil?` <small>${esc(a.teil)}</small>`:""}</button><span class="${knapp(a)?"pill warn":""}">${fmtN(a.menge)} ${esc(a.einheit||"Stk")}</span></li>`).join("")}</ul></div>`:""})()}
   <div class="docs"><div class="sechead" style="margin-bottom:6px"><h2 style="font-size:1.15rem">Unterlagen</h2>${S.canWrite?`<span class="docacts"><label class="linkbtn upl">+ Datei hochladen<input type="file" id="d_file" accept="application/pdf,image/*" hidden></label><button class="linkbtn" data-act="docadd">+ Link</button></span>`:""}</div>
   <p class="note" id="d_status" hidden></p>
-  ${(m.docs||[]).length?`<ul class="doclist">${m.docs.map(d=>`<li>${d.fileId?`<button class="doclink" data-openfile="${esc(d.fileId)}" data-mime="${esc(d.mime||"")}" data-fname="${esc(d.name)}">${esc(d.name)} <small>${d.size?Math.max(1,Math.round(d.size/1024))+" KB":""}</small></button>`:`<a href="${esc(d.url)}" target="_blank" rel="noopener">${esc(d.name||d.url)}</a>`}${S.canWrite?`<button class="linkbtn" data-deldoc="${esc(d.id)}">Entfernen</button>`:""}</li>`).join("")}</ul>`:`<p class="note" style="margin:0">Noch keine Unterlagen. Hier kannst du PDFs oder Fotos hochladen, zum Beispiel Ersatzteillisten oder Anleitungen, oder Links hinterlegen.</p>`}
+  ${(m.docs||[]).length?`<ul class="doclist">${m.docs.map(d=>`<li>${d.fileId?`<button class="doclink" data-openfile="${esc(d.fileId)}" data-mime="${esc(d.mime||"")}" data-fname="${esc(d.name)}">${esc(d.name)} <small>${d.size?Math.max(1,Math.round(d.size/1024))+" KB":""}</small></button>`:(/^https?:/i.test(d.url)||!/\.pdf$/i.test(d.url)?`<a href="${esc(d.url)}" target="_blank" rel="noopener">${esc(d.name||d.url)}</a>`:`<button class="doclink" data-viewurl="${esc(d.url)}" data-fname="${esc(d.name)}">${esc(d.name)}</button>`)}${S.canWrite?`<button class="linkbtn" data-deldoc="${esc(d.id)}">Entfernen</button>`:""}</li>`).join("")}</ul>`:`<p class="note" style="margin:0">Noch keine Unterlagen. Hier kannst du PDFs oder Fotos hochladen, zum Beispiel Ersatzteillisten oder Anleitungen, oder Links hinterlegen.</p>`}
   <form id="docf" class="docf" hidden><input id="d_name" placeholder="Name, z. B. Ersatzteilliste JD Parts" maxlength="80"><input id="d_url" type="url" required placeholder="https://…"><div class="row"><button type="button" class="ghost" data-act="doccancel">Abbrechen</button><button class="primary" type="submit">Speichern</button></div></form></div>
   ${(()=>{const r=ents.filter(istRep);return `<button class="repbtn" data-act="reps"><span><b>Reparaturen &amp; Sonstiges</b><small>${r.length?`zuletzt: ${esc((r[0].text||r[0].art).slice(0,60))} · ${fmtE(r[0].datum)}`:"noch nichts eingetragen"}</small></span><span class="cnt">${r.length}</span></button>`})()}
   <div><div class="sechead" style="margin-bottom:4px"><h2 style="font-size:1.15rem">Verlauf Wartung &amp; TÜV</h2></div>
@@ -541,16 +548,47 @@ document.addEventListener("change",async e=>{
     st.hidden=true;toast("Datei gespeichert.");
   }catch(err){st.hidden=false;st.textContent="Hochladen hat nicht geklappt. Prüf die Verbindung und versuch es noch einmal."}
 });
+/* Eigener Betrachter: PDFs und Fotos direkt in der App ansehen, ohne Download */
+const PDFJS="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/";
+let pdfLib=null;
+async function ladePdfJs(){
+  if(pdfLib)return pdfLib;
+  await new Promise((ok,no)=>{const sc=document.createElement("script");sc.src=PDFJS+"pdf.min.js";sc.onload=ok;sc.onerror=no;document.head.appendChild(sc)});
+  const lib=window.pdfjsLib;
+  try{const t=await (await fetch(PDFJS+"pdf.worker.min.js")).text();lib.GlobalWorkerOptions.workerSrc=URL.createObjectURL(new Blob([t],{type:"text/javascript"}))}catch(_){lib.GlobalWorkerOptions.workerSrc=PDFJS+"pdf.worker.min.js"}
+  return pdfLib=lib;
+}
+async function zeigeDatei(bytes,mime,name){
+  const v=document.createElement("div");v.className="viewer";v.setAttribute("role","dialog");v.setAttribute("aria-modal","true");
+  v.innerHTML=`<div class="vbar"><b>${esc(name||"Datei")}</b><span class="vz"><button data-vz="-1" aria-label="Verkleinern">−</button><button data-vz="1" aria-label="Vergrößern">+</button></span><button class="primary" data-vclose>Schließen</button></div><div class="vbody"><p class="note vlade">Wird geöffnet…</p></div>`;
+  document.body.appendChild(v);document.body.style.overflow="hidden";
+  const body=v.querySelector(".vbody");let url=null,zoom=1,pdf=null,lauf=0;
+  const zu=()=>{v.remove();document.body.style.overflow="";if(url)URL.revokeObjectURL(url);removeEventListener("popstate",zu)};
+  history.pushState({viewer:1},"");addEventListener("popstate",zu);
+  v.querySelector("[data-vclose]").onclick=()=>history.back();
+  if(/^image\//.test(mime)){
+    v.querySelector(".vz").hidden=true;url=URL.createObjectURL(new Blob([bytes],{type:mime}));
+    body.innerHTML=`<img src="${url}" alt="${esc(name||"")}">`;return;
+  }
+  const zeichne=async()=>{
+    const my=++lauf;body.innerHTML="";const w=Math.min(body.clientWidth-16,1100)*zoom;const dpr=Math.min(devicePixelRatio||1,2);
+    for(let n=1;n<=pdf.numPages;n++){
+      if(my!==lauf)return;const page=await pdf.getPage(n);const vp0=page.getViewport({scale:1});const sc=w/vp0.width;const vp=page.getViewport({scale:sc*dpr});
+      const c=document.createElement("canvas");c.width=vp.width;c.height=vp.height;c.style.width=(vp.width/dpr)+"px";c.style.height=(vp.height/dpr)+"px";
+      body.appendChild(c);await page.render({canvasContext:c.getContext("2d"),viewport:vp}).promise;
+    }
+  };
+  try{const lib=await ladePdfJs();pdf=await lib.getDocument({data:bytes}).promise;await zeichne()}
+  catch(err){body.innerHTML=`<p class="note">Die Datei lässt sich hier nicht anzeigen. Ohne Internet geht das nur, wenn schon einmal ein PDF geöffnet wurde.</p>`;return}
+  v.querySelector(".vz").onclick=e=>{const b=e.target.closest("[data-vz]");if(!b)return;zoom=Math.max(.5,Math.min(3,zoom+(+b.dataset.vz)*.25));zeichne()};
+}
 async function openFile(fileId,mime,name,btn){
   const doc=S.m.flatMap(m=>m.docs||[]).find(d=>d.fileId===fileId);if(!doc)return;
   btn.disabled=true;const old=btn.innerHTML;btn.textContent="Wird geladen…";
   try{
     let data="";for(let i=0;i<doc.teile;i++){const sn=await S.db.doc(`dateien/${fileId}_${i}`).get();if(!sn.exists)throw 0;data+=sn.data().data}
     const bin=atob(data);const arr=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);
-    const url=URL.createObjectURL(new Blob([arr],{type:mime||"application/pdf"}));
-    const a=document.createElement("a");a.href=url;a.target="_blank";a.rel="noopener";
-    if(!/^image\//.test(mime))a.download=(name||"Datei")+(/pdf/.test(mime)?".pdf":"");
-    document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
+    await zeigeDatei(arr,mime||"application/pdf",name);
   }catch(err){toast("Datei konnte nicht geladen werden. Ohne Netz geht das nur, wenn sie vorher schon einmal geöffnet wurde.")}
   btn.disabled=false;btn.innerHTML=old;
 }
@@ -703,6 +741,8 @@ document.addEventListener("click",async e=>{
   if(dd&&S.open&&S.canWrite){const m=S.m.find(x=>x.id===S.open.id);if(!m)return;arm(dd,"Sicher? Nochmal tippen",async()=>{dd.disabled=true;try{const doc=(m.docs||[]).find(d=>d.id===dd.dataset.deldoc);
       await S.db.doc("maschinen/"+m.id).update({docs:(m.docs||[]).filter(d=>d.id!==dd.dataset.deldoc)});
       if(doc&&doc.fileId){for(let i=0;i<(doc.teile||0);i++)await S.db.doc(`dateien/${doc.fileId}_${i}`).delete()}}catch(err){toast("Konnte nicht gespeichert werden.")}});return}
+  const vu=e.target.closest("[data-viewurl]");
+  if(vu){vu.disabled=true;try{const r=await fetch(vu.dataset.viewurl);if(!r.ok)throw 0;await zeigeDatei(new Uint8Array(await r.arrayBuffer()),"application/pdf",vu.dataset.fname)}catch(err){toast("PDF konnte nicht geladen werden.")}vu.disabled=false;return}
   const of=e.target.closest("[data-openfile]");
   if(of){openFile(of.dataset.openfile,of.dataset.mime,of.dataset.fname,of);return}
   const le=e.target.closest("[data-ledit]");
