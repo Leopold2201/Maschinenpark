@@ -795,6 +795,14 @@ async function migrate(){
       for(const it of SEED_LAGER){const{id,...rest}=it;bl.set(S.db.doc("lager/"+id),{...rest,aktualisiert:heute})}
       bl.set(ref,{lager_filter1:true},{merge:true});await bl.commit();toast(`${SEED_LAGER.length} Filter ins Lager übernommen.`);
     }
+    /* Einmalig: zweite Filterlieferung (Fotos der Kartons) */
+    if(!done.lager_filter2){
+      const SEED2=[{"id": "seed2-b201c100m1", "name": "Kraftstofffilter-Filzrohreinsatz Knecht B 201 C-100 M1", "teil": "B 201 C-100 M1", "notiz": "Für Knecht-Kraftstofffilter (Filzrohr), Oldtimer", "kat": "Filter", "menge": 1, "einheit": "Stk", "min": "", "ort": "", "maschinen": [], "passt": ""}, {"id": "seed2-ek424", "name": "Kraftstofffiltereinsatz Knecht micro-star EK 424", "teil": "EK 424", "notiz": "", "kat": "Filter", "menge": 1, "einheit": "Stk", "min": "", "ort": "", "maschinen": [], "passt": ""}, {"id": "seed2-4434791", "name": "Ölfilter Fiat 4434791", "teil": "4434791", "notiz": "Laut Karton für Fiat 127, Fiorino, Panda 45 / 4×4, Uno 900, Autobianchi A112", "kat": "Filter", "menge": 1, "einheit": "Stk", "min": "", "ort": "", "maschinen": [], "passt": ""}, {"id": "seed2-b4571c100m1", "name": "Kraftstoff-Tankfilter-Filzrohreinsatz Knecht B 457/1 C-100 M1", "teil": "B 457/1 C-100 M1", "notiz": "Für Knecht-Kraftstoff-Tankfilter, Oldtimer", "kat": "Filter", "menge": 1, "einheit": "Stk", "min": "", "ort": "", "maschinen": [], "passt": ""}];
+      const b3=S.db.batch();const heute=iso(new Date());
+      for(const it of SEED2){const{id,...rest}=it;b3.set(S.db.doc("lager/"+id),{...rest,aktualisiert:heute})}
+      b3.set(S.db.doc("lager/seed1-ch820pl"),{name:"Ölfiltereinsatz FRAM CH 820 PL",notiz:"Aufkleber auf dem Karton: „JD“ – vermutlich für einen John Deere"},{merge:true});
+      b3.set(ref,{lager_filter2:true},{merge:true});await b3.commit();toast(`${SEED2.length} weitere Filter ins Lager übernommen.`);
+    }
     if(done.dieselfilter)return;
     const b=S.db.batch();let n=0;
     for(const m of S.m){
