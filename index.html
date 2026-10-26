@@ -858,6 +858,11 @@ async function migrate(){
       const b5=S.db.batch();for(const[id,d] of Object.entries(INFO))b5.set(S.db.doc("lager/"+id),d,{merge:true});
       b5.set(ref,{lager_info5:true},{merge:true});await b5.commit();
     }
+    if(!done.lager_filter6){
+      const S6={"seed6-re64450": {"name": "Filter John Deere RE64450", "kat": "Filter", "teil": "RE64450", "menge": 1, "einheit": "Stk", "min": "", "ort": "", "maschinen": [], "passt": "", "notiz": "Original JD – Art nicht sicher gefunden (RE64449 ist eine JD-Kraftstofffilter-Baugruppe)"}, "seed6-h8203": {"name": "Ölfiltereinsatz MANN H 820/3", "kat": "Filter", "teil": "H 820/3", "menge": 1, "einheit": "Stk", "min": "", "ort": "", "maschinen": [], "passt": "", "notiz": "Auf dem Karton „H 8.20/3“ – MANN-Ölfiltereinsatz"}, "seed6-w7195": {"name": "Ölfilter MANN W 719/5", "kat": "Filter", "teil": "W 719/5", "menge": 1, "einheit": "Stk", "min": "", "ort": "", "maschinen": [], "passt": "", "notiz": "Laut MANN u. a. ältere VW-Benziner (z. B. Polo II 1.3)"}, "seed6-j908616": {"name": "Ölfilter Case J908616", "kat": "Filter", "teil": "J908616", "menge": 1, "einheit": "Stk", "min": "", "ort": "", "maschinen": [], "passt": "", "notiz": "Case/Case-IH mit Cummins-Motor (z. B. 4390, 8825, 580, CX130)"}, "seed6-al25554": {"name": "Getriebe-/Hydraulikölfilter John Deere AL25554", "kat": "Filter", "teil": "AL25554", "menge": 1, "einheit": "Stk", "min": "", "ort": "", "maschinen": ["jd-2130"], "passt": "", "notiz": "JD-Original für 940–2140 / 1020–2130 u. a. – passt zum John Deere 2130"}};
+      const b6=S.db.batch();const heute=iso(new Date());for(const[id,d] of Object.entries(S6))b6.set(S.db.doc("lager/"+id),{...d,aktualisiert:heute});
+      b6.set(ref,{lager_filter6:true},{merge:true});await b6.commit();toast("5 weitere Filter ins Lager übernommen.");
+    }
     if(done.dieselfilter)return;
     const b=S.db.batch();let n=0;
     for(const m of S.m){
