@@ -877,6 +877,12 @@ async function migrate(){
         notiz:"Passt laut Händler für JD-Serie 10, 20, 30, 35, 40 (u. a. 510, 710, 2020, 3020, 3120, 2130). Maße: Ø außen 114 mm, innen 58/12,2 mm, Höhe 134/142 mm"},{merge:true});
       await ref.set({lager_fix8:true},{merge:true});
     }
+    if(!done.lager_filter9){ /* Filter für den Telelader */
+      const heute=iso(new Date());
+      await S.db.doc("lager/seed9-wdk94020").set({name:"Kraftstofffilter MANN WDK 940/20",kat:"Filter",teil:"WDK 940/20",menge:1,einheit:"Stk",min:"",ort:"",maschinen:["telelader"],passt:"",notiz:"Diesel-Kraftstofffilter (Anschraubfilter)",aktualisiert:heute});
+      await S.db.doc("lager/seed9-w7124").set({name:"Hydraulikfilter MANN W 712/4",kat:"Filter",teil:"W 712/4",menge:1,einheit:"Stk",min:"",ort:"",maschinen:["telelader"],passt:"",notiz:"Filter für Arbeitshydraulik (Anschraubfilter)",aktualisiert:heute});
+      await ref.set({lager_filter9:true},{merge:true});
+    }
     if(done.dieselfilter)return;
     const b=S.db.batch();let n=0;
     for(const m of S.m){
