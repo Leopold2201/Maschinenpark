@@ -90,6 +90,10 @@ button:disabled{opacity:.5;cursor:default}
 .nachbox ul{list-style:none;margin:0;padding:0;display:grid;gap:6px}
 .nachbox li{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
 .nachbox small{color:var(--muted)}
+.mpick{border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin:0;display:grid;gap:8px;background:var(--surface)}
+.mpick input[type=search]{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);width:100%}
+.mlist{max-height:240px;overflow:auto;display:grid;gap:10px;padding-right:4px}
+.mg{display:grid;gap:6px}
 .linkbtn.plain{color:var(--ink);font-weight:600;font-size:inherit;text-decoration:none}
 .sechead.stack{flex-direction:column;align-items:flex-start;gap:8px}
 .seg{display:inline-flex;background:var(--sunk);border:1px solid var(--line);border-radius:999px;padding:2px;flex:0 0 auto}
@@ -310,6 +314,7 @@ let VIEW="maschinen",LTAB="alle";
 const nrm=t=>String(t||"").toLowerCase().replace(/[^a-z0-9]/g,"");
 const fmtN=n=>(Math.round((+n||0)*100)/100).toLocaleString("de-DE");
 const knapp=a=>(+a.min>0)&&(+a.menge||0)<=(+a.min);
+const mNamen=a=>{const n=(a.maschinen||[]).map(id=>(S.m.find(m=>m.id===id)||{}).name).filter(Boolean);return n.length?n.join(", "):(a.passt||"")};
 const lagerZu=teil=>{const k=nrm(teil);return k?S.l.find(a=>nrm(a.teil)===k):null};
 const $=s=>document.querySelector(s);
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -393,9 +398,9 @@ function renderLager(){
   $("#ltabs").innerHTML=[["alle","Alle"],...LKATS.map(k=>[k,k])].map(([id,n])=>`<button role="tab" class="tab${LTAB===id?" on":""}" aria-selected="${LTAB===id}" data-ltab="${esc(id)}">${esc(n)} <span>${anz(id)}</span></button>`).join("");
   $("#lnach").innerHTML=nach.length?`<div class="nachbox"><div class="nh"><b>Nachbestellen (${nach.length})</b><button class="linkbtn" data-act="lcopy">Liste kopieren</button></div><ul>${nach.map(a=>`<li><button class="linkbtn plain" data-ledit="${esc(a.id)}">${esc(a.name)}</button>${a.teil?` <small>${esc(a.teil)}</small>`:""} <span class="pill warn">${fmtN(a.menge)} ${esc(a.einheit||"Stk")}</span></li>`).join("")}</ul></div>`:"";
   const q=nrm($("#lq").value);
-  const list=S.l.filter(a=>(LTAB==="alle"||(a.kat||"Sonstiges")===LTAB)&&(!q||nrm([a.name,a.teil,a.ort,a.passt].join(" ")).includes(q)))
+  const list=S.l.filter(a=>(LTAB==="alle"||(a.kat||"Sonstiges")===LTAB)&&(!q||nrm([a.name,a.teil,a.ort,mNamen(a)].join(" ")).includes(q)))
     .sort((a,b)=>String(a.name).localeCompare(b.name,"de"));
-  const row=a=>`<div class="lrow${knapp(a)?" low":""}"><button class="linfo" data-ledit="${esc(a.id)}"><b>${esc(a.name)}</b><small>${esc([a.teil,a.ort?"Lagerort: "+a.ort:"",a.passt?"für "+a.passt:""].filter(Boolean).join(" · "))||"&nbsp;"}</small>${knapp(a)?`<span class="pill warn">nachbestellen</span>`:""}</button>
+  const row=a=>`<div class="lrow${knapp(a)?" low":""}"><button class="linfo" data-ledit="${esc(a.id)}"><b>${esc(a.name)}</b><small>${esc([a.teil,a.ort?"Lagerort: "+a.ort:"",mNamen(a)?"für "+mNamen(a):""].filter(Boolean).join(" · "))||"&nbsp;"}</small>${knapp(a)?`<span class="pill warn">nachbestellen</span>`:""}</button>
     <div class="qty">${S.canWrite?`<button aria-label="weniger" data-ldelta="-1" data-lid="${esc(a.id)}">−</button>`:""}<span><b>${fmtN(a.menge)}</b> ${esc(a.einheit||"Stk")}</span>${S.canWrite?`<button aria-label="mehr" data-ldelta="1" data-lid="${esc(a.id)}">+</button>`:""}</div></div>`;
   $("#llist").innerHTML=!S.ready?`<div class="empty">Lager wird geladen…</div>`:!S.l.length?`<div class="empty">Noch nichts im Lager. Tippe auf <b>+ Artikel</b> und leg zum Beispiel euer Motoröl an: Name, Menge in Litern und ab wie viel nachbestellt werden soll.</div>`:!list.length?`<div class="empty">Nichts gefunden.</div>`:
     (LTAB==="alle"?LKATS.map(k=>{const g=list.filter(a=>(a.kat||"Sonstiges")===k);return g.length?`<h3 class="ghead">${esc(k)} <span>${g.length}</span></h3><div class="llist">${g.map(row).join("")}</div>`:""}).join(""):`<div class="llist">${list.map(row).join("")}</div>`);
@@ -415,13 +420,18 @@ function lagerForm(a){
    <label class="f"><span class="label">Einheit</span><select id="l_einheit">${EINHEITEN.map(e=>`<option ${e===(a.einheit||"Stk")?"selected":""}>${e}</option>`).join("")}</select></label>
    <label class="f"><span class="label">Nachbestellen ab</span><input id="l_min" type="number" step="any" min="0" inputmode="decimal" value="${v("min")}" placeholder="z. B. 2"><small>Leer lassen, wenn egal</small></label>
    <label class="f"><span class="label">Lagerort</span><input id="l_ort" value="${v("ort")}" placeholder="z. B. Werkstatt, Regal 2"></label>
-   <label class="f full"><span class="label">Passt für</span><input id="l_passt" list="l_maschinen" value="${v("passt")}" placeholder="z. B. Traktor 1, Traktor 3"><datalist id="l_maschinen">${S.m.map(m=>`<option value="${esc(m.name)}">`).join("")}</datalist></label>
+   <fieldset class="f full mpick"><legend class="label">Gehört zu Maschine(n)</legend>
+     <input id="l_msuche" type="search" placeholder="Maschine suchen…" aria-label="Maschine suchen">
+     <div class="mlist" id="l_mlist">${GRUPPEN.map(g=>{const ms=S.m.filter(m=>gruppeOf(m)===g.id).sort((a,b)=>String(a.name).localeCompare(b.name,"de"));return ms.length?`<div class="mg"><span class="label">${esc(g.name)}</span>${ms.map(m=>`<label class="check" data-mname="${esc(nrm(m.name+" "+(m.modell||"")))}"><input type="checkbox" class="l_m" value="${esc(m.id)}" ${(a.maschinen||[]).includes(m.id)?"checked":""} style="width:auto"><span>${esc(m.name)}</span></label>`).join("")}</div>`:""}).join("")}</div>
+     ${a.passt?`<small>Bisher als Text: ${esc(a.passt)}</small>`:""}
+   </fieldset>
    <label class="f full"><span class="label">Notiz</span><input id="l_notiz" value="${v("notiz")}" placeholder="z. B. Händler, Preis"></label>
   </div><p class="err" id="lferr" hidden></p><div class="row">${a.id?`<button type="button" class="danger" data-ldel="${esc(a.id)}" style="margin-right:auto">Löschen</button>`:""}<button class="primary" type="submit">Speichern</button></div></form>`);
+  $("#l_msuche").addEventListener("input",e=>{const q=nrm(e.target.value);document.querySelectorAll("#l_mlist [data-mname]").forEach(l=>l.hidden=!!q&&!l.dataset.mname.includes(q));document.querySelectorAll("#l_mlist .mg").forEach(g=>g.hidden=![...g.querySelectorAll("[data-mname]")].some(l=>!l.hidden))});
   $("#lf2").addEventListener("submit",async ev=>{
     ev.preventDefault();
     const body={name:$("#l_name").value.trim(),kat:$("#l_kat").value,teil:$("#l_teil").value.trim(),menge:+String($("#l_menge").value).replace(",",".")||0,
-      einheit:$("#l_einheit").value,min:$("#l_min").value===""?"":(+String($("#l_min").value).replace(",",".")||0),ort:$("#l_ort").value.trim(),passt:$("#l_passt").value.trim(),notiz:$("#l_notiz").value.trim(),aktualisiert:iso(new Date())};
+      einheit:$("#l_einheit").value,min:$("#l_min").value===""?"":(+String($("#l_min").value).replace(",",".")||0),ort:$("#l_ort").value.trim(),maschinen:[...document.querySelectorAll(".l_m:checked")].map(c=>c.value),passt:a.passt||"",notiz:$("#l_notiz").value.trim(),aktualisiert:iso(new Date())};
     if(!body.name)return;const btn=ev.submitter;btn.disabled=true;
     try{if(a.id)await S.db.doc("lager/"+a.id).set(body);else await S.db.collection("lager").add(body);closeSheet()}
     catch(e){showErr("#lferr",e);btn.disabled=false}
@@ -493,6 +503,7 @@ function drawDetail(){
     return `<li><span class="stripe s-${lvl(d)}"></span><span class="wn"><b>${esc(p.name)}</b><small>${esc(iv(p.intervall))||"kein Intervall"}${p.zuletzt?` · zuletzt ${p.zuletzt.length>7?fmtD(p.zuletzt):fmtMY(p.zuletzt)}`:""}</small>${extra}</span><span class="wd">${p.naechste?fmtMY(p.naechste):"–"}</span><span class="pill ${lvl(d)}">${p.naechste?rel(d):"kein Termin"}</span></li>`}).join("")}</ul>`:`<div class="empty">Keine Wartungspunkte. Über <b>Bearbeiten</b> kannst du Motoröl, Getriebeöl, Abschmieren und weitere anlegen.</div>`}</div>
   <dl class="facts">${fact("Erstzulassung",ez(m.erstzulassung))}${fact("Hersteller",m.hersteller)}${fact("Modell",m.modell)}${fact("Baujahr",m.baujahr)}${fact("Kennzeichen",m.kennzeichen)}${fact("Fahrgestell-Nr.",m.fin)}${fact("Versicherung",m.versicherung)}${fact("Notizen",m.notiz)}</dl>
   <div class="row" style="justify-content:flex-start">${S.canWrite?`<button class="primary" data-act="entry">+ Erledigt eintragen</button><button data-act="edit">Bearbeiten</button>`:""}</div>
+  ${(()=>{const li=S.l.filter(a=>(a.maschinen||[]).includes(m.id));return li.length?`<div class="docs"><div class="sechead" style="margin-bottom:6px"><h2 style="font-size:1.15rem">Im Lager für diese Maschine</h2></div><ul class="doclist">${li.map(a=>`<li><button class="linkbtn plain" data-ledit="${esc(a.id)}">${esc(a.name)}${a.teil?` <small>${esc(a.teil)}</small>`:""}</button><span class="${knapp(a)?"pill warn":""}">${fmtN(a.menge)} ${esc(a.einheit||"Stk")}</span></li>`).join("")}</ul></div>`:""})()}
   <div class="docs"><div class="sechead" style="margin-bottom:6px"><h2 style="font-size:1.15rem">Unterlagen</h2>${S.canWrite?`<span class="docacts"><label class="linkbtn upl">+ Datei hochladen<input type="file" id="d_file" accept="application/pdf,image/*" hidden></label><button class="linkbtn" data-act="docadd">+ Link</button></span>`:""}</div>
   <p class="note" id="d_status" hidden></p>
   ${(m.docs||[]).length?`<ul class="doclist">${m.docs.map(d=>`<li>${d.fileId?`<button class="doclink" data-openfile="${esc(d.fileId)}" data-mime="${esc(d.mime||"")}" data-fname="${esc(d.name)}">${esc(d.name)} <small>${d.size?Math.max(1,Math.round(d.size/1024))+" KB":""}</small></button>`:`<a href="${esc(d.url)}" target="_blank" rel="noopener">${esc(d.name||d.url)}</a>`}${S.canWrite?`<button class="linkbtn" data-deldoc="${esc(d.id)}">Entfernen</button>`:""}</li>`).join("")}</ul>`:`<p class="note" style="margin:0">Noch keine Unterlagen. Hier kannst du PDFs oder Fotos hochladen, zum Beispiel Ersatzteillisten oder Anleitungen, oder Links hinterlegen.</p>`}
