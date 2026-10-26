@@ -869,6 +869,14 @@ async function migrate(){
         notiz:"Passt laut Händler für JD-Serie 10, 20, 30, 35, 40 (u. a. 510, 710, 2020, 3020, 3120, 2130). Maße: Ø außen 114 mm, innen 58/12,2 mm, Höhe 134/142 mm"},{merge:true});
       await ref.set({lager_fix7:true},{merge:true});
     }
+    if(!done.lager_fix8){ /* Korrektur: die Händlerliste gehörte zum AL25554, nicht zum RE64450 */
+      await S.db.doc("lager/seed6-re64450").set({name:"Filter John Deere RE64450",maschinen:[],
+        notiz:"Original JD – Art noch nicht bekannt"},{merge:true});
+      await S.db.doc("lager/seed6-al25554").set({name:"Hydraulikfilter John Deere AL25554",
+        maschinen:["jd-510","jd-710s","jd-2020","jd-3020","jd-3120","jd-2130"],
+        notiz:"Passt laut Händler für JD-Serie 10, 20, 30, 35, 40 (u. a. 510, 710, 2020, 3020, 3120, 2130). Maße: Ø außen 114 mm, innen 58/12,2 mm, Höhe 134/142 mm"},{merge:true});
+      await ref.set({lager_fix8:true},{merge:true});
+    }
     if(done.dieselfilter)return;
     const b=S.db.batch();let n=0;
     for(const m of S.m){
