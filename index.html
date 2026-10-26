@@ -81,7 +81,7 @@ button:disabled{opacity:.5;cursor:default}
 .lrow{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:8px 8px 8px 14px}
 .lrow.low{border-color:color-mix(in srgb,var(--warn) 55%,var(--line))}
 .linfo{flex:1 1 auto;min-width:0;background:none;border:0;padding:4px 0;text-align:left;font-weight:400;display:grid;gap:2px;justify-items:start}
-.linfo b{overflow-wrap:anywhere}.linfo small{color:var(--muted);overflow-wrap:anywhere}
+.linfo b{overflow-wrap:anywhere}.linfo .lnotiz{font-style:italic;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.linfo small{color:var(--muted);overflow-wrap:anywhere}
 .qty{flex:0 0 auto;display:flex;align-items:center;gap:6px}
 .qty span{min-width:64px;text-align:center;font-variant-numeric:tabular-nums}
 .qty button{width:38px;height:38px;padding:0;border-radius:50%;font-size:1.25rem;line-height:1}
@@ -400,7 +400,7 @@ function renderLager(){
   const q=nrm($("#lq").value);
   const list=S.l.filter(a=>(LTAB==="alle"||(a.kat||"Sonstiges")===LTAB)&&(!q||nrm([a.name,a.teil,a.ort,mNamen(a)].join(" ")).includes(q)))
     .sort((a,b)=>String(a.name).localeCompare(b.name,"de"));
-  const row=a=>`<div class="lrow${knapp(a)?" low":""}"><button class="linfo" data-ledit="${esc(a.id)}"><b>${esc(a.name)}</b><small>${esc([a.teil,a.ort?"Lagerort: "+a.ort:"",mNamen(a)?"für "+mNamen(a):""].filter(Boolean).join(" · "))||"&nbsp;"}</small>${knapp(a)?`<span class="pill warn">nachbestellen</span>`:""}</button>
+  const row=a=>`<div class="lrow${knapp(a)?" low":""}"><button class="linfo" data-ledit="${esc(a.id)}"><b>${esc(a.name)}</b><small>${esc([a.teil,a.ort?"Lagerort: "+a.ort:"",mNamen(a)?"für "+mNamen(a):""].filter(Boolean).join(" · "))||"&nbsp;"}</small>${a.notiz?`<small class="lnotiz">${esc(a.notiz)}</small>`:""}${knapp(a)?`<span class="pill warn">nachbestellen</span>`:""}</button>
     <div class="qty">${S.canWrite?`<button aria-label="weniger" data-ldelta="-1" data-lid="${esc(a.id)}">−</button>`:""}<span><b>${fmtN(a.menge)}</b> ${esc(a.einheit||"Stk")}</span>${S.canWrite?`<button aria-label="mehr" data-ldelta="1" data-lid="${esc(a.id)}">+</button>`:""}</div></div>`;
   $("#llist").innerHTML=!S.ready?`<div class="empty">Lager wird geladen…</div>`:!S.l.length?`<div class="empty">Noch nichts im Lager. Tippe auf <b>+ Artikel</b> und leg zum Beispiel euer Motoröl an: Name, Menge in Litern und ab wie viel nachbestellt werden soll.</div>`:!list.length?`<div class="empty">Nichts gefunden.</div>`:
     (LTAB==="alle"?LKATS.map(k=>{const g=list.filter(a=>(a.kat||"Sonstiges")===k);return g.length?`<h3 class="ghead">${esc(k)} <span>${g.length}</span></h3><div class="llist">${g.map(row).join("")}</div>`:""}).join(""):`<div class="llist">${list.map(row).join("")}</div>`);
