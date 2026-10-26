@@ -2,7 +2,8 @@ name: Erinnerungen
 
 on:
   schedule:
-    - cron: "0 5 * * *"   # jeden Tag gegen 6/7 Uhr deutscher Zeit
+    - cron: "0 5 * * 1"   # Montag 7 Uhr Sommerzeit
+    - cron: "0 6 * * 1"   # Montag 7 Uhr Winterzeit
   workflow_dispatch:
     inputs:
       test:
@@ -29,6 +30,7 @@ jobs:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           APP_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
           TEST: ${{ github.event_name == 'workflow_dispatch' && inputs.test && '1' || '0' }}
+          SCHED: ${{ github.event.schedule }}
         run: node erinnerungen.mjs
       - name: Zeitplan aktiv halten
         if: always()

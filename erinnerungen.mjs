@@ -2,9 +2,7 @@
 // Läuft über GitHub Actions (.github/workflows/erinnerungen.yml).
 //
 // Regeln:
-//  - Montags: Wochenüberblick über alles, was überfällig ist oder in den nächsten 30 Tagen fällig wird.
-//  - Jeden Tag: Nachricht, wenn ein Termin genau 30 Tage, 7 Tage oder 1 Tag vor Ablauf steht
-//    oder gestern abgelaufen ist.
+//  - Nur montags um 7 Uhr: TÜV-Überblick (überfällig oder in den nächsten 30 Tagen fällig).
 //  - TEST=1: schickt sofort eine Testnachricht mit dem aktuellen Stand.
 import { initializeApp, cert } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
@@ -45,19 +43,23 @@ items.sort((a, b) => a.d - b.d);
 const line = i => `${i.name}: ${i.was} ${i.d < 0 ? `überfällig (${i.wann})` : i.d === 0 ? "läuft heute ab" : `bis ${i.wann}`}`;
 const offen = items.filter(i => i.d <= 30);
 const ueberfaellig = items.filter(i => i.d < 0).length;
-const montag = today.getDay() === 1;
-const neu = items.filter(i => [30, 7, 1, 0, -1].includes(i.d));
+// Montags 7 Uhr deutscher Zeit. GitHub rechnet in UTC, darum laufen zwei Zeitpläne (5 und 6 Uhr UTC);
+// es sendet nur der, der gerade 7 Uhr in Deutschland entspricht (Sommer- bzw. Winterzeit).
+const SCHED = process.env.SCHED || "";
+const berlinOffset = Math.round((now - new Date(new Date().toLocaleString("en-US", { timeZone: "UTC" }))) / 36e5);
+const passt = !SCHED || (berlinOffset === 2 && SCHED.startsWith("0 5 ")) || (berlinOffset === 1 && SCHED.startsWith("0 6 "));
+if (!TEST && !passt) { console.log("Anderer Zeitplan für Sommer-/Winterzeit, nichts zu tun."); process.exit(0); }
 
 let title = "", body = "";
 if (TEST) {
   title = "Maschinenpark: Test";
   body = offen.length ? offen.slice(0, 6).map(line).join("\n") : "Benachrichtigungen funktionieren. Gerade ist nichts fällig.";
-} else if (montag && offen.length) {
+} else if (offen.length) {
   title = `TÜV-Überblick: ${offen.length} Termin${offen.length > 1 ? "e" : ""}` + (ueberfaellig ? `, ${ueberfaellig} überfällig` : "");
   body = offen.slice(0, 6).map(line).join("\n") + (offen.length > 6 ? `\n… und ${offen.length - 6} weitere` : "");
-} else if (neu.length) {
-  title = neu.length === 1 ? `TÜV läuft ab: ${neu[0].name}` : `${neu.length} Termine werden fällig`;
-  body = neu.slice(0, 6).map(line).join("\n");
+} else {
+  title = "TÜV-Überblick: alles in Ordnung";
+  body = "In den nächsten 30 Tagen läuft kein TÜV ab.";
 }
 if (!title) { console.log("Heute nichts zu melden."); process.exit(0); }
 
