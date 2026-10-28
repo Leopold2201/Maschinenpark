@@ -903,6 +903,12 @@ async function migrate(){
       const bk=S.db.batch();const heute=iso(new Date());for(const[id,d] of Object.entries(KL))bk.set(S.db.doc("lager/"+id),{...d,aktualisiert:heute});
       bk.set(ref,{lager_kugel1:true},{merge:true});await bk.commit();toast(`${Object.keys(KL).length} Kugellager ins Lager übernommen.`);
     }
+    if(!done.lager_kugel2){ /* Kugellager Kiste 2 */
+      const KL={"kl-skf-203krrah05": {"name": "Rillenkugellager 203KRRAH05 (SKF)", "kat": "Kugellager", "teil": "203KRRAH05", "menge": 8, "einheit": "Stk", "min": "", "ort": "Kiste 2", "maschinen": [], "passt": "", "notiz": "Maße (innen × außen × breit): 13×40×18,3 mm · Landtechnik-Lager mit verlängertem Innenring (KRR = beidseitig abgedichtet)"}, "kl-fag-2205": {"name": "Pendelkugellager 2205 (FAG)", "kat": "Kugellager", "teil": "2205", "menge": 2, "einheit": "Stk", "min": "", "ort": "Kiste 2", "maschinen": [], "passt": "", "notiz": "Maße (innen × außen × breit): 25×52×18 mm"}, "kl-fag-6205": {"name": "Rillenkugellager 6205 (FAG)", "kat": "Kugellager", "teil": "6205", "menge": 1, "einheit": "Stk", "min": "", "ort": "Kiste 2", "maschinen": [], "passt": "", "notiz": "Maße (innen × außen × breit): 25×52×15 mm"}, "kl-fag-6202": {"name": "Rillenkugellager 6202 (FAG)", "kat": "Kugellager", "teil": "6202", "menge": 10, "einheit": "Stk", "min": "", "ort": "Kiste 2", "maschinen": [], "passt": "", "notiz": "Maße (innen × außen × breit): 15×35×11 mm"}},PL={"kl-skf-6205": 3, "kl-skf-6005": 3, "kl-fag-6204": 2, "kl-fag-6304": 10};
+      const bk=S.db.batch();const heute=iso(new Date());for(const[id,d] of Object.entries(KL))bk.set(S.db.doc("lager/"+id),{...d,aktualisiert:heute});
+      for(const[id,n] of Object.entries(PL))bk.set(S.db.doc("lager/"+id),{menge:firebase.firestore.FieldValue.increment(n),ort:"Kiste 1 + 2",aktualisiert:heute},{merge:true});
+      bk.set(ref,{lager_kugel2:true},{merge:true});await bk.commit();toast("Kugellager aus Kiste 2 übernommen.");
+    }
     if(done.dieselfilter)return;
     const b=S.db.batch();let n=0;
     for(const m of S.m){
