@@ -1,8 +1,8 @@
-// Wochenüberblick: prüft TÜV, Wartung, Lagerbestand und fehlende Angaben und schickt eine Push-Nachricht an alle Geräte.
+// Prüft jeden Morgen die TÜV-Termine und schickt Push-Nachrichten an alle Geräte.
 // Läuft über GitHub Actions (.github/workflows/erinnerungen.yml).
 //
 // Regeln:
-//  - Nur montags um 7 Uhr: TÜV und Wartung (überfällig oder in 30 Tagen fällig), Teile unter Mindestbestand, fehlende Angaben.
+//  - Nur montags um 7 Uhr: TÜV-Überblick (überfällig oder in den nächsten 30 Tagen fällig).
 //  - TEST=1: schickt sofort eine Testnachricht mit dem aktuellen Stand.
 import { initializeApp, cert } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
@@ -31,37 +31,18 @@ const monthEnd = ym => { const [y, m] = String(ym).slice(0, 7).split("-").map(Nu
 const daysUntil = d => Math.round((d - today) / 864e5);
 const mmyy = ym => { const [y, m] = String(ym).slice(0, 7).split("-"); return `${m}/${y.slice(2)}`; };
 
-// ── Datenscan: TÜV, Wartung, Lager, fehlende Angaben ──
-const tuev = [], wartung = [], luecken = [];
+const items = [];
 const maschinen = await db.collection("maschinen").get();
 for (const doc of maschinen.docs) {
   const m = doc.data();
-  if (m.abgemeldet || m.beispiel) continue;
-  const tuevPflicht = m.tuevPflicht !== false;
-  if (m.tuevBis && tuevPflicht) tuev.push({ name: m.name, wann: mmyy(m.tuevBis), d: daysUntil(monthEnd(m.tuevBis)) });
-  // Wartungspunkte mit Intervall (Abschmieren / „zuletzt“ haben keinen Termin)
-  const pk = Array.isArray(m.wartung) ? m.wartung : [];
-  for (const p of pk) {
-    if (/abschmier/i.test(p.name || "") || p.modus === "zuletzt" || !p.naechste) continue;
-    const d = daysUntil(monthEnd(p.naechste));
-    if (d <= 30) wartung.push({ name: m.name, was: p.name, wann: mmyy(p.naechste), d });
-  }
-  // Fehlende Angaben
-  const fehlt = [];
-  if (tuevPflicht && !m.tuevBis) fehlt.push("TÜV-Termin");
-  if (tuevPflicht && !m.fin) fehlt.push("Fahrgestell-Nr.");
-  if (pk.some(p => !/abschmier/i.test(p.name || "") && p.modus !== "zuletzt" && p.intervall && !p.naechste)) fehlt.push("Wartungstermin");
-  if (fehlt.length) luecken.push({ name: m.name, fehlt });
+  if (m.tuevBis && !m.abgemeldet && m.tuevPflicht !== false) items.push({ name: m.name, was: "TÜV", wann: mmyy(m.tuevBis), d: daysUntil(monthEnd(m.tuevBis)) });
+  // Erinnert wird nur an den TÜV, Wartungen stehen nur in der App.
 }
-tuev.sort((a, b) => a.d - b.d); wartung.sort((a, b) => a.d - b.d);
-const lager = await db.collection("lager").get();
-const knapp = lager.docs.map(d => d.data()).filter(a => +a.min > 0 && (+a.menge || 0) <= +a.min);
+items.sort((a, b) => a.d - b.d);
 
-const wann = i => i.d < 0 ? `überfällig (${i.wann})` : i.d === 0 ? "heute" : `bis ${i.wann}`;
-const tuevOffen = tuev.filter(i => i.d <= 30);
-const tuevUeber = tuevOffen.filter(i => i.d < 0).length;
-const kurz = (arr, f, n = 2) => arr.slice(0, n).map(f).join(", ") + (arr.length > n ? ` … (+${arr.length - n})` : "");
-
+const line = i => `${i.name}: ${i.was} ${i.d < 0 ? `überfällig (${i.wann})` : i.d === 0 ? "läuft heute ab" : `bis ${i.wann}`}`;
+const offen = items.filter(i => i.d <= 30);
+const ueberfaellig = items.filter(i => i.d < 0).length;
 // Montags 7 Uhr deutscher Zeit. GitHub rechnet in UTC, darum laufen zwei Zeitpläne (5 und 6 Uhr UTC);
 // es sendet nur der, der gerade 7 Uhr in Deutschland entspricht (Sommer- bzw. Winterzeit).
 const SCHED = process.env.SCHED || "";
@@ -69,18 +50,17 @@ const berlinOffset = Math.round((now - new Date(new Date().toLocaleString("en-US
 const passt = !SCHED || (berlinOffset === 2 && SCHED.startsWith("0 5 ")) || (berlinOffset === 1 && SCHED.startsWith("0 6 "));
 if (!TEST && !passt) { console.log("Anderer Zeitplan für Sommer-/Winterzeit, nichts zu tun."); process.exit(0); }
 
-const zeilen = [];
-zeilen.push(tuevOffen.length ? `TÜV: ${kurz(tuevOffen, i => `${i.name} ${wann(i)}`)}` : "TÜV: nichts fällig in den nächsten 30 Tagen");
-if (wartung.length) zeilen.push(`Wartung: ${kurz(wartung, i => `${i.name} ${i.was} ${wann(i)}`)}`);
-if (knapp.length) zeilen.push(`Nachbestellen: ${kurz(knapp, a => a.teil || a.name, 3)}`);
-if (luecken.length) zeilen.push(`Daten fehlen bei ${luecken.length} Maschine${luecken.length > 1 ? "n" : ""} (z. B. ${luecken[0].name}: ${luecken[0].fehlt.join(", ")})`);
-
-const probleme = tuevOffen.length + wartung.length + knapp.length;
-let title = (TEST ? "Test · " : "") + "Wochenüberblick" +
-  (probleme ? `: ${[tuevOffen.length && `${tuevOffen.length}× TÜV`, wartung.length && `${wartung.length}× Wartung`, knapp.length && `${knapp.length}× Lager`].filter(Boolean).join(", ")}` : ": alles in Ordnung") +
-  (tuevUeber ? ` (${tuevUeber} überfällig)` : "");
-let body = zeilen.join("\n");
-console.log("Fehlende Daten:\n" + luecken.map(l => `- ${l.name}: ${l.fehlt.join(", ")}`).join("\n"));
+let title = "", body = "";
+if (TEST) {
+  title = "Maschinenpark: Test";
+  body = offen.length ? offen.slice(0, 6).map(line).join("\n") : "Benachrichtigungen funktionieren. Gerade ist nichts fällig.";
+} else if (offen.length) {
+  title = `TÜV-Überblick: ${offen.length} Termin${offen.length > 1 ? "e" : ""}` + (ueberfaellig ? `, ${ueberfaellig} überfällig` : "");
+  body = offen.slice(0, 6).map(line).join("\n") + (offen.length > 6 ? `\n… und ${offen.length - 6} weitere` : "");
+} else {
+  title = "TÜV-Überblick: alles in Ordnung";
+  body = "In den nächsten 30 Tagen läuft kein TÜV ab.";
+}
 if (!title) { console.log("Heute nichts zu melden."); process.exit(0); }
 
 const geraete = await db.collection("geraete").get();
