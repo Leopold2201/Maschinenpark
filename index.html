@@ -315,7 +315,7 @@ const STD_PUNKTE=[["Motoröl",12],["Kraftstofffilter",12],["Getriebeöl",24],["H
 const ARTEN=["Wartung","Reparatur","TÜV / HU","Sonstiges"];
 const S={m:[],e:[],l:[],ready:false,canWrite:true,open:null,db:null};
 /* Lager */
-const LKATS=["Öle & Fette","Filter","Ersatzteile","Sonstiges"];
+const LKATS=["Öle & Fette","Filter","Kugellager","Ersatzteile","Sonstiges"];
 const EINHEITEN=["Stk","l","kg","Kanister","Eimer","Packung"];
 let VIEW="maschinen",LTAB="alle";
 const nrm=t=>String(t||"").toLowerCase().replace(/[^a-z0-9]/g,"");
@@ -897,6 +897,11 @@ async function migrate(){
     if(!done.lager_fix11){
       await S.db.doc("lager/seed6-w7195").set({maschinen:["schwarzer"],notiz:"Für VW Caddy 14 D"},{merge:true});
       await ref.set({lager_fix11:true},{merge:true});
+    }
+    if(!done.lager_kugel1){ /* Kugellager Kiste 1 */
+      const KL={"kl-skf-1207": {"name": "Pendelkugellager 1207 (SKF)", "kat": "Kugellager", "teil": "1207", "menge": 1, "einheit": "Stk", "min": "", "ort": "Kiste 1", "maschinen": [], "passt": "", "notiz": "Maße (innen × außen × breit): 35×72×17 mm"}, "kl-skf-32010xq": {"name": "Kegelrollenlager 32010 X/Q (SKF)", "kat": "Kugellager", "teil": "32010 X/Q", "menge": 2, "einheit": "Stk", "min": "", "ort": "Kiste 1", "maschinen": [], "passt": "", "notiz": "Maße (innen × außen × breit): 50×80×20 mm"}, "kl-skf-6005": {"name": "Rillenkugellager 6005 (SKF)", "kat": "Kugellager", "teil": "6005", "menge": 4, "einheit": "Stk", "min": "", "ort": "Kiste 1", "maschinen": [], "passt": "", "notiz": "Maße (innen × außen × breit): 25×47×12 mm"}, "kl-skf-6207": {"name": "Rillenkugellager 6207 (SKF)", "kat": "Kugellager", "teil": "6207", "menge": 2, "einheit": "Stk", "min": "", "ort": "Kiste 1", "maschinen": [], "passt": "", "notiz": "Maße (innen × außen × breit): 35×72×17 mm"}, "kl-skf-6205": {"name": "Rillenkugellager 6205 (SKF)", "kat": "Kugellager", "teil": "6205", "menge": 3, "einheit": "Stk", "min": "", "ort": "Kiste 1", "maschinen": [], "passt": "", "notiz": "Maße (innen × außen × breit): 25×52×15 mm"}, "kl-fag-6304": {"name": "Rillenkugellager 6304 (FAG)", "kat": "Kugellager", "teil": "6304", "menge": 11, "einheit": "Stk", "min": "", "ort": "Kiste 1", "maschinen": [], "passt": "", "notiz": "Maße (innen × außen × breit): 20×52×15 mm"}, "kl-fag-6204": {"name": "Rillenkugellager 6204 (FAG)", "kat": "Kugellager", "teil": "6204", "menge": 3, "einheit": "Stk", "min": "", "ort": "Kiste 1", "maschinen": [], "passt": "", "notiz": "Maße (innen × außen × breit): 20×47×14 mm"}, "kl-fag-7208": {"name": "Schrägkugellager 7208 (FAG)", "kat": "Kugellager", "teil": "7208", "menge": 6, "einheit": "Stk", "min": "", "ort": "Kiste 1", "maschinen": [], "passt": "", "notiz": "Maße (innen × außen × breit): 40×80×18 mm"}, "kl-fag-6208": {"name": "Rillenkugellager 6208 (FAG)", "kat": "Kugellager", "teil": "6208", "menge": 1, "einheit": "Stk", "min": "", "ort": "Kiste 1", "maschinen": [], "passt": "", "notiz": "Maße (innen × außen × breit): 40×80×18 mm"}};
+      const bk=S.db.batch();const heute=iso(new Date());for(const[id,d] of Object.entries(KL))bk.set(S.db.doc("lager/"+id),{...d,aktualisiert:heute});
+      bk.set(ref,{lager_kugel1:true},{merge:true});await bk.commit();toast(`${Object.keys(KL).length} Kugellager ins Lager übernommen.`);
     }
     if(done.dieselfilter)return;
     const b=S.db.batch();let n=0;
