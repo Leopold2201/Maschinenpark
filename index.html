@@ -782,6 +782,8 @@ if(!configured){
   firebase.initializeApp(CFG);
   const auth=firebase.auth();
   S.db=firebase.firestore();
+  /* Lange-Abfrage statt Dauerverbindung: kommt auch durch strenge Firewalls (z. B. eduroam an der Uni) */
+  try{S.db.settings({experimentalForceLongPolling:true,merge:true})}catch(_){}
   S.db.enablePersistence({synchronizeTabs:true}).catch(()=>{});
 
   $("#lf").addEventListener("submit",async ev=>{
