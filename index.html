@@ -479,6 +479,11 @@ const kTagName=s=>{const d=parse(s),t=today(),diff=Math.round((d-t)/864e5);
 function renderKohl(){
   if(VIEW!=="kohl")return;
   const heute=iso(today()),morgen=iso(new Date(today().getTime()+864e5));
+  /* Kopf-Kästchen: Stückzahl je Sorte für morgen */
+  const fm=S.k.filter(b=>b.status!=="abgeholt"&&b.abholung===morgen);
+  $("#tally").innerHTML=KSORTEN.map(([id,n])=>{const z=fm.reduce((a,b)=>a+(+(b.posten||{})[id]||0),0);
+    return `<div><b style="color:${z?"#f6c46d":"inherit"}">${z}</b><span>${n}</span></div>`}).join("")
+    +`<div><b>${fm.length}</b><span>Bestell. morgen</span></div>`;
   const offen=S.k.filter(b=>b.status!=="abgeholt");
   /* Zum Schneiden: alles Offene für morgen (nach 17 Uhr steht das fest) */
   const fuer=new Date().getHours()<17?heute:morgen;
