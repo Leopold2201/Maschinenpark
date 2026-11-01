@@ -7,5 +7,19 @@ service cloud.firestore {
       allow read, write: if request.auth != null
         && request.auth.token.email == "HOF-EMAIL-HIER-EINTRAGEN";
     }
+
+    // Kohl-Vorbestellungen: Jeder darf über kohl.html eine Bestellung ABSCHICKEN,
+    // aber niemand außer dem Hof-Login darf Bestellungen sehen, ändern oder löschen.
+    match /kohlBestellungen/{id} {
+      allow create: if request.resource.data.keys().hasOnly(['name','telefon','bemerkung','abholung','posten','stueck','summe','status','erstellt'])
+        && request.resource.data.name is string && request.resource.data.name.size() >= 2 && request.resource.data.name.size() <= 80
+        && request.resource.data.telefon is string && request.resource.data.telefon.size() >= 6 && request.resource.data.telefon.size() <= 30
+        && request.resource.data.bemerkung is string && request.resource.data.bemerkung.size() <= 300
+        && request.resource.data.abholung is string && request.resource.data.abholung.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && request.resource.data.posten is map
+        && request.resource.data.stueck is int && request.resource.data.stueck > 0 && request.resource.data.stueck <= 200
+        && request.resource.data.status == 'offen'
+        && request.resource.data.erstellt == request.time;
+    }
   }
 }

@@ -1,0 +1,26 @@
+name: Kohl-Schnittliste
+
+on:
+  schedule:
+    - cron: "2 15 * * *"   # 17 Uhr Sommerzeit
+    - cron: "2 16 * * *"   # 17 Uhr Winterzeit
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  liste:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install --no-audit --no-fund
+      - name: Schnittliste für morgen senden
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          APP_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
+          SCHED: ${{ github.event.schedule }}
+        run: node kohl-liste.mjs

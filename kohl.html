@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Kohl vorbestellen – Teigeler</title>
+<meta name="description" content="Frischen Kohl vom Feld bei Familie Teigeler vorbestellen.">
+<meta name="theme-color" content="#23331f">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap">
+<style>
+:root{
+  --bg:#f1f3ec; --surface:#fbfcf8; --sunk:#e7eadf; --ink:#1c2318; --muted:#5a6453; --line:#d6dbcc;
+  --accent:#2d5a32; --accent-ink:#fff; --band:#23331f; --band-ink:#eef2e6;
+  --bad:#ae2a20; --bad-bg:#f7dcd8; --ok-bg:#dbebd8;
+  --f-display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#121610; --surface:#1a1f18; --sunk:#161b14; --ink:#e6eadf; --muted:#9ba393; --line:#2d3529;
+  --accent:#86bd84; --accent-ink:#0f170e; --band:#0c100b; --band-ink:#e6eadf;
+  --bad:#f28e84; --bad-bg:#3f1a16; --ok-bg:#1c3220; color-scheme:dark}}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.45;font-variant-numeric:tabular-nums}
+.wrap{max-width:520px;margin:0 auto;padding:0 16px}
+header{background:var(--band);color:var(--band-ink);padding-top:env(safe-area-inset-top,0px)}
+header .wrap{display:flex;align-items:center;gap:14px;padding-block:16px 20px}
+header img{width:84px;height:auto;flex:none}
+header h1{font-family:var(--f-display);font-size:2rem;line-height:1;margin:0 0 4px;letter-spacing:.01em}
+header p{margin:0;opacity:.85}
+main{padding-block:18px 40px}
+h2{font-family:var(--f-display);font-size:1.3rem;margin:22px 0 10px;letter-spacing:.02em}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px}
+.sorte{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border-top:1px solid var(--line)}
+.sorte:first-child{border-top:0}
+.sorte b{display:block;font-size:1.05rem}
+.sorte small{color:var(--muted)}
+.stepper{display:flex;align-items:center;gap:4px}
+.stepper button{width:44px;height:44px;border-radius:10px;border:1px solid var(--line);background:var(--sunk);color:var(--ink);font-size:1.4rem;font-weight:600;cursor:pointer}
+.stepper button:disabled{opacity:.35}
+.stepper output{min-width:36px;text-align:center;font-weight:700;font-size:1.2rem}
+.sum{display:flex;justify-content:space-between;padding:12px 14px;background:var(--sunk);border-top:1px solid var(--line);border-radius:0 0 12px 12px;font-weight:600}
+.tage{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+.tage button{flex:0 0 auto;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:10px;padding:8px 12px;text-align:center;cursor:pointer;font-family:var(--f-body)}
+.tage button b{display:block;font-family:var(--f-display);font-size:1.15rem}
+.tage button small{color:var(--muted);font-size:.8rem}
+.tage button.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.tage button.on small{color:inherit;opacity:.85}
+label{display:block;margin-bottom:12px}
+label span{display:block;font-weight:600;margin-bottom:4px}
+input,textarea{width:100%;font:inherit;padding:12px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+textarea{min-height:70px;resize:vertical}
+input:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:1px}
+.hint{color:var(--muted);font-size:.9rem;margin:6px 0 0}
+.info{padding:12px 14px;font-size:.95rem}
+.info p{margin:0 0 8px}.info p:last-child{margin:0}
+.primary{width:100%;border:0;border-radius:12px;background:var(--accent);color:var(--accent-ink);font:700 1.3rem var(--f-display);letter-spacing:.03em;padding:15px;cursor:pointer;margin-top:8px}
+.primary:disabled{opacity:.5}
+.err{background:var(--bad-bg);color:var(--bad);padding:10px 12px;border-radius:10px;margin:10px 0 0}
+.maps{display:inline-flex;align-items:center;gap:6px;margin-top:6px;font-weight:600;color:var(--accent)}
+.danke{text-align:center;padding:26px 16px}
+.danke h2{font-size:1.8rem;margin-top:0}
+.danke .card{text-align:left;padding:14px;margin:16px 0}
+footer{color:var(--muted);font-size:.85rem;text-align:center;padding-bottom:30px}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <img src="logo.png" alt="Logo Teigeler">
+  <div><h1>Kohl vorbestellen</h1><p>Frisch geschnitten, direkt vom Feld.</p></div>
+</div></header>
+
+<main class="wrap" id="main">
+  <form id="f" novalidate>
+    <h2>Was möchten Sie?</h2>
+    <div class="card" id="sorten"></div>
+
+    <h2>Wann holen Sie ab?</h2>
+    <div class="tage" id="tage" role="radiogroup" aria-label="Abholtag"></div>
+    <p class="hint" id="schluss"></p>
+
+    <h2>Ihre Angaben</h2>
+    <label><span>Name</span><input id="name" autocomplete="name" maxlength="80" required></label>
+    <label><span>Telefonnummer</span><input id="tel" type="tel" autocomplete="tel" inputmode="tel" maxlength="30" required></label>
+    <label><span>Bemerkung <small style="font-weight:400;color:var(--muted)">(freiwillig)</small></span><textarea id="bem" maxlength="300"></textarea></label>
+
+    <div class="card info">
+      <p id="rueckruf"></p>
+      <p>Abholung und Bezahlung bei uns am Hof:<br><b>Familie Teigeler</b>, Brückenwegweg 9, 34599 Neuental-Waltersbrück<br>
+      <a class="maps" id="maps1" target="_blank" rel="noopener">📍 In Google Maps öffnen</a></p>
+    </div>
+
+    <p class="err" id="err" hidden></p>
+    <button class="primary" type="submit" id="send">Verbindlich vorbestellen</button>
+  </form>
+</main>
+<footer class="wrap">Familie Teigeler · Neuental-Waltersbrück</footer>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script>
+const SORTEN=[["weisskohl","Weißkohl"],["rotkohl","Rotkohl"],["wirsing","Wirsing"],["rosenkohl","Rosenkohl"]];
+const PREIS=1.5, MAX=50, BESTELLSCHLUSS=17, TAGE=7;
+const ADRESSE="Brückenwegweg 9, 34599 Neuental-Waltersbrück";
+const MAPS="https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(ADRESSE);
+
+const $=s=>document.querySelector(s);
+const eur=n=>n.toLocaleString("de-DE",{style:"currency",currency:"EUR"});
+const iso=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+const addDays=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);x.setHours(0,0,0,0);return x};
+const wt=d=>d.toLocaleDateString("de-DE",{weekday:"long"});
+const lang=d=>d.toLocaleDateString("de-DE",{weekday:"long",day:"numeric",month:"long"});
+
+/* Uhrzeit immer in deutscher Zeit, egal wie das Handy eingestellt ist */
+function jetzt(){const p=Object.fromEntries(new Intl.DateTimeFormat("en-CA",{timeZone:"Europe/Berlin",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).formatToParts(new Date()).map(x=>[x.type,x.value]));
+  return {tag:new Date(+p.year,+p.month-1,+p.day),stunde:+p.hour}}
+/* Bis 17 Uhr: Abholung ab morgen. Danach: ab übermorgen. */
+function fruehester(){const j=jetzt();return addDays(j.tag,j.stunde<BESTELLSCHLUSS?1:2)}
+
+const menge=Object.fromEntries(SORTEN.map(([id])=>[id,0]));
+let tag=null;
+
+function drawSorten(){
+  const stueck=Object.values(menge).reduce((a,b)=>a+b,0);
+  $("#sorten").innerHTML=SORTEN.map(([id,n])=>`<div class="sorte"><div><b>${n}</b><small>${eur(PREIS)} pro Stück</small></div>
+    <div class="stepper"><button type="button" data-m="${id}" data-d="-1" aria-label="${n} weniger" ${menge[id]?"":"disabled"}>−</button>
+    <output aria-live="polite">${menge[id]}</output>
+    <button type="button" data-m="${id}" data-d="1" aria-label="${n} mehr" ${menge[id]>=MAX?"disabled":""}>+</button></div></div>`).join("")
+    +`<div class="sum"><span>${stueck} Stück</span><span>${eur(stueck*PREIS)}</span></div>`;
+}
+function drawTage(){
+  const f=fruehester();
+  if(!tag||tag<f)tag=f;
+  $("#tage").innerHTML=Array.from({length:TAGE},(_,i)=>addDays(f,i)).map(d=>{
+    const on=iso(d)===iso(tag);const morgen=iso(d)===iso(addDays(jetzt().tag,1));
+    return `<button type="button" role="radio" aria-checked="${on}" class="${on?"on":""}" data-t="${iso(d)}"><small>${morgen?"Morgen":wt(d).slice(0,2)}</small><b>${d.getDate()}.${d.getMonth()+1}.</b></button>`}).join("");
+  const j=jetzt();
+  $("#schluss").textContent=j.stunde<BESTELLSCHLUSS
+    ?`Für morgen bestellen Sie bis heute ${BESTELLSCHLUSS} Uhr.`
+    :`Bestellungen für morgen sind nur bis ${BESTELLSCHLUSS} Uhr möglich. Frühester Abholtag ist ${lang(f)}.`;
+  $("#rueckruf").innerHTML=`Bei Rückfragen rufen wir Sie an, frühestens <b>${lang(addDays(j.tag,1))} ab 10 Uhr</b>.`;
+}
+
+$("#sorten").addEventListener("click",e=>{const b=e.target.closest("[data-m]");if(!b)return;
+  menge[b.dataset.m]=Math.max(0,Math.min(MAX,menge[b.dataset.m]+ +b.dataset.d));drawSorten()});
+$("#tage").addEventListener("click",e=>{const b=e.target.closest("[data-t]");if(!b)return;
+  const[y,m,d]=b.dataset.t.split("-").map(Number);tag=new Date(y,m-1,d);drawTage()});
+$("#maps1").href=MAPS;
+drawSorten();drawTage();
+setInterval(drawTage,60000); /* springt um 17 Uhr automatisch weiter */
+
+const CFG=self.FIREBASE_CONFIG;
+firebase.initializeApp(CFG);
+const db=firebase.firestore();
+try{db.settings({experimentalForceLongPolling:true,merge:true})}catch(_){}
+
+function fehler(t){$("#err").hidden=false;$("#err").textContent=t}
+
+$("#f").addEventListener("submit",async ev=>{
+  ev.preventDefault();$("#err").hidden=true;
+  const name=$("#name").value.trim(), tel=$("#tel").value.trim(), bem=$("#bem").value.trim();
+  const stueck=Object.values(menge).reduce((a,b)=>a+b,0);
+  if(!stueck)return fehler("Bitte wählen Sie mindestens einen Kohl aus.");
+  if(name.length<2)return fehler("Bitte geben Sie Ihren Namen an.");
+  if(tel.replace(/\D/g,"").length<6)return fehler("Bitte geben Sie eine Telefonnummer an, unter der wir Sie erreichen.");
+  if(tag<fruehester()){drawTage();return fehler("Der Bestellschluss ist gerade vorbei. Bitte wählen Sie den Abholtag noch einmal.")}
+
+  const btn=$("#send");btn.disabled=true;btn.textContent="Wird gesendet…";
+  const posten={};SORTEN.forEach(([id])=>posten[id]=menge[id]);
+  try{
+    await db.collection("kohlBestellungen").add({
+      name,telefon:tel,bemerkung:bem,abholung:iso(tag),posten,stueck,summe:stueck*PREIS,
+      status:"offen",erstellt:firebase.firestore.FieldValue.serverTimestamp()
+    });
+    const liste=SORTEN.filter(([id])=>menge[id]).map(([id,n])=>`${menge[id]} × ${n}`).join("<br>");
+    $("#main").innerHTML=`<div class="danke"><h2>Danke, ${name.replace(/[<>&"]/g,"")}!</h2>
+      <p>Ihre Bestellung ist bei uns angekommen.</p>
+      <div class="card"><p style="margin:0 0 8px"><b>Abholung:</b> ${lang(tag)}</p><p style="margin:0 0 8px">${liste}</p>
+      <p style="margin:0"><b>Zusammen: ${eur(stueck*PREIS)}</b>, bezahlt wird bei Abholung.</p></div>
+      <p>Familie Teigeler, ${ADRESSE}<br><a class="maps" href="${MAPS}" target="_blank" rel="noopener">📍 In Google Maps öffnen</a></p>
+      <p class="hint">Bei Rückfragen melden wir uns telefonisch, frühestens ${lang(addDays(jetzt().tag,1))} ab 10 Uhr.</p></div>`;
+    scrollTo(0,0);
+  }catch(e){
+    console.error(e);btn.disabled=false;btn.textContent="Verbindlich vorbestellen";
+    fehler("Das hat leider nicht geklappt. Bitte prüfen Sie Ihre Internetverbindung und versuchen Sie es noch einmal.");
+  }
+});
+</script>
+</body>
+</html>
