@@ -45,6 +45,7 @@ h1{font-family:var(--f-display);font-weight:700;font-size:clamp(2.6rem,13vw,4.8r
 #pushBtn.on{background:var(--ok-bg);color:var(--ok);border-color:transparent}
 .signatur{text-align:center;color:var(--muted);font-size:.82rem;letter-spacing:.04em;margin:8px 0 0}
 .tally{display:flex;gap:8px;flex-wrap:wrap}
+.tally-lbl{font-size:.8rem;font-weight:700;letter-spacing:.04em;margin:0 0 4px;opacity:.9}
 .tally div{border:1px solid color-mix(in srgb,var(--band-ink) 25%,transparent);border-radius:8px;padding:6px 12px;min-width:84px}
 .tally b{display:block;font-family:var(--f-display);font-size:1.5rem;line-height:1.1}
 .tally span{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;opacity:.8}
@@ -245,7 +246,7 @@ img{max-width:100%}[hidden]{display:none!important}
     <h1>Maschinenpark</h1>
     <img id="logo" src="logo.png" alt="Logo des Betriebs" onerror="this.hidden=true">
   </div>
-  <div class="tally" id="tally"></div>
+  <div><div class="tally-lbl" id="tallyLbl" hidden>Für morgen:</div><div class="tally" id="tally"></div></div>
 </div></header>
 
 <section class="login wrap" id="login" hidden>
@@ -423,6 +424,7 @@ function renderLager(){
   if(VIEW!=="lager")return;
   const nach=S.l.filter(knapp);
   const liter=S.l.filter(a=>a.einheit==="l").reduce((x,a)=>x+(+a.menge||0),0);
+  $("#tallyLbl").hidden=true;
   $("#tally").innerHTML=`<div><b>${S.l.length}</b><span>Artikel</span></div><div><b style="color:${nach.length?"#f6c46d":"inherit"}">${nach.length}</b><span>nachbestellen</span></div><div><b>${fmtN(liter)}</b><span>Liter</span></div>`;
   const anz=k=>S.l.filter(a=>k==="alle"||(a.kat||"Sonstiges")===k).length;
   $("#ltabs").innerHTML=[["alle","Alle"],...LKATS.map(k=>[k,k])].map(([id,n])=>`<button role="tab" class="tab${LTAB===id?" on":""}" aria-selected="${LTAB===id}" data-ltab="${esc(id)}">${esc(n)} <span>${anz(id)}</span></button>`).join("");
@@ -481,6 +483,7 @@ function renderKohl(){
   const heute=iso(today()),morgen=iso(new Date(today().getTime()+864e5));
   /* Kopf-Kästchen: Stückzahl je Sorte für morgen */
   const fm=S.k.filter(b=>b.status!=="abgeholt"&&b.abholung===morgen);
+  $("#tallyLbl").hidden=false;
   $("#tally").innerHTML=KSORTEN.map(([id,n])=>{const z=fm.reduce((a,b)=>a+(+(b.posten||{})[id]||0),0);
     return `<div><b style="color:${z?"#f6c46d":"inherit"}">${z}</b><span>${n}</span></div>`}).join("")
     +`<div><b>${fm.length}</b><span>Bestell. morgen</span></div>`;
@@ -510,6 +513,7 @@ function renderMasch(){
   $("#dueTitle").textContent=DUE==="tuev"?"Anstehende TÜV-Termine":"Anstehende Wartungen";
   document.querySelectorAll("[data-due]").forEach(b=>{const on=b.dataset.due===DUE;b.classList.toggle("on",on);b.setAttribute("aria-checked",on)});
   const over=all.filter(t=>t.d<0).length, soon=all.filter(t=>t.d>=0&&t.d<=30).length;
+  $("#tallyLbl").hidden=true;
   $("#tally").innerHTML=`${DUE==="tuev"?`<div><b>${S.m.filter(m=>!m.abgemeldet&&hatTuev(m)).length}</b><span>mit TÜV</span></div>`:`<div><b>${S.m.filter(m=>!m.abgemeldet&&punkte(m).some(p=>!nurZuletzt(p)&&(p.intervall||p.naechste))).length}</b><span>mit Wartung</span></div>`}<div><b style="color:${over?"#ff9d92":"inherit"}">${over}</b><span>überfällig</span></div><div><b style="color:${soon?"#f6c46d":"inherit"}">${soon}</b><span>≤ 30 Tage</span></div>`;
 
   const list=all.filter(t=>t.d<=60).sort((a,b)=>a.d-b.d);
