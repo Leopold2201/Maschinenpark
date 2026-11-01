@@ -93,7 +93,7 @@ footer{color:var(--muted);font-size:.85rem;text-align:center;padding-bottom:30px
 
     <div class="card info">
       <p>Abholung und Bezahlung bei uns am Hof:<br><b>Familie Teigeler</b>, Brückenwegweg 9, 34599 Neuental-Waltersbrück<br>
-      <a class="maps" id="maps1" target="_blank" rel="noopener">📍 In Google Maps öffnen</a></p>
+      <a class="maps" id="maps1" target="_blank" rel="noopener">📍 Route zum Hof starten</a></p>
     </div>
 
     <p class="err" id="err" hidden></p>
@@ -110,7 +110,7 @@ const SORTEN=[["weisskohl","Weißkohl"],["rotkohl","Rotkohl"],["wirsing","Wirsin
 const PREIS=1.5, MAX=50, MIN=5, BESTELLSCHLUSS=17, TAGE=7;
 const ZEITEN=Array.from({length:19},(_,i)=>`${String(10+Math.floor(i/2)).padStart(2,"0")}:${i%2?"30":"00"}`); /* 10:00 bis 19:00 */
 const ADRESSE="Brückenwegweg 9, 34599 Neuental-Waltersbrück";
-const MAPS="https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(ADRESSE);
+const MAPS="https://www.google.com/maps/dir/?api=1&destination="+encodeURIComponent(ADRESSE);
 
 const $=s=>document.querySelector(s);
 const eur=n=>n.toLocaleString("de-DE",{style:"currency",currency:"EUR"});
@@ -188,7 +188,7 @@ $("#f").addEventListener("submit",async ev=>{
       <p>Ihre Bestellung ist bei uns angekommen.</p>
       <div class="card"><p style="margin:0 0 8px"><b>Abholung:</b> ${lang(tag)}, ${zeit} Uhr</p><p style="margin:0 0 8px">${liste}</p>
       <p style="margin:0"><b>Zusammen: ${eur(stueck*PREIS)}</b>, bezahlt wird bei Abholung.</p></div>
-      <p>Familie Teigeler, ${ADRESSE}<br><a class="maps" href="${MAPS}" target="_blank" rel="noopener">📍 In Google Maps öffnen</a></p>
+      <p>Familie Teigeler, ${ADRESSE}<br><a class="maps" href="${MAPS}" target="_blank" rel="noopener">📍 Route zum Hof starten</a></p>
       <p class="hint">Bitte kommen Sie ungefähr zur vereinbarten Uhrzeit. Bei Rückfragen melden wir uns telefonisch, frühestens ${lang(addDays(jetzt().tag,1))} ab 10 Uhr.</p></div>`;
     scrollTo(0,0);
   }catch(e){
