@@ -88,7 +88,6 @@ footer{color:var(--muted);font-size:.85rem;text-align:center;padding-bottom:30px
     <h2>Ihre Angaben</h2>
     <label><span>Name</span><input id="name" autocomplete="name" maxlength="80" required></label>
     <label><span>Telefonnummer <small style="font-weight:400;color:var(--muted)">für Rückfragen</small></span><input id="tel" type="tel" autocomplete="tel" inputmode="tel" maxlength="30" required></label>
-    <p class="hint" id="rueckruf" style="margin:-4px 0 12px"></p>
     <label><span>Bemerkung <small style="font-weight:400;color:var(--muted)">(freiwillig)</small></span><textarea id="bem" maxlength="300"></textarea></label>
 
     <div class="card info">
@@ -146,7 +145,6 @@ function drawTage(){
   $("#schluss").textContent=j.stunde<BESTELLSCHLUSS
     ?`Für morgen bestellen Sie bis heute ${BESTELLSCHLUSS} Uhr.`
     :`Bestellungen für morgen sind nur bis ${BESTELLSCHLUSS} Uhr möglich. Frühester Abholtag ist ${lang(f)}.`;
-  $("#rueckruf").innerHTML=`Wir rufen nur bei Rückfragen an, frühestens <b>${lang(addDays(j.tag,1))} ab 10 Uhr</b>.`;
 }
 
 $("#sorten").addEventListener("click",e=>{const b=e.target.closest("[data-m]");if(!b)return;
