@@ -91,7 +91,7 @@ footer{color:var(--muted);font-size:.85rem;text-align:center;padding-bottom:30px
     <label><span>Bemerkung <small style="font-weight:400;color:var(--muted)">(freiwillig)</small></span><textarea id="bem" maxlength="300"></textarea></label>
 
     <div class="card info">
-      <p>Abholung und Bezahlung bei uns am Hof:<br><b>Familie Teigeler</b>, Brückenwegweg 9, 34599 Neuental-Waltersbrück<br>
+      <p>Abholung und Bezahlung bei uns am Hof:<br><b>Familie Teigeler</b>, Brückenweg 9, 34599 Neuental-Waltersbrück<br>
       <a class="maps" id="maps1" target="_blank" rel="noopener">📍 Route zum Hof starten</a></p>
     </div>
 
@@ -108,7 +108,7 @@ footer{color:var(--muted);font-size:.85rem;text-align:center;padding-bottom:30px
 const SORTEN=[["weisskohl","Weißkohl"],["rotkohl","Rotkohl"],["wirsing","Wirsing"],["rosenkohl","Rosenkohl"]];
 const PREIS=1.5, MAX=50, MIN=5, BESTELLSCHLUSS=17, TAGE=7;
 const ZEITEN=Array.from({length:19},(_,i)=>`${String(10+Math.floor(i/2)).padStart(2,"0")}:${i%2?"30":"00"}`); /* 10:00 bis 19:00 */
-const ADRESSE="Brückenwegweg 9, 34599 Neuental-Waltersbrück";
+const ADRESSE="Brückenweg 9, 34599 Neuental-Waltersbrück";
 const MAPS="https://www.google.com/maps/dir/?api=1&destination="+encodeURIComponent(ADRESSE);
 
 const $=s=>document.querySelector(s);
