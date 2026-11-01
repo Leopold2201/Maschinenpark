@@ -109,7 +109,7 @@ const SORTEN=[["weisskohl","Weißkohl"],["rotkohl","Rotkohl"],["wirsing","Wirsin
 const PREIS=1.5, MAX=50, MIN=5, BESTELLSCHLUSS=17, TAGE=7;
 const ZEITEN=Array.from({length:19},(_,i)=>`${String(10+Math.floor(i/2)).padStart(2,"0")}:${i%2?"30":"00"}`); /* 10:00 bis 19:00 */
 const ADRESSE="Brückenweg 9, 34599 Neuental-Waltersbrück";
-const MAPS="https://www.google.com/maps/dir/?api=1&destination="+encodeURIComponent(ADRESSE);
+const MAPS="https://www.google.com/maps/dir/?api=1&destination=50.996883,9.209952&travelmode=driving"; /* GPS-Punkt Hof Teigeler */
 
 const $=s=>document.querySelector(s);
 const eur=n=>n.toLocaleString("de-DE",{style:"currency",currency:"EUR"});
