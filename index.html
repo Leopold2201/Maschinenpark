@@ -485,14 +485,15 @@ function renderKohl(){
   const sch=offen.filter(b=>b.abholung===fuer);
   const sum=KSORTEN.map(([id,n])=>[n,sch.reduce((a,b)=>a+(+(b.posten||{})[id]||0),0)]).filter(x=>x[1]);
   const kopf=`<div class="kschnitt"><h3>Zu schneiden für ${fuer===heute?"heute":"morgen"}</h3>${sum.length?`<div class="ksum">${sum.map(([n,z])=>`<span><b>${z}</b> ${n}</span>`).join("")}</div><small>${sch.length} Bestellung${sch.length>1?"en":""}</small>`:`<small>Noch keine Bestellungen.</small>`}</div>`;
-  const liste=(KALLE?S.k:offen).slice().sort((a,b)=>a.abholung<b.abholung?-1:a.abholung>b.abholung?1:0);
+  const key=b=>(b.abholung||"")+" "+(b.uhrzeit||"99:99");
+  const liste=(KALLE?S.k:offen).slice().sort((a,b)=>key(a)<key(b)?-1:key(a)>key(b)?1:0);
   const tage=[...new Set(liste.map(b=>b.abholung))];
   $("#klist").innerHTML=!S.kReady?`<div class="empty">Bestellungen werden geladen…</div>`:kopf+(!liste.length?`<div class="empty">Keine offenen Bestellungen.</div>`:
     tage.map(t=>{const bs=liste.filter(b=>b.abholung===t);const st=bs.filter(b=>b.status!=="abgeholt").reduce((a,b)=>a+(+b.stueck||0),0);
       return `<div class="ktag"><span>${esc(kTagName(t))}</span><small>${st} Stück offen</small></div>`+bs.map(b=>{
         const tel=String(b.telefon||"").replace(/[^\d+]/g,"");const erl=b.status==="abgeholt";
         const zeit=b.erstellt&&b.erstellt.toDate?b.erstellt.toDate().toLocaleString("de-DE",{day:"numeric",month:"numeric",hour:"2-digit",minute:"2-digit"}):"";
-        return `<div class="kbest${erl?" erl":""}"><span class="kn">${esc(b.name)}</span><span>${fmtN(b.summe)} €</span>
+        return `<div class="kbest${erl?" erl":""}"><span class="kn">${b.uhrzeit?`<span class="pill none" style="margin-right:6px">${esc(b.uhrzeit)} Uhr</span>`:""}${esc(b.name)}</span><span>${fmtN(b.summe)} €</span>
         <span class="kp">${esc(kListe(b))}</span><span class="kp">${zeit?"bestellt "+esc(zeit):""}</span>
         ${b.bemerkung?`<span class="kb">„${esc(b.bemerkung)}“</span>`:""}
         <div class="ka"><a class="btn" href="tel:${esc(tel)}">📞 ${esc(b.telefon)}</a>

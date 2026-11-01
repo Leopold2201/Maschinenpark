@@ -51,9 +51,9 @@ h2{font-family:var(--f-display);font-size:1.3rem;margin:22px 0 10px;letter-spaci
 .tage button.on small{color:inherit;opacity:.85}
 label{display:block;margin-bottom:12px}
 label span{display:block;font-weight:600;margin-bottom:4px}
-input,textarea{width:100%;font:inherit;padding:12px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+input,textarea,select{width:100%;font:inherit;padding:12px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
 textarea{min-height:70px;resize:vertical}
-input:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:1px}
+input:focus,textarea:focus,select:focus{outline:2px solid var(--accent);outline-offset:1px}
 .hint{color:var(--muted);font-size:.9rem;margin:6px 0 0}
 .info{padding:12px 14px;font-size:.95rem}
 .info p{margin:0 0 8px}.info p:last-child{margin:0}
@@ -76,19 +76,22 @@ footer{color:var(--muted);font-size:.85rem;text-align:center;padding-bottom:30px
 <main class="wrap" id="main">
   <form id="f" novalidate>
     <h2>Was möchten Sie?</h2>
+    <p class="hint" style="margin:-4px 0 10px">Vorbestellung ab <b>5 Köpfen</b>. Kleinere Mengen sind immer vorrätig und können ohne Bestellung mitgenommen werden.</p>
     <div class="card" id="sorten"></div>
 
     <h2>Wann holen Sie ab?</h2>
     <div class="tage" id="tage" role="radiogroup" aria-label="Abholtag"></div>
     <p class="hint" id="schluss"></p>
+    <label style="margin-top:14px"><span>Uhrzeit der Abholung</span><select id="zeit" required><option value="">Bitte wählen…</option></select></label>
+    <p class="hint" style="margin-top:-6px">Bitte halten Sie sich ungefähr an die Uhrzeit, damit Ihr Kohl frisch bereitliegt.</p>
 
     <h2>Ihre Angaben</h2>
     <label><span>Name</span><input id="name" autocomplete="name" maxlength="80" required></label>
-    <label><span>Telefonnummer</span><input id="tel" type="tel" autocomplete="tel" inputmode="tel" maxlength="30" required></label>
+    <label><span>Telefonnummer <small style="font-weight:400;color:var(--muted)">für Rückfragen</small></span><input id="tel" type="tel" autocomplete="tel" inputmode="tel" maxlength="30" required></label>
+    <p class="hint" id="rueckruf" style="margin:-4px 0 12px"></p>
     <label><span>Bemerkung <small style="font-weight:400;color:var(--muted)">(freiwillig)</small></span><textarea id="bem" maxlength="300"></textarea></label>
 
     <div class="card info">
-      <p id="rueckruf"></p>
       <p>Abholung und Bezahlung bei uns am Hof:<br><b>Familie Teigeler</b>, Brückenwegweg 9, 34599 Neuental-Waltersbrück<br>
       <a class="maps" id="maps1" target="_blank" rel="noopener">📍 In Google Maps öffnen</a></p>
     </div>
@@ -104,7 +107,8 @@ footer{color:var(--muted);font-size:.85rem;text-align:center;padding-bottom:30px
 <script src="firebase-config.js"></script>
 <script>
 const SORTEN=[["weisskohl","Weißkohl"],["rotkohl","Rotkohl"],["wirsing","Wirsing"],["rosenkohl","Rosenkohl"]];
-const PREIS=1.5, MAX=50, BESTELLSCHLUSS=17, TAGE=7;
+const PREIS=1.5, MAX=50, MIN=5, BESTELLSCHLUSS=17, TAGE=7;
+const ZEITEN=Array.from({length:23},(_,i)=>`${String(8+Math.floor(i/2)).padStart(2,"0")}:${i%2?"30":"00"}`); /* 08:00 bis 19:00 */
 const ADRESSE="Brückenwegweg 9, 34599 Neuental-Waltersbrück";
 const MAPS="https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(ADRESSE);
 
@@ -130,7 +134,7 @@ function drawSorten(){
     <div class="stepper"><button type="button" data-m="${id}" data-d="-1" aria-label="${n} weniger" ${menge[id]?"":"disabled"}>−</button>
     <output aria-live="polite">${menge[id]}</output>
     <button type="button" data-m="${id}" data-d="1" aria-label="${n} mehr" ${menge[id]>=MAX?"disabled":""}>+</button></div></div>`).join("")
-    +`<div class="sum"><span>${stueck} Stück</span><span>${eur(stueck*PREIS)}</span></div>`;
+    +`<div class="sum"><span>${stueck} Stück${stueck&&stueck<MIN?` <small style="font-weight:500;color:var(--muted)">(noch ${MIN-stueck} bis zur Mindestmenge)</small>`:""}</span><span>${eur(stueck*PREIS)}</span></div>`;
 }
 function drawTage(){
   const f=fruehester();
@@ -142,7 +146,7 @@ function drawTage(){
   $("#schluss").textContent=j.stunde<BESTELLSCHLUSS
     ?`Für morgen bestellen Sie bis heute ${BESTELLSCHLUSS} Uhr.`
     :`Bestellungen für morgen sind nur bis ${BESTELLSCHLUSS} Uhr möglich. Frühester Abholtag ist ${lang(f)}.`;
-  $("#rueckruf").innerHTML=`Bei Rückfragen rufen wir Sie an, frühestens <b>${lang(addDays(j.tag,1))} ab 10 Uhr</b>.`;
+  $("#rueckruf").innerHTML=`Wir rufen nur bei Rückfragen an, frühestens <b>${lang(addDays(j.tag,1))} ab 10 Uhr</b>.`;
 }
 
 $("#sorten").addEventListener("click",e=>{const b=e.target.closest("[data-m]");if(!b)return;
@@ -150,6 +154,7 @@ $("#sorten").addEventListener("click",e=>{const b=e.target.closest("[data-m]");i
 $("#tage").addEventListener("click",e=>{const b=e.target.closest("[data-t]");if(!b)return;
   const[y,m,d]=b.dataset.t.split("-").map(Number);tag=new Date(y,m-1,d);drawTage()});
 $("#maps1").href=MAPS;
+$("#zeit").insertAdjacentHTML("beforeend",ZEITEN.map(z=>`<option value="${z}">${z} Uhr</option>`).join(""));
 drawSorten();drawTage();
 setInterval(drawTage,60000); /* springt um 17 Uhr automatisch weiter */
 
@@ -164,7 +169,9 @@ $("#f").addEventListener("submit",async ev=>{
   ev.preventDefault();$("#err").hidden=true;
   const name=$("#name").value.trim(), tel=$("#tel").value.trim(), bem=$("#bem").value.trim();
   const stueck=Object.values(menge).reduce((a,b)=>a+b,0);
-  if(!stueck)return fehler("Bitte wählen Sie mindestens einen Kohl aus.");
+  const zeit=$("#zeit").value;
+  if(stueck<MIN)return fehler(`Vorbestellen können Sie ab ${MIN} Köpfen. Kleinere Mengen sind immer vorrätig, die können Sie einfach so mitnehmen.`);
+  if(!zeit)return fehler("Bitte wählen Sie eine Uhrzeit für die Abholung.");
   if(name.length<2)return fehler("Bitte geben Sie Ihren Namen an.");
   if(tel.replace(/\D/g,"").length<6)return fehler("Bitte geben Sie eine Telefonnummer an, unter der wir Sie erreichen.");
   if(tag<fruehester()){drawTage();return fehler("Der Bestellschluss ist gerade vorbei. Bitte wählen Sie den Abholtag noch einmal.")}
@@ -173,16 +180,16 @@ $("#f").addEventListener("submit",async ev=>{
   const posten={};SORTEN.forEach(([id])=>posten[id]=menge[id]);
   try{
     await db.collection("kohlBestellungen").add({
-      name,telefon:tel,bemerkung:bem,abholung:iso(tag),posten,stueck,summe:stueck*PREIS,
+      name,telefon:tel,bemerkung:bem,abholung:iso(tag),uhrzeit:zeit,posten,stueck,summe:stueck*PREIS,
       status:"offen",erstellt:firebase.firestore.FieldValue.serverTimestamp()
     });
     const liste=SORTEN.filter(([id])=>menge[id]).map(([id,n])=>`${menge[id]} × ${n}`).join("<br>");
     $("#main").innerHTML=`<div class="danke"><h2>Danke, ${name.replace(/[<>&"]/g,"")}!</h2>
       <p>Ihre Bestellung ist bei uns angekommen.</p>
-      <div class="card"><p style="margin:0 0 8px"><b>Abholung:</b> ${lang(tag)}</p><p style="margin:0 0 8px">${liste}</p>
+      <div class="card"><p style="margin:0 0 8px"><b>Abholung:</b> ${lang(tag)}, ${zeit} Uhr</p><p style="margin:0 0 8px">${liste}</p>
       <p style="margin:0"><b>Zusammen: ${eur(stueck*PREIS)}</b>, bezahlt wird bei Abholung.</p></div>
       <p>Familie Teigeler, ${ADRESSE}<br><a class="maps" href="${MAPS}" target="_blank" rel="noopener">📍 In Google Maps öffnen</a></p>
-      <p class="hint">Bei Rückfragen melden wir uns telefonisch, frühestens ${lang(addDays(jetzt().tag,1))} ab 10 Uhr.</p></div>`;
+      <p class="hint">Bitte kommen Sie ungefähr zur vereinbarten Uhrzeit. Bei Rückfragen melden wir uns telefonisch, frühestens ${lang(addDays(jetzt().tag,1))} ab 10 Uhr.</p></div>`;
     scrollTo(0,0);
   }catch(e){
     console.error(e);btn.disabled=false;btn.textContent="Verbindlich vorbestellen";

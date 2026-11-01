@@ -26,7 +26,8 @@ if (!best.length) { console.log("Keine Kohl-Bestellungen für morgen."); process
 
 const summe = SORTEN.map(([id, n]) => [n, best.reduce((a, b) => a + (+(b.posten || {})[id] || 0), 0)]).filter(x => x[1]);
 const title = `Kohl für morgen: ${best.length} Bestellung${best.length > 1 ? "en" : ""}`;
-const body = summe.map(([n, z]) => `${z} × ${n}`).join("\n");
+const body = summe.map(([n, z]) => `${z} × ${n}`).join("\n") + "\n" +
+  best.sort((a, b) => (a.uhrzeit || "").localeCompare(b.uhrzeit || "")).map(b => `${b.uhrzeit || "?"} ${b.name}`).join(", ");
 
 const geraete = await db.collection("geraete").get();
 if (geraete.empty) { console.log("Keine Geräte mit Benachrichtigungen."); process.exit(0); }
