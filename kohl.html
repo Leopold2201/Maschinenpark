@@ -108,7 +108,7 @@ footer{color:var(--muted);font-size:.85rem;text-align:center;padding-bottom:30px
 <script>
 const SORTEN=[["weisskohl","Weißkohl"],["rotkohl","Rotkohl"],["wirsing","Wirsing"],["rosenkohl","Rosenkohl"]];
 const PREIS=1.5, MAX=50, MIN=5, BESTELLSCHLUSS=17, TAGE=7;
-const ZEITEN=Array.from({length:23},(_,i)=>`${String(8+Math.floor(i/2)).padStart(2,"0")}:${i%2?"30":"00"}`); /* 08:00 bis 19:00 */
+const ZEITEN=Array.from({length:19},(_,i)=>`${String(10+Math.floor(i/2)).padStart(2,"0")}:${i%2?"30":"00"}`); /* 10:00 bis 19:00 */
 const ADRESSE="Brückenwegweg 9, 34599 Neuental-Waltersbrück";
 const MAPS="https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(ADRESSE);
 
