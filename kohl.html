@@ -27,9 +27,10 @@ body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:1
 .wrap{max-width:520px;margin:0 auto;padding:0 16px}
 header{background:var(--band);color:var(--band-ink);padding-top:env(safe-area-inset-top,0px)}
 header .wrap{display:flex;align-items:center;gap:14px;padding-block:16px 20px}
-header img{width:84px;height:auto;flex:none}
-header h1{font-family:var(--f-display);font-size:2rem;line-height:1;margin:0 0 4px;letter-spacing:.01em}
-header p{margin:0;opacity:.85}
+header img{width:clamp(64px,20vw,84px);height:auto;flex:none}
+header .wrap>div{min-width:0}
+header h1{font-family:var(--f-display);font-size:clamp(1.3rem,6.4vw,2rem);line-height:1.05;margin:0 0 4px;letter-spacing:.01em;white-space:nowrap}
+header p{margin:0;opacity:.85;font-size:clamp(.8rem,3.5vw,1rem);white-space:nowrap}
 main{padding-block:18px 40px}
 h2{font-family:var(--f-display);font-size:1.3rem;margin:22px 0 10px;letter-spacing:.02em}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:12px}
@@ -43,6 +44,8 @@ h2{font-family:var(--f-display);font-size:1.3rem;margin:22px 0 10px;letter-spaci
 .stepper output{min-width:36px;text-align:center;font-weight:700;font-size:1.2rem}
 .sum{display:flex;justify-content:space-between;padding:12px 14px;background:var(--sunk);border-top:1px solid var(--line);border-radius:0 0 12px 12px;font-weight:600}
 .tage{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+/* Laptop/PC: alle Tage sichtbar, kein Seitwärts-Scrollen nötig */
+@media (hover:hover) and (pointer:fine){.tage{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;overflow:visible}.tage button{padding:8px 2px}}
 .tage button{flex:0 0 auto;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:10px;padding:8px 12px;text-align:center;cursor:pointer;font-family:var(--f-body)}
 .tage button b{display:block;font-family:var(--f-display);font-size:1.15rem}
 .tage button small{color:var(--muted);font-size:.8rem}
