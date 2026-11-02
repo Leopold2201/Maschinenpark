@@ -8,15 +8,14 @@
 <meta name="theme-color" content="#23331f">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap">
 <style>
 :root{
   --bg:#f1f3ec; --surface:#fbfcf8; --sunk:#e7eadf; --ink:#1c2318; --muted:#5a6453; --line:#d6dbcc;
   --accent:#2d5a32; --accent-ink:#fff; --band:#23331f; --band-ink:#eef2e6;
   --bad:#ae2a20; --bad-bg:#f7dcd8; --ok-bg:#dbebd8;
-  --f-display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
-  --f-body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+  /* nur Schriften vom Gerät – keine Verbindung zu Google Fonts */
+  --f-display:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --f-body:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
 }
 @media (prefers-color-scheme:dark){:root{
   --bg:#121610; --surface:#1a1f18; --sunk:#161b14; --ink:#e6eadf; --muted:#9ba393; --line:#2d3529;
@@ -97,9 +96,10 @@ footer{color:var(--muted);font-size:.85rem;text-align:center;padding-bottom:30px
 
     <p class="err" id="err" hidden></p>
     <button class="primary" type="submit" id="send">Verbindlich vorbestellen</button>
+    <p class="hint" style="text-align:center;margin-top:10px">Ihre Angaben nutzen wir nur für diese Bestellung und löschen sie 30 Tage nach der Abholung. <a href="datenschutz.html" style="color:inherit">Datenschutz</a></p>
   </form>
 </main>
-<footer class="wrap">Familie Teigeler · Neuental-Waltersbrück</footer>
+<footer class="wrap">Familie Teigeler · Neuental-Waltersbrück<br><a href="impressum.html" style="color:inherit">Impressum</a> · <a href="datenschutz.html" style="color:inherit">Datenschutz</a></footer>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>

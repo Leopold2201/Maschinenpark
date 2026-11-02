@@ -11,6 +11,17 @@ const db = getFirestore();
 const APP_URL = process.env.APP_URL || "/";
 
 const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Berlin" }));
+
+// Datenschutz: Bestellungen 30 Tage nach dem Abholtag automatisch löschen
+{
+  const g = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 30);
+  const grenze = `${g.getFullYear()}-${String(g.getMonth() + 1).padStart(2, "0")}-${String(g.getDate()).padStart(2, "0")}`;
+  const alt = await db.collection("kohlBestellungen").where("abholung", "<", grenze).get();
+  for (let i = 0; i < alt.docs.length; i += 400) {
+    const b = db.batch(); alt.docs.slice(i, i + 400).forEach(d => b.delete(d.ref)); await b.commit();
+  }
+  if (alt.size) console.log(`${alt.size} alte Bestellungen gelöscht (Abholung vor ${grenze}).`);
+}
 // Zwei Zeitpläne (Sommer/Winter), es sendet nur der, der gerade 17 Uhr in Deutschland ist.
 const SCHED = process.env.SCHED || "";
 const off = Math.round((now - new Date(new Date().toLocaleString("en-US", { timeZone: "UTC" }))) / 36e5);
