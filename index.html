@@ -835,7 +835,7 @@ $("#klist").addEventListener("click",async e=>{
     if(d){const b=S.k.find(x=>x.id===d.dataset.kdel);if(confirm(`Bestellung von ${b.name} wirklich löschen?`))await S.db.doc("kohlBestellungen/"+b.id).delete()}
   }catch(err){toast("Speichern hat nicht geklappt.")}
 });
-{const u=new URL("kohl.html",location.href).href;$("#kUrl").href=u;$("#kUrl").textContent=u.replace(/^https?:\/\//,"");
+{const u="https://hofteigeler.github.io/kohl/";$("#kUrl").href=u;$("#kUrl").textContent=u.replace(/^https?:\/\//,"");
  $("#kCopy").addEventListener("click",()=>navigator.clipboard.writeText(u).then(()=>toast("Link kopiert.")))}
 $("#ltabs").addEventListener("click",e=>{const b=e.target.closest("[data-ltab]");if(!b)return;LTAB=b.dataset.ltab;render()});
 $("#lq").addEventListener("input",render);
