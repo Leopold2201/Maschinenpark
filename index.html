@@ -216,6 +216,7 @@ form{display:grid;gap:12px}
 .replist p{margin:0;overflow-wrap:anywhere}
 .wrow .wlager{grid-column:1/-1}
 .lager{display:block;width:max-content;margin-top:4px;font-size:.75rem;font-weight:600;padding:2px 9px;border-radius:999px;border:1px solid var(--line);background:var(--sunk);color:var(--muted)}
+.owrap{display:flex;flex-wrap:wrap;gap:6px}.owrap .lager{display:inline-block}
 .lager.ja{background:var(--ok-bg);color:var(--ok);border-color:transparent}
 .wrow .wteil{grid-column:1/3}.wrow .wmenge{grid-column:3/5}
 .wrow .wfix{grid-column:3/4;align-self:center;color:var(--muted);font-size:.85rem}
@@ -569,7 +570,7 @@ function drawDetail(){
   ${hatTuev(m)?"":"<!--"}<div class="panel tuev"><div><span class="label">TÜV / HU</span><b>${m.tuevBis?`Plakette bis ${fmtM(m.tuevBis)}`:"nicht eingetragen"}</b>${m.tuevBis?`<small class="note">Letzter TÜV ${fmtM(letzter(m))}</small>`:""}</div>${m.abgemeldet?`<span class="pill none">abgemeldet</span>`:`<span class="pill ${lvl(tv)}">${m.tuevBis?rel(tv):"–"}</span>`}</div>${hatTuev(m)?"":"-->"}
   <div><div class="sechead" style="margin-bottom:6px"><h2 style="font-size:1.15rem">Wartung</h2></div>
   ${ps.length?`<ul class="wlist">${ps.map(p=>{
-    const extra=`${p.teil?`<small class="teil">Filter: <b>${esc(p.teil)}</b></small>`:""}${p.filterZuletzt?`<small class="teil">Filter zuletzt gewechselt: <b>${fmtMY(p.filterZuletzt)}</b></small>`:""}${p.menge&&!ohneMenge(p)?`<small class="teil">Füllmenge: <b>${esc(p.menge)}</b></small>`:""}${(()=>{const a=lagerZu(p.teil);return a?`<small class="teil">Im Lager: <b>${fmtN(a.menge)} ${esc(a.einheit||"Stk")}</b>${knapp(a)?" · nachbestellen":""}</small>`:""})()}${istAbschmieren(p)?"":`<button type="button" class="lager${p.lager?" ja":""}" data-lager="${esc(p.id)}" ${S.canWrite?"":"disabled"} aria-pressed="${!!p.lager}">${p.lager?"✓ Auf Lager":"Nicht auf Lager"}</button>`}`;
+    const extra=`${p.teil?`<small class="teil">Filter: <b>${esc(p.teil)}</b></small>`:""}${p.filterZuletzt?`<small class="teil">Filter zuletzt gewechselt: <b>${fmtMY(p.filterZuletzt)}</b></small>`:""}${p.menge&&!ohneMenge(p)?`<small class="teil">Füllmenge: <b>${esc(p.menge)}</b></small>`:""}${(()=>{const a=lagerZu(p.teil);return a?`<small class="teil">Im Lager: <b>${fmtN(a.menge)} ${esc(a.einheit||"Stk")}</b>${knapp(a)?" · nachbestellen":""}</small>`:""})()}${istAbschmieren(p)?"":`<button type="button" class="lager${p.lager?" ja":""}" data-lager="${esc(p.id)}" ${S.canWrite?"":"disabled"} aria-pressed="${!!p.lager}">${p.lager?"✓ Auf Lager":"Nicht auf Lager"}</button>`}${istOel(p)&&Array.isArray(m.wartung)?(()=>{const mon=iso(new Date()).slice(0,7),oj=ym(p.zuletzt||"")===mon,fj=(p.filterZuletzt||"").slice(0,7)===mon;const dis=S.canWrite?"":"disabled";return `<span class="owrap"><button type="button" class="lager${oj?" ja":""}" data-ow="oel" data-pid="${esc(p.id)}" ${dis}>${oj?"✓ Öl gewechselt":"☐ Öl gewechselt"}</button><button type="button" class="lager${fj?" ja":""}" data-ow="fil" data-pid="${esc(p.id)}" ${dis}>${fj?"✓ Filter gewechselt":"☐ Filter gewechselt"}</button></span>`})():""}`;
     if(nurZuletzt(p))return `<li><span class="stripe s-none"></span><span class="wn"><b>${esc(p.name)}</b><small>zuletzt gemacht</small>${extra}</span><span class="wd">${p.zuletzt?fmtMY(p.zuletzt):"–"}</span><span class="pill none">${p.zuletzt?seitM(p.zuletzt):"noch nicht eingetragen"}</span></li>`;
     const d=p.naechste?dueW(p.naechste):null;
     return `<li><span class="stripe s-${lvl(d)}"></span><span class="wn"><b>${esc(p.name)}</b><small>${esc(iv(p.intervall))||"kein Intervall"}${p.zuletzt?` · zuletzt ${p.zuletzt.length>7?fmtD(p.zuletzt):fmtMY(p.zuletzt)}`:""}</small>${extra}</span><span class="wd">${p.naechste?fmtMY(p.naechste):"–"}</span><span class="pill ${lvl(d)}">${p.naechste?rel(d):"kein Termin"}</span></li>`}).join("")}</ul>`:`<div class="empty">Keine Wartungspunkte. Über <b>Bearbeiten</b> kannst du Motoröl, Getriebeöl, Abschmieren und weitere anlegen.</div>`}</div>
@@ -824,6 +825,21 @@ document.addEventListener("click",async e=>{
   if(ldel){arm(ldel,"Wirklich löschen? Nochmal tippen",async()=>{ldel.disabled=true;try{await S.db.doc("lager/"+ldel.dataset.ldel).delete();closeSheet()}catch(err){toast("Konnte nicht gelöscht werden.")}});return}
   if(e.target.closest("[data-act=lcopy]")){const t="Nachbestellen:\n"+S.l.filter(knapp).map(a=>`- ${a.name}${a.teil?" ("+a.teil+")":""}: noch ${fmtN(a.menge)} ${a.einheit||"Stk"}`).join("\n");
     try{await navigator.clipboard.writeText(t);toast("Liste kopiert. Du kannst sie jetzt z. B. per WhatsApp an den Händler schicken.")}catch(err){toast(t)}return}
+  const ow=e.target.closest("[data-ow]");
+  if(ow&&S.open&&S.canWrite){const m=S.m.find(x=>x.id===S.open.id);if(!m||!Array.isArray(m.wartung))return;
+    const p=m.wartung.find(x=>x.id===ow.dataset.pid);if(!p)return;const oel=ow.dataset.ow==="oel",mon=iso(new Date()).slice(0,7);
+    const ja=oel?ym(p.zuletzt||"")===mon:(p.filterZuletzt||"").slice(0,7)===mon;
+    const save=async np=>{await S.db.doc("maschinen/"+m.id).update({wartung:m.wartung.map(x=>x.id===p.id?np:x)})};
+    if(!ja){ow.disabled=true;
+      try{const r=await S.db.collection("eintraege").add({maschineId:m.id,art:"Wartung",datum:mon,punkte:[`${p.name}: ${oel?"Öl":"Filter"} gewechselt`],text:""});
+        await save(oel?{...p,oelPrev:{zuletzt:p.zuletzt||"",naechste:p.naechste||"",e:r.id},zuletzt:mon,...(!nurZuletzt(p)&&p.intervall?{naechste:addYM(mon,p.intervall)}:{})}
+                      :{...p,filterPrev:{v:p.filterZuletzt||"",e:r.id},filterZuletzt:mon});
+        toast(`${p.name}: ${oel?"Öl":"Filter"} für ${fmtMY(mon)} eingetragen.`)}catch(err){toast("Konnte nicht gespeichert werden.");ow.disabled=false}
+    }else arm(ow,"Rückgängig? Nochmal tippen",async()=>{const pr=oel?p.oelPrev:p.filterPrev;
+      if(!pr){toast("Das wurde über „Erledigt eintragen“ gespeichert. Rückgängig über den Verlauf.");return}ow.disabled=true;
+      try{const np={...p};if(oel){np.zuletzt=pr.zuletzt;np.naechste=pr.naechste;delete np.oelPrev}else{np.filterZuletzt=pr.v;delete np.filterPrev}
+        await save(np);if(pr.e)await S.db.doc("eintraege/"+pr.e).delete();toast("Rückgängig gemacht.")}catch(err){toast("Konnte nicht gespeichert werden.");ow.disabled=false}});
+    return}
   const lg=e.target.closest("[data-lager]");
   if(lg&&S.open&&S.canWrite){const m=S.m.find(x=>x.id===S.open.id);if(!m||!Array.isArray(m.wartung))return;lg.disabled=true;
     try{await S.db.doc("maschinen/"+m.id).update({wartung:m.wartung.map(p=>p.id===lg.dataset.lager?{...p,lager:!p.lager}:p)})}catch(err){toast("Konnte nicht gespeichert werden.");lg.disabled=false}return}
