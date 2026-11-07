@@ -237,6 +237,7 @@ img{max-width:100%}[hidden]{display:none!important}
 .login h2{font-size:1.6rem}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--band);color:var(--band-ink);padding:12px 16px;border-radius:10px;z-index:40;max-width:min(92vw,520px);box-shadow:0 6px 24px rgb(0 0 0 / .25)}
 .import{display:grid;gap:10px;justify-items:start}
+.esub{display:flex;flex-wrap:wrap;gap:4px 16px;margin:-2px 0 8px 30px;padding:6px 10px;border-left:3px solid var(--line,#ccd5c6)}.esub .check{font-size:.93em}.esub small{flex-basis:100%;opacity:.75}
 </style>
 </head>
 <body>
@@ -376,6 +377,7 @@ const mengeHint=n=>/abschmier/i.test(n)?"z. B. Fett, Sorte":/öl/i.test(n)?"z. B
 const istAbschmieren=p=>/abschmier/i.test(p.name||"");
 const ohneMenge=p=>istAbschmieren(p)||/diesel|kraftstoff/i.test(p.name||"");
 const nurZuletzt=p=>istAbschmieren(p)||p.modus==="zuletzt";
+const istOel=p=>/öl/i.test(p.name||"")&&!istAbschmieren(p); /* Öl-Punkte: Öl und Filter getrennt abhaken */
 const seit=s=>{const d=-days(parse(s));return d<=0?"heute":d===1?"gestern":d<60?`vor ${d} Tagen`:d<730?`vor ${Math.round(d/30.4)} Monaten`:`vor ${Math.round(d/365)} Jahren`};
 const seitM=s=>{const[y,m]=ym(s).split("-").map(Number);const t=new Date();const n=(t.getFullYear()*12+t.getMonth())-(y*12+m-1);return n<=0?"diesen Monat":n===1?"letzten Monat":n<24?`vor ${n} Monaten`:`vor ${Math.floor(n/12)} Jahren`};
 /* TÜV-pflichtig? Alte Einträge ohne Angabe gelten als ja. Neue Geräte (außer Anhänger) standardmäßig nein. */
@@ -567,7 +569,7 @@ function drawDetail(){
   ${hatTuev(m)?"":"<!--"}<div class="panel tuev"><div><span class="label">TÜV / HU</span><b>${m.tuevBis?`Plakette bis ${fmtM(m.tuevBis)}`:"nicht eingetragen"}</b>${m.tuevBis?`<small class="note">Letzter TÜV ${fmtM(letzter(m))}</small>`:""}</div>${m.abgemeldet?`<span class="pill none">abgemeldet</span>`:`<span class="pill ${lvl(tv)}">${m.tuevBis?rel(tv):"–"}</span>`}</div>${hatTuev(m)?"":"-->"}
   <div><div class="sechead" style="margin-bottom:6px"><h2 style="font-size:1.15rem">Wartung</h2></div>
   ${ps.length?`<ul class="wlist">${ps.map(p=>{
-    const extra=`${p.teil?`<small class="teil">Filter: <b>${esc(p.teil)}</b></small>`:""}${p.menge&&!ohneMenge(p)?`<small class="teil">Füllmenge: <b>${esc(p.menge)}</b></small>`:""}${(()=>{const a=lagerZu(p.teil);return a?`<small class="teil">Im Lager: <b>${fmtN(a.menge)} ${esc(a.einheit||"Stk")}</b>${knapp(a)?" · nachbestellen":""}</small>`:""})()}${istAbschmieren(p)?"":`<button type="button" class="lager${p.lager?" ja":""}" data-lager="${esc(p.id)}" ${S.canWrite?"":"disabled"} aria-pressed="${!!p.lager}">${p.lager?"✓ Auf Lager":"Nicht auf Lager"}</button>`}`;
+    const extra=`${p.teil?`<small class="teil">Filter: <b>${esc(p.teil)}</b></small>`:""}${p.filterZuletzt?`<small class="teil">Filter zuletzt gewechselt: <b>${fmtMY(p.filterZuletzt)}</b></small>`:""}${p.menge&&!ohneMenge(p)?`<small class="teil">Füllmenge: <b>${esc(p.menge)}</b></small>`:""}${(()=>{const a=lagerZu(p.teil);return a?`<small class="teil">Im Lager: <b>${fmtN(a.menge)} ${esc(a.einheit||"Stk")}</b>${knapp(a)?" · nachbestellen":""}</small>`:""})()}${istAbschmieren(p)?"":`<button type="button" class="lager${p.lager?" ja":""}" data-lager="${esc(p.id)}" ${S.canWrite?"":"disabled"} aria-pressed="${!!p.lager}">${p.lager?"✓ Auf Lager":"Nicht auf Lager"}</button>`}`;
     if(nurZuletzt(p))return `<li><span class="stripe s-none"></span><span class="wn"><b>${esc(p.name)}</b><small>zuletzt gemacht</small>${extra}</span><span class="wd">${p.zuletzt?fmtMY(p.zuletzt):"–"}</span><span class="pill none">${p.zuletzt?seitM(p.zuletzt):"noch nicht eingetragen"}</span></li>`;
     const d=p.naechste?dueW(p.naechste):null;
     return `<li><span class="stripe s-${lvl(d)}"></span><span class="wn"><b>${esc(p.name)}</b><small>${esc(iv(p.intervall))||"kein Intervall"}${p.zuletzt?` · zuletzt ${p.zuletzt.length>7?fmtD(p.zuletzt):fmtMY(p.zuletzt)}`:""}</small>${extra}</span><span class="wd">${p.naechste?fmtMY(p.naechste):"–"}</span><span class="pill ${lvl(d)}">${p.naechste?rel(d):"kein Termin"}</span></li>`}).join("")}</ul>`:`<div class="empty">Keine Wartungspunkte. Über <b>Bearbeiten</b> kannst du Motoröl, Getriebeöl, Abschmieren und weitere anlegen.</div>`}</div>
@@ -744,7 +746,7 @@ function entryForm(mid,preset,from){
    <label class="f"><span class="label">Art</span><select id="e_art">${ARTEN.filter(a=>a!=="TÜV / HU"||hatTuev(m)).map(a=>`<option>${a}</option>`).join("")}</select></label>
    <label class="f"><span class="label">Monat</span><input id="e_datum" type="month" required value="${iso(new Date()).slice(0,7)}"></label>
    <fieldset class="f full checks" id="e_wbox"><legend class="label">Was wurde gemacht?</legend>
-     ${ps.length?ps.map(p=>`<label class="check"><input type="checkbox" value="${esc(p.id)}" class="e_p"><span>${esc(p.name)}${nurZuletzt(p)?` <small class="nb">· wird als „zuletzt gemacht“ gespeichert</small>`:p.intervall?` <small data-iv="${esc(p.intervall)}">· nächster Termin dann ${fmtMY(addYM(iso(new Date()),p.intervall))}</small>`:""}</span></label>`).join(""):`<span class="note">Diese Maschine hat noch keine Wartungspunkte.</span>`}
+     ${ps.length?ps.map(p=>`<label class="check"><input type="checkbox" value="${esc(p.id)}" class="e_p"><span>${esc(p.name)}${nurZuletzt(p)?` <small class="nb">· wird als „zuletzt gemacht“ gespeichert</small>`:p.intervall?` <small data-iv="${esc(p.intervall)}">· nächster Termin dann ${fmtMY(addYM(iso(new Date()),p.intervall))}</small>`:""}</span></label>${istOel(p)?`<div class="esub" data-sub="${esc(p.id)}" hidden><label class="check"><input type="checkbox" class="e_oel" checked><span>Öl gewechselt</span></label><label class="check"><input type="checkbox" class="e_fil" checked><span>Filter gewechselt</span></label><small class="nb">Nur Filter: der Öl-Termin bleibt, wie er ist.</small></div>`:""}`).join(""):`<span class="note">Diese Maschine hat noch keine Wartungspunkte.</span>`}
    </fieldset>
    <p class="f full note" id="e_tbox" hidden>Die neue Plakette gilt automatisch ${tuevJahre(m.kategorie)} Jahre, also bis <b id="e_tuev"></b>.</p>
    <label class="f full"><span class="label" id="e_tlabel">Bemerkung</span><input id="e_text" placeholder="z. B. 15W-40, 18 l · Werkstatt Müller"></label>
@@ -756,16 +758,21 @@ function entryForm(mid,preset,from){
     if($("#e_datum").value)$("#e_tuev").textContent=fmtM(plusJ($("#e_datum").value.slice(0,7),tuevJahre(m.kategorie)));
     const dt=$("#e_datum").value;document.querySelectorAll("#e_wbox small[data-iv]").forEach(s=>{if(dt)s.textContent=`· nächster Termin dann ${fmtMY(addYM(dt,s.dataset.iv))}`})};
   $("#e_art").addEventListener("change",sync);$("#e_datum").addEventListener("change",sync);sync();
+  document.querySelectorAll(".e_p").forEach(c=>c.addEventListener("change",()=>{const b=document.querySelector(`.esub[data-sub="${c.value}"]`);if(b)b.hidden=!c.checked}));
+  const subOf=id=>{const b=document.querySelector(`.esub[data-sub="${id}"]`);return b?{oel:b.querySelector(".e_oel").checked,fil:b.querySelector(".e_fil").checked}:null};
   $("#ef").addEventListener("submit",async ev=>{
     ev.preventDefault();
     const art=$("#e_art").value,datum=$("#e_datum").value;
     const sel=art==="Wartung"?[...document.querySelectorAll(".e_p:checked")].map(c=>c.value):[];
     if(art==="Wartung"&&!sel.length&&ps.length){showErr("#eferr",{code:"pick"});return}
+    if(sel.some(id=>{const x=subOf(id);return x&&!x.oel&&!x.fil})){showErr("#eferr",{code:"oelfil"});return}
     const btn=ev.submitter;btn.disabled=true;btn.textContent="Speichert…";
     try{
-      await S.db.collection("eintraege").add({maschineId:mid,art,datum,punkte:ps.filter(p=>sel.includes(p.id)).map(p=>p.name),text:$("#e_text").value.trim()});
+      await S.db.collection("eintraege").add({maschineId:mid,art,datum,punkte:ps.filter(p=>sel.includes(p.id)).map(p=>{const x=subOf(p.id);return !x||(x.oel&&x.fil)?p.name:x.oel?`${p.name} (nur Öl)`:`${p.name} (nur Filter)`}),text:$("#e_text").value.trim()});
       const upd={};
-      if(sel.length){upd.wartung=ps.map(p=>!sel.includes(p.id)?{...p}:nurZuletzt(p)?{...p,zuletzt:ym(datum),naechste:"",intervall:""}:{...p,zuletzt:datum,...(p.intervall?{naechste:addYM(datum,p.intervall)}:{})});if(!Array.isArray(m.wartung)){upd.naechsteWartung="";upd.intervall=""}}
+      if(sel.length){upd.wartung=ps.map(p=>{if(!sel.includes(p.id))return {...p};const x=subOf(p.id)||{oel:true,fil:false};const f=x.fil?{filterZuletzt:datum}:{};
+        if(!x.oel)return {...p,...f}; /* nur Filter: Öl-Termin bleibt */
+        return nurZuletzt(p)?{...p,...f,zuletzt:ym(datum),naechste:"",intervall:""}:{...p,...f,zuletzt:datum,...(p.intervall?{naechste:addYM(datum,p.intervall)}:{})}});if(!Array.isArray(m.wartung)){upd.naechsteWartung="";upd.intervall=""}}
       if(art==="TÜV / HU"&&datum){upd.letzterTuev=datum.slice(0,7);upd.tuevBis=plusJ(upd.letzterTuev,tuevJahre(m.kategorie))}
       if(Object.keys(upd).length)await S.db.doc("maschinen/"+mid).update(upd);
       if(from==="reps"||art==="Reparatur"||art==="Sonstiges"){S.open={type:"reps",id:mid};drawReps()}else{S.open={type:"detail",id:mid};drawDetail()}
@@ -774,7 +781,7 @@ function entryForm(mid,preset,from){
 }
 
 function showErr(sel,e){const el=$(sel);el.hidden=false;
-  el.textContent=e&&e.code==="pick"?"Wähl mindestens einen Wartungspunkt aus.":e&&e.code==="permission-denied"?"Keine Berechtigung. Melde dich mit dem Hof-Login an.":e&&e.code==="resource-exhausted"?"Das Gratis-Kontingent für heute ist aufgebraucht. Morgen geht es wieder.":"Speichern hat nicht geklappt. Prüf die Verbindung und versuch es noch einmal."}
+  el.textContent=e&&e.code==="pick"?"Wähl mindestens einen Wartungspunkt aus.":e&&e.code==="oelfil"?"Beim Öl-Punkt Öl, Filter oder beides anhaken.":e&&e.code==="permission-denied"?"Keine Berechtigung. Melde dich mit dem Hof-Login an.":e&&e.code==="resource-exhausted"?"Das Gratis-Kontingent für heute ist aufgebraucht. Morgen geht es wieder.":"Speichern hat nicht geklappt. Prüf die Verbindung und versuch es noch einmal."}
 
 /* Zwei-Tipp-Löschen statt Dialog */
 function arm(btn,label,fn){
