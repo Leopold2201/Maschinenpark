@@ -214,7 +214,7 @@ form{display:grid;gap:12px}
 .replist li{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;display:grid;gap:6px;justify-items:start}
 .replist .rh{display:flex;gap:8px;align-items:center}.replist .d{color:var(--muted);font-size:.85rem}
 .replist p{margin:0;overflow-wrap:anywhere}
-.wrow .wlager{grid-column:1/-1}.wrow .wow{grid-column:1/-1}.wowr{display:flex;flex-wrap:wrap;align-items:center;gap:6px 16px}.wowr input[type=month]{width:auto;max-width:11em}.wow small{opacity:.75}
+.wrow .wlager{grid-column:1/-1}.wrow .wow{grid-column:1/-1}
 .lager{display:block;width:max-content;margin-top:4px;font-size:.75rem;font-weight:600;padding:2px 9px;border-radius:999px;border:1px solid var(--line);background:var(--sunk);color:var(--muted)}
 .lager.ja{background:var(--ok-bg);color:var(--ok);border-color:transparent}
 .wrow .wteil{grid-column:1/3}.wrow .wmenge{grid-column:3/5}
@@ -569,7 +569,7 @@ function drawDetail(){
   ${hatTuev(m)?"":"<!--"}<div class="panel tuev"><div><span class="label">TÜV / HU</span><b>${m.tuevBis?`Plakette bis ${fmtM(m.tuevBis)}`:"nicht eingetragen"}</b>${m.tuevBis?`<small class="note">Letzter TÜV ${fmtM(letzter(m))}</small>`:""}</div>${m.abgemeldet?`<span class="pill none">abgemeldet</span>`:`<span class="pill ${lvl(tv)}">${m.tuevBis?rel(tv):"–"}</span>`}</div>${hatTuev(m)?"":"-->"}
   <div><div class="sechead" style="margin-bottom:6px"><h2 style="font-size:1.15rem">Wartung</h2></div>
   ${ps.length?`<ul class="wlist">${ps.map(p=>{
-    const extra=`${p.teil?`<small class="teil">Filter: <b>${esc(p.teil)}</b></small>`:""}${p.filterZuletzt?`<small class="teil">Filter zuletzt gewechselt: <b>${fmtMY(p.filterZuletzt)}</b></small>`:""}${p.menge&&!ohneMenge(p)?`<small class="teil">Füllmenge: <b>${esc(p.menge)}</b></small>`:""}${(()=>{const a=lagerZu(p.teil);return a?`<small class="teil">Im Lager: <b>${fmtN(a.menge)} ${esc(a.einheit||"Stk")}</b>${knapp(a)?" · nachbestellen":""}</small>`:""})()}${istAbschmieren(p)?"":`<button type="button" class="lager${p.lager?" ja":""}" data-lager="${esc(p.id)}" ${S.canWrite?"":"disabled"} aria-pressed="${!!p.lager}">${p.lager?"✓ Auf Lager":"Nicht auf Lager"}</button>`}`;
+    const extra=`${p.teil?`<small class="teil">Filter: <b>${esc(p.teil)}</b></small>`:""}${istOel(p)&&p.filterMit?`<small class="teil">✓ Filter mit gewechselt</small>`:""}${p.menge&&!ohneMenge(p)?`<small class="teil">Füllmenge: <b>${esc(p.menge)}</b></small>`:""}${(()=>{const a=lagerZu(p.teil);return a?`<small class="teil">Im Lager: <b>${fmtN(a.menge)} ${esc(a.einheit||"Stk")}</b>${knapp(a)?" · nachbestellen":""}</small>`:""})()}${istAbschmieren(p)?"":`<button type="button" class="lager${p.lager?" ja":""}" data-lager="${esc(p.id)}" ${S.canWrite?"":"disabled"} aria-pressed="${!!p.lager}">${p.lager?"✓ Auf Lager":"Nicht auf Lager"}</button>`}`;
     if(nurZuletzt(p))return `<li><span class="stripe s-none"></span><span class="wn"><b>${esc(p.name)}</b><small>zuletzt gemacht</small>${extra}</span><span class="wd">${p.zuletzt?fmtMY(p.zuletzt):"–"}</span><span class="pill none">${p.zuletzt?seitM(p.zuletzt):"noch nicht eingetragen"}</span></li>`;
     const d=p.naechste?dueW(p.naechste):null;
     return `<li><span class="stripe s-${lvl(d)}"></span><span class="wn"><b>${esc(p.name)}</b><small>${esc(iv(p.intervall))||"kein Intervall"}${p.zuletzt?` · zuletzt ${p.zuletzt.length>7?fmtD(p.zuletzt):fmtMY(p.zuletzt)}`:""}</small>${extra}</span><span class="wd">${p.naechste?fmtMY(p.naechste):"–"}</span><span class="pill ${lvl(d)}">${p.naechste?rel(d):"kein Termin"}</span></li>`}).join("")}</ul>`:`<div class="empty">Keine Wartungspunkte. Über <b>Bearbeiten</b> kannst du Motoröl, Getriebeöl, Abschmieren und weitere anlegen.</div>`}</div>
@@ -680,7 +680,7 @@ function wRow(p){const fix=istAbschmieren(p),z=nurZuletzt(p);return `<div class=
   <label class="f wteil" ${fix?"hidden":""}><span class="label">Filter / Teile-Nr.</span><input class="w_teil" value="${esc(p.teil||"")}" placeholder="${esc(teilHint(p.name))}"></label>
   <label class="f wmenge" ${ohneMenge(p)?"hidden":""}><span class="label">Füllmenge / Sorte</span><input class="w_menge" value="${esc(p.menge||"")}" placeholder="${esc(mengeHint(p.name))}"></label>
   <label class="f wlager check" ${fix?"hidden":""}><input type="checkbox" class="w_lager" ${p.lager?"checked":""} style="width:auto"><span>Auf Lager</span></label>
-  <div class="f wow" ${istOel(p)?"":"hidden"}><span class="label">Gewechselt?</span><div class="wowr"><label class="check"><input type="checkbox" class="w_oel" style="width:auto"><span>Öl gewechselt</span></label><label class="check"><input type="checkbox" class="w_fil" style="width:auto"><span>Filter gewechselt</span></label><input type="month" class="w_owm" value="${iso(new Date()).slice(0,7)}" aria-label="Monat"></div>${p.filterZuletzt?`<small>Filter zuletzt: ${fmtMY(p.filterZuletzt)}</small>`:""}</div>
+  <label class="f wow check" ${istOel(p)?"":"hidden"}><input type="checkbox" class="w_fil" ${p.filterMit?"checked":""} style="width:auto"><span>Filter mit gewechselt</span></label>
   <button type="button" class="linkbtn wdel" aria-label="Wartungspunkt entfernen">Entfernen</button></div>`}
 
 function machineForm(m){
@@ -732,18 +732,15 @@ function machineForm(m){
       return zz?{modus:"zuletzt",intervall:"",naechste:"",zuletzt:r.querySelector(".w_last").value}
               :{modus:"intervall",intervall:r.querySelector(".w_iv").value.trim(),naechste:r.querySelector(".w_next").value,zuletzt:r.querySelector(".w_zul").value}})(),lager:r.querySelector(".w_lager").checked,teil:r.querySelector(".w_teil").value.trim(),menge:r.querySelector(".w_menge").value.trim()})).filter(p=>p.name);
     /* Felder behalten, die das Formular nicht zeigt (z. B. Filter zuletzt), und Öl/Filter-Häkchen anwenden */
-    const alt=Object.fromEntries(punkte(m).map(p=>[p.id,p])),neuE=[];
+    const alt=Object.fromEntries(punkte(m).map(p=>[p.id,p]));
     body.wartung=body.wartung.map(p=>{const r=document.querySelector(`.wrow[data-wid="${p.id}"]`);let np={...(alt[p.id]||{}),...p};
-      if(r&&!r.querySelector(".wow").hidden){const oel=r.querySelector(".w_oel").checked,fil=r.querySelector(".w_fil").checked,mon=r.querySelector(".w_owm").value||iso(new Date()).slice(0,7);
-        if(oel){np.zuletzt=mon;if(np.modus!=="zuletzt"&&np.intervall)np.naechste=addYM(mon,np.intervall)}
-        if(fil)np.filterZuletzt=mon;
-        if(oel||fil)neuE.push({datum:mon,text:`${np.name}: ${oel&&fil?"Öl + Filter":oel?"Öl":"Filter"} gewechselt`})}
+      if(r&&!r.querySelector(".wow").hidden)np.filterMit=r.querySelector(".w_fil").checked;
       return np});
     body.beispiel=false;
     const btn=ev.submitter;btn.disabled=true;btn.textContent="Speichert…";
     try{
       if(m.id){body.naechsteWartung="";body.intervall="";await S.db.doc("maschinen/"+m.id).update(body);
-        for(const x of neuE)await S.db.collection("eintraege").add({maschineId:m.id,art:"Wartung",datum:x.datum,punkte:[x.text],text:""});S.open={type:"detail",id:m.id};drawDetail()}
+        S.open={type:"detail",id:m.id};drawDetail()}
       else{delete body.naechsteWartung;delete body.intervall;body.angelegt=iso(new Date());const r=await S.db.collection("maschinen").add(body);S.open={type:"detail",id:r.id};drawDetail()}
     }catch(e){showErr("#mferr",e);btn.disabled=false;btn.textContent="Speichern"}
   });
@@ -757,7 +754,7 @@ function entryForm(mid,preset,from){
    <label class="f"><span class="label">Art</span><select id="e_art">${ARTEN.filter(a=>a!=="TÜV / HU"||hatTuev(m)).map(a=>`<option>${a}</option>`).join("")}</select></label>
    <label class="f"><span class="label">Monat</span><input id="e_datum" type="month" required value="${iso(new Date()).slice(0,7)}"></label>
    <fieldset class="f full checks" id="e_wbox"><legend class="label">Was wurde gemacht?</legend>
-     ${ps.length?ps.map(p=>`<label class="check"><input type="checkbox" value="${esc(p.id)}" class="e_p"><span>${esc(p.name)}${nurZuletzt(p)?` <small class="nb">· wird als „zuletzt gemacht“ gespeichert</small>`:p.intervall?` <small data-iv="${esc(p.intervall)}">· nächster Termin dann ${fmtMY(addYM(iso(new Date()),p.intervall))}</small>`:""}</span></label>${istOel(p)?`<div class="esub" data-sub="${esc(p.id)}" hidden><label class="check"><input type="checkbox" class="e_oel" checked><span>Öl gewechselt</span></label><label class="check"><input type="checkbox" class="e_fil" checked><span>Filter gewechselt</span></label></div>`:""}`).join(""):`<span class="note">Diese Maschine hat noch keine Wartungspunkte.</span>`}
+     ${ps.length?ps.map(p=>`<label class="check"><input type="checkbox" value="${esc(p.id)}" class="e_p"><span>${esc(p.name)}${nurZuletzt(p)?` <small class="nb">· wird als „zuletzt gemacht“ gespeichert</small>`:p.intervall?` <small data-iv="${esc(p.intervall)}">· nächster Termin dann ${fmtMY(addYM(iso(new Date()),p.intervall))}</small>`:""}</span></label>`).join(""):`<span class="note">Diese Maschine hat noch keine Wartungspunkte.</span>`}
    </fieldset>
    <p class="f full note" id="e_tbox" hidden>Die neue Plakette gilt automatisch ${tuevJahre(m.kategorie)} Jahre, also bis <b id="e_tuev"></b>.</p>
    <label class="f full"><span class="label" id="e_tlabel">Bemerkung</span><input id="e_text" placeholder="z. B. 15W-40, 18 l · Werkstatt Müller"></label>
