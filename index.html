@@ -1039,7 +1039,13 @@ async function migrate(){
 const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
 const standalone=matchMedia("(display-mode: standalone)").matches||navigator.standalone===true;
 let swReg=null;
-if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").then(r=>swReg=r).catch(()=>{});
+if("serviceWorker" in navigator){
+  /* Neue Version: sobald der neue Service Worker übernimmt, einmal neu laden – kein zweimal Schließen mehr nötig */
+  const hatteSW=!!navigator.serviceWorker.controller;let neu=false;
+  navigator.serviceWorker.addEventListener("controllerchange",()=>{if(hatteSW&&!neu){neu=true;location.reload()}});
+  navigator.serviceWorker.register("sw.js").then(r=>{swReg=r;r.update().catch(()=>{});
+    document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")r.update().catch(()=>{})})}).catch(()=>{});
+}
 
 let pushReady=null;
 async function initPush(ask){
