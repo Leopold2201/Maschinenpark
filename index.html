@@ -345,7 +345,8 @@ const EINHEITEN=["Stk","l","kg","Kanister","Eimer","Packung"];
 let VIEW="maschinen",LTAB="alle";
 const nrm=t=>String(t||"").toLowerCase().replace(/[^a-z0-9]/g,"");
 const fmtN=n=>(Math.round((+n||0)*100)/100).toLocaleString("de-DE");
-const knapp=a=>(+a.min>0)&&(+a.menge||0)<=(+a.min);
+const istOelKat=a=>a.kat==="Öle & Fette";
+const knapp=a=>istOelKat(a)?!!a.nachbestellen:(+a.min>0)&&(+a.menge||0)<=(+a.min);
 const mNamen=a=>{const n=(a.maschinen||[]).map(id=>(S.m.find(m=>m.id===id)||{}).name).filter(Boolean);return n.length?n.join(", "):(a.passt||"")};
 const lagerZu=teil=>{const k=nrm(teil);return k?S.l.find(a=>nrm(a.teil)===k):null};
 const $=s=>document.querySelector(s);
@@ -452,7 +453,8 @@ function lagerForm(a){
    <label class="f"><span class="label">Teilenummer</span><input id="l_teil" value="${v("teil")}" placeholder="z. B. AR43634"><small>Gleiche Nummer wie beim Wartungspunkt, dann zeigt die Maschine den Bestand an</small></label>
    <label class="f"><span class="label">Bestand</span><input id="l_menge" type="number" step="any" min="0" inputmode="decimal" value="${v("menge")||0}"></label>
    <label class="f"><span class="label">Einheit</span><select id="l_einheit">${EINHEITEN.map(e=>`<option ${e===(a.einheit||"Stk")?"selected":""}>${e}</option>`).join("")}</select></label>
-   <label class="f"><span class="label">Nachbestellen ab</span><input id="l_min" type="number" step="any" min="0" inputmode="decimal" value="${v("min")}" placeholder="z. B. 2"><small>Leer lassen, wenn egal</small></label>
+   <label class="f check" id="l_nachw" style="align-self:end" ${istOelKat({kat:a.kat||(LTAB!=="alle"?LTAB:"Filter")})?"":"hidden"}><input id="l_nach" type="checkbox" style="width:auto" ${a.nachbestellen?"checked":""}><span>Muss nachbestellt werden</span></label>
+   <label class="f" id="l_minw" ${istOelKat({kat:a.kat||(LTAB!=="alle"?LTAB:"Filter")})?"hidden":""}><span class="label">Nachbestellen ab</span><input id="l_min" type="number" step="any" min="0" inputmode="decimal" value="${v("min")}" placeholder="z. B. 2"><small>Leer lassen, wenn egal</small></label>
    <label class="f"><span class="label">Lagerort</span><input id="l_ort" value="${v("ort")}" placeholder="z. B. Werkstatt, Regal 2"></label>
    <fieldset class="f full mpick"><legend class="label">Gehört zu Maschine(n)</legend>
      <input id="l_msuche" type="search" placeholder="Maschine suchen…" aria-label="Maschine suchen">
@@ -461,11 +463,12 @@ function lagerForm(a){
    </fieldset>
    <label class="f full"><span class="label">Notiz</span><input id="l_notiz" value="${v("notiz")}" placeholder="z. B. Händler, Preis"></label>
   </div><p class="err" id="lferr" hidden></p><div class="row">${a.id?`<button type="button" class="danger" data-ldel="${esc(a.id)}" style="margin-right:auto">Löschen</button>`:""}<button class="primary" type="submit">Speichern</button></div></form>`);
+  $("#l_kat").addEventListener("change",e=>{const o=istOelKat({kat:e.target.value});$("#l_nachw").hidden=!o;$("#l_minw").hidden=o});
   $("#l_msuche").addEventListener("input",e=>{const q=nrm(e.target.value);document.querySelectorAll("#l_mlist [data-mname]").forEach(l=>l.hidden=!!q&&!l.dataset.mname.includes(q));document.querySelectorAll("#l_mlist .mg").forEach(g=>g.hidden=![...g.querySelectorAll("[data-mname]")].some(l=>!l.hidden))});
   $("#lf2").addEventListener("submit",async ev=>{
     ev.preventDefault();
     const body={name:$("#l_name").value.trim(),kat:$("#l_kat").value,teil:$("#l_teil").value.trim(),menge:+String($("#l_menge").value).replace(",",".")||0,
-      einheit:$("#l_einheit").value,min:$("#l_min").value===""?"":(+String($("#l_min").value).replace(",",".")||0),ort:$("#l_ort").value.trim(),maschinen:[...document.querySelectorAll(".l_m:checked")].map(c=>c.value),passt:a.passt||"",notiz:$("#l_notiz").value.trim(),aktualisiert:iso(new Date())};
+      einheit:$("#l_einheit").value,min:$("#l_min").value===""?"":(+String($("#l_min").value).replace(",",".")||0),nachbestellen:istOelKat({kat:$("#l_kat").value})&&$("#l_nach").checked,ort:$("#l_ort").value.trim(),maschinen:[...document.querySelectorAll(".l_m:checked")].map(c=>c.value),passt:a.passt||"",notiz:$("#l_notiz").value.trim(),aktualisiert:iso(new Date())};
     if(!body.name)return;const btn=ev.submitter;btn.disabled=true;
     try{if(a.id)await S.db.doc("lager/"+a.id).set(body);else await S.db.collection("lager").add(body);closeSheet()}
     catch(e){showErr("#lferr",e);btn.disabled=false}
