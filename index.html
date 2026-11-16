@@ -245,6 +245,8 @@ img{max-width:100%}[hidden]{display:none!important}
 .kfilter{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px}.kfilter .chip{border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:999px;padding:6px 12px;font-size:.85rem}.kfilter .chip.on{background:var(--accent,#2f6b2a);border-color:var(--accent,#2f6b2a);color:#fff}
 .gmk{background:none;border:0}.gmk .kmk{position:relative;display:flex;justify-content:center}.gmk .ktip{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:2px;white-space:nowrap;background:#fff;color:#222;border-radius:4px;padding:1px 6px;font:700 11px/1.5 system-ui,sans-serif;box-shadow:0 1px 3px rgba(0,0,0,.4)}.gmk .kneu{font-size:28px;line-height:30px;text-align:center}
 .gmk .kfl{position:absolute;transform:translate(-50%,-50%);white-space:nowrap;text-align:center;color:#fff;font:700 12px/1.2 system-ui,sans-serif;text-shadow:0 0 3px #000,0 0 2px #000;pointer-events:none}.gmk .kfl small{display:block;font-weight:600;font-size:10.5px}.gmk .kecke{width:12px;height:12px;border-radius:50%;background:#ff5a36;border:2px solid #fff;box-sizing:border-box}.kfinfo{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;padding:10px 12px;margin:8px 0;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}.kfinfo b{display:block}.kfinfo small{color:var(--muted)}.kfinfo.zeichnen{border-color:#ff5a36}
+.kweit .kfl{display:none}
+.kbtns{display:flex;flex-wrap:wrap;gap:6px}
 </style>
 </head>
 <body>
@@ -553,7 +555,7 @@ function kGoogle(el){
       return {remove:()=>p.setMap(null),add:()=>p.setMap(map),pfad:q=>p.setPath(q)}},
     onClick:f=>map.addListener("click",e=>f(e.latLng.toJSON())),view:(ll,z)=>{map.setCenter(ll);map.setZoom(z)},
     fit:pts=>{const b=new g.LatLngBounds();pts.forEach(p=>b.extend(p));map.fitBounds(b,40);g.event.addListenerOnce(map,"idle",()=>{if(map.getZoom()>19)map.setZoom(19)})},
-    center:()=>map.getCenter().toJSON(),zoom:()=>map.getZoom()}}
+    center:()=>map.getCenter().toJSON(),zoom:()=>map.getZoom(),onZoom:f=>map.addListener("zoom_changed",()=>f(map.getZoom()))}}
 function kLeaflet(el){
   const map=L.map(el,{zoomControl:true,attributionControl:true});
   const sat=L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",{maxZoom:21,maxNativeZoom:19,attribution:"Luftbild © Esri"}).addTo(map);
@@ -565,7 +567,7 @@ function kLeaflet(el){
       if(o.click)p.on("click",e=>{L.DomEvent.stopPropagation(e);o.click(e.latlng)});
       return {remove:()=>p.remove(),add:()=>p.addTo(map),pfad:q=>p.setLatLngs(q)}},
     onClick:f=>map.on("click",e=>f(e.latlng)),view:(ll,z)=>map.setView(ll,z),fit:pts=>map.fitBounds(pts.map(p=>[p.lat,p.lng]),{padding:[30,30],maxZoom:19}),
-    center:()=>map.getCenter(),zoom:()=>map.getZoom()}}
+    center:()=>map.getCenter(),zoom:()=>map.getZoom(),onZoom:f=>map.on("zoomend",()=>f(map.getZoom()))}}
 /* Felder: Fläche aus den Eckpunkten (Kugelformel), Mittelpunkt für die Beschriftung */
 function flaecheHa(pts){if(!pts||pts.length<3)return 0;const R=6378137,r=Math.PI/180;let a=0;
   for(let i=0;i<pts.length;i++){const p=pts[i],q=pts[(i+1)%pts.length];a+=(q.lng-p.lng)*r*(2+Math.sin(p.lat*r)+Math.sin(q.lat*r))}
@@ -573,6 +575,44 @@ function flaecheHa(pts){if(!pts||pts.length<3)return 0;const R=6378137,r=Math.PI
 const fmtHa=h=>h.toLocaleString("de-DE",{minimumFractionDigits:2,maximumFractionDigits:2})+" ha";
 function mitte(pts){let x=0,y=0;pts.forEach(p=>{x+=p.lat;y+=p.lng});return {lat:x/pts.length,lng:y/pts.length}}
 const FELDFARBE="#f6c400";
+/* Felder importieren: Shapefile-ZIP (z. B. Export aus dem John Deere Operations Center) oder GeoJSON – alles im Browser, nichts geht an fremde Server */
+async function zipLesen(buf){const d=new DataView(buf),u=new Uint8Array(buf),out={};let e=buf.byteLength-22;
+  while(e>=0&&d.getUint32(e,true)!==0x06054b50)e--;if(e<0)throw new Error("Keine ZIP-Datei");
+  const n=d.getUint16(e+10,true);let p=d.getUint32(e+16,true);
+  for(let i=0;i<n;i++){const meth=d.getUint16(p+10,true),cs=d.getUint32(p+20,true),fl=d.getUint16(p+28,true),xl=d.getUint16(p+30,true),cl=d.getUint16(p+32,true),lo=d.getUint32(p+42,true);
+    const name=new TextDecoder().decode(u.subarray(p+46,p+46+fl));p+=46+fl+xl+cl;
+    const st=lo+30+d.getUint16(lo+26,true)+d.getUint16(lo+28,true),raw=u.subarray(st,st+cs);
+    if(name.endsWith("/"))continue;
+    out[name.split("/").pop().toLowerCase()]=meth===0?raw:new Uint8Array(await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream("deflate-raw"))).arrayBuffer())}
+  return out}
+function dbfLesen(b,enc){const d=new DataView(b.buffer,b.byteOffset,b.byteLength),n=d.getUint32(4,true),hl=d.getUint16(8,true),rl=d.getUint16(10,true),td=new TextDecoder(enc),fs=[];
+  for(let o=32;b[o]!==0x0D;o+=32){let nm="";for(let k=0;k<11&&b[o+k];k++)nm+=String.fromCharCode(b[o+k]);fs.push([nm,b[o+16]])}
+  const r=[];for(let i=0;i<n;i++){let q=hl+i*rl+1;const x={};for(const[nm,l]of fs){x[nm]=td.decode(b.subarray(q,q+l)).trim();q+=l}r.push(x)}return r}
+function shpLesen(b){const d=new DataView(b.buffer,b.byteOffset,b.byteLength),r=[];let o=100;
+  while(o+8<=b.byteLength){const cl=d.getInt32(o+4,false)*2;o+=8;const t=d.getInt32(o,true);
+    if(t===5||t===15||t===25){const np=d.getInt32(o+36,true),nP=d.getInt32(o+40,true),parts=[];for(let k=0;k<np;k++)parts.push(d.getInt32(o+44+4*k,true));
+      const pb=o+44+4*np,rings=parts.map((s,k)=>{const e=k+1<np?parts[k+1]:nP,pts=[];for(let j=s;j<e;j++)pts.push({lng:d.getFloat64(pb+16*j,true),lat:d.getFloat64(pb+16*j+8,true)});return pts});r.push(rings)}else r.push(null);
+    o+=cl}return r}
+function ringSauber(pts){pts=pts.map(p=>({lat:+(+p.lat).toFixed(7),lng:+(+p.lng).toFixed(7)}));const a=pts[0],z=pts[pts.length-1];if(pts.length>3&&a.lat===z.lat&&a.lng===z.lng)pts.pop();return pts}
+async function felderAusDatei(file){const buf=await file.arrayBuffer(),F=[];
+  if(/\.(geo)?json$/i.test(file.name)){const g=JSON.parse(new TextDecoder().decode(buf));
+    for(const f of (g.features||[])){const gm=f.geometry;if(!gm)continue;const pr=f.properties||{};
+      const polys=gm.type==="Polygon"?[gm.coordinates]:gm.type==="MultiPolygon"?gm.coordinates:[];
+      polys.forEach((pc,k)=>F.push({id:pr.FIELD_ID||pr.id||null,name:(pr.FIELD_NAME||pr.name||pr.NAME||"Feld")+(polys.length>1?` (${k+1})`:""),punkte:ringSauber(pc[0].map(([lng,lat])=>({lat,lng})))}))}}
+  else{const z=await zipLesen(buf),k=Object.keys(z),shp=k.find(n=>n.endsWith(".shp"));if(!shp)throw new Error("In der ZIP ist keine .shp-Datei");
+    const base=shp.slice(0,-4),cpg=z[base+".cpg"]?new TextDecoder().decode(z[base+".cpg"]).trim():"",enc=/utf/i.test(cpg)?"utf-8":"windows-1252";
+    const rec=z[base+".dbf"]?dbfLesen(z[base+".dbf"],enc):[],geo=shpLesen(z[shp]);
+    geo.forEach((rings,i)=>{if(!rings)return;const r=rec[i]||{};const name=(r.FIELD_NAME||r.NAME||r.name||r.SCHLAG||`Feld ${i+1}`).replace(/~\d+$/,"").trim();
+      F.push({id:r.FIELD_ID||null,name,punkte:ringSauber(rings[0])})})}
+  const ok=F.filter(f=>f.punkte.length>=3&&f.punkte.every(p=>Math.abs(p.lat)<=90&&Math.abs(p.lng)<=180));
+  if(!ok.length)throw new Error("Keine Feldgrenzen gefunden");
+  if(ok.some(f=>Math.abs(f.punkte[0].lat)<1&&Math.abs(f.punkte[0].lng)<1)||ok.some(f=>f.punkte[0].lat>90))throw new Error("Falsches Koordinatensystem – bitte als WGS 84 exportieren");
+  return ok}
+async function felderSpeichern(F){const heute=iso(new Date());
+  for(let i=0;i<F.length;i+=400){const b=S.db.batch();
+    for(const f of F.slice(i,i+400)){const ref=f.id?S.db.doc("felder/jd-"+String(f.id).replace(/[^\w-]/g,"")):S.db.collection("felder").doc();
+      b.set(ref,{name:f.name,punkte:f.punkte,farbe:FELDFARBE,quelle:"Import",aktualisiert:heute},{merge:true})}
+    await b.commit()}}
 async function karte(mid,setzen){
   const m=mid?S.m.find(x=>x.id===mid):null;if(mid&&!m)return;
   S.open={type:"karte",id:mid||null};
@@ -583,7 +623,7 @@ async function karte(mid,setzen){
   <div id="map" class="map"><div class="empty">Karte wird geladen…</div></div>
   ${setzen?`<div class="fields"><label class="f full"><span class="label">Wo genau (optional)</span><input id="k_ort" maxlength="80" value="${esc(st?st.ort||"":"")}" placeholder="z. B. Maschinenhalle hinten links"></label></div>
   <p class="err" id="kerr" hidden></p><div class="row"><button type="button" id="k_gps">📍 Mein Standort</button>${st?`<button type="button" class="danger" id="k_del">Entfernen</button>`:""}<button type="button" class="primary" id="k_save" ${st?"":"disabled"}>Speichern</button></div>`
-  :`<div id="kfeld"></div><div class="row" style="justify-content:space-between"><small class="note" style="margin:0">${S.m.filter(x=>x.standort&&x.standort.lat).length} Maschinen · ${(S.f||[]).length} ${(S.f||[]).length===1?"Feld":"Felder"}${(S.f||[]).length?` (${fmtHa((S.f||[]).reduce((a,f)=>a+flaecheHa(f.punkte),0))})`:""} · Antippen öffnet</small><span>${S.canWrite?`<button type="button" id="k_feldneu">✏️ Feld einzeichnen</button> <button type="button" class="ghost" id="k_hof">Ansicht als Hof merken</button>`:""}</span></div>`}`);
+  :`<div id="kfeld"></div><div class="row" style="justify-content:space-between"><small class="note" style="margin:0">${S.m.filter(x=>x.standort&&x.standort.lat).length} Maschinen · ${(S.f||[]).length} ${(S.f||[]).length===1?"Feld":"Felder"}${(S.f||[]).length?` (${fmtHa((S.f||[]).reduce((a,f)=>a+flaecheHa(f.punkte),0))})`:""} · Antippen öffnet</small><span class="kbtns">${S.canWrite?`<button type="button" id="k_feldneu">✏️ Feld einzeichnen</button> <label class="btn ghost" id="k_imp">📥 Felder importieren<input type="file" id="k_impf" accept=".zip,.geojson,.json" hidden></label> <button type="button" class="ghost" id="k_hof">Ansicht als Hof merken</button>`:""}</span></div>`}`);
   /* Erst Google-Luftbild versuchen, sonst die freie Karte (Leaflet/Esri) */
   let G=false;try{await googleLib();G=true}catch(_){try{await kartenLib()}catch(__){$("#map").innerHTML=`<div class="empty">Karte konnte nicht geladen werden. Prüf die Internetverbindung.<br><small>Version ${esc(APPV)} · ${esc([...(googleLib.log||[]),...(kartenLib.log||[])].join(" · "))}</small></div>`;return}}
   if(!$("#map")||S.open.type!=="karte")return;$("#map").innerHTML="";
@@ -638,6 +678,12 @@ async function karte(mid,setzen){
     $("#kz_abbr").addEventListener("click",()=>karte(null,false));
     $("#kz_ok").addEventListener("click",()=>{zeichne=null;feldForm(null,pts.slice())});});
   if(!setzen)K.onClick(ll=>{if(zeichne)zeichne.add(ll)});
+  const lz=z=>{const el=$("#map");if(el)el.classList.toggle("kweit",z<15)};K.onZoom(lz);setTimeout(()=>lz(K.zoom()),400);
+  if(!setzen&&$("#k_impf"))$("#k_impf").addEventListener("change",async e=>{const file=e.target.files[0];if(!file)return;
+    try{toast("Felder werden gelesen…");const F=await felderAusDatei(file);
+      const ha=F.reduce((a,f)=>a+flaecheHa(f.punkte),0);
+      await felderSpeichern(F);toast(`${F.length} Felder importiert (${fmtHa(ha)}).`);setTimeout(()=>karte(null,false),300)}
+    catch(err){toast("Import fehlgeschlagen: "+(err&&err.message||"unbekannter Fehler"))}e.target.value=""});
   let neu=null;
   const setze=ll=>{if(neu)neu.move(ll);else neu=K.marker(ll,{html:`<div class="kneu">📍</div>`,w:30,h:30,unten:true});$("#k_save").disabled=false};
   setzeRef=setze;if(setzen){if(st)setze({lat:st.lat,lng:st.lng});K.onClick(setze)}
