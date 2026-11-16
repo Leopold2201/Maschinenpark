@@ -244,6 +244,7 @@ img{max-width:100%}[hidden]{display:none!important}
 .kfrei{object-fit:contain;filter:drop-shadow(0 0 1.5px #fff) drop-shadow(0 2px 3px rgba(0,0,0,.7))}
 .kfilter{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px}.kfilter .chip{border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:999px;padding:6px 12px;font-size:.85rem}.kfilter .chip.on{background:var(--accent,#2f6b2a);border-color:var(--accent,#2f6b2a);color:#fff}
 .gmk{background:none;border:0}.gmk .kmk{position:relative;display:flex;justify-content:center}.gmk .ktip{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:2px;white-space:nowrap;background:#fff;color:#222;border-radius:4px;padding:1px 6px;font:700 11px/1.5 system-ui,sans-serif;box-shadow:0 1px 3px rgba(0,0,0,.4)}.gmk .kneu{font-size:28px;line-height:30px;text-align:center}
+.gmk .kfl{position:absolute;transform:translate(-50%,-50%);white-space:nowrap;text-align:center;color:#fff;font:700 12px/1.2 system-ui,sans-serif;text-shadow:0 0 3px #000,0 0 2px #000;pointer-events:none}.gmk .kfl small{display:block;font-weight:600;font-size:10.5px}.gmk .kecke{width:12px;height:12px;border-radius:50%;background:#ff5a36;border:2px solid #fff;box-sizing:border-box}.kfinfo{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;padding:10px 12px;margin:8px 0;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}.kfinfo b{display:block}.kfinfo small{color:var(--muted)}.kfinfo.zeichnen{border-color:#ff5a36}
 </style>
 </head>
 <body>
@@ -354,7 +355,7 @@ let DUE="tuev"; /* startet immer mit TÜV */
 let TAB="alle";try{TAB=localStorage.getItem("mp_tab")||"alle"}catch(_){}
 const STD_PUNKTE=[["Motoröl",12],["Kraftstofffilter",12],["Getriebeöl",24],["Hydrauliköl",24],["Abschmieren",""]];
 const ARTEN=["Wartung","Reparatur","TÜV / HU","Sonstiges"];
-const S={m:[],e:[],l:[],k:[],h:[],a:[],hReady:false,kReady:false,ready:false,canWrite:true,open:null,db:null};
+const S={m:[],e:[],l:[],k:[],h:[],a:[],f:[],hReady:false,kReady:false,ready:false,canWrite:true,open:null,db:null};
 /* Lager */
 const LKATS=["Öle & Fette","Filter","Kugellager","Ersatzteile","Sonstiges"];
 const EINHEITEN=["Stk","l","kg","Kanister","Eimer","Packung"];
@@ -547,6 +548,9 @@ function kGoogle(el){
       this.d.style.left=(p.x-this.o.w/2)+"px";this.d.style.top=(p.y-(this.o.unten?this.o.h:this.o.h/2))+"px"}
     onRemove(){if(this.d)this.d.remove();this.d=null}}
   return {marker:(ll,o)=>{const m=new HM(ll,o);return {remove:()=>m.setMap(null),add:()=>m.setMap(map),move:p=>{m.ll=p;m.draw()},pos:()=>m.ll}},
+    poly:(pts,o)=>{const p=new g.Polygon({paths:pts,map,strokeColor:o.farbe,strokeWeight:2,fillColor:o.farbe,fillOpacity:o.fuell??.22,clickable:!!o.click,zIndex:0});
+      if(o.click)p.addListener("click",e=>o.click(e.latLng.toJSON()));
+      return {remove:()=>p.setMap(null),add:()=>p.setMap(map),pfad:q=>p.setPath(q)}},
     onClick:f=>map.addListener("click",e=>f(e.latLng.toJSON())),view:(ll,z)=>{map.setCenter(ll);map.setZoom(z)},
     fit:pts=>{const b=new g.LatLngBounds();pts.forEach(p=>b.extend(p));map.fitBounds(b,40);g.event.addListenerOnce(map,"idle",()=>{if(map.getZoom()>19)map.setZoom(19)})},
     center:()=>map.getCenter().toJSON(),zoom:()=>map.getZoom()}}
@@ -557,19 +561,29 @@ function kLeaflet(el){
   L.control.layers({"Luftbild":sat,"Karte":osm},null,{position:"topright"}).addTo(map);setTimeout(()=>map.invalidateSize(),150);
   return {marker:(ll,o)=>{const m=L.marker(ll,{interactive:!!o.click,icon:L.divIcon({className:"gmk",html:o.html,iconSize:[o.w,o.h],iconAnchor:[o.w/2,o.unten?o.h:o.h/2]})}).addTo(map);
       if(o.click)m.on("click",o.click);return {remove:()=>m.remove(),add:()=>m.addTo(map),move:p=>m.setLatLng(p),pos:()=>m.getLatLng()}},
+    poly:(pts,o)=>{const p=L.polygon(pts,{color:o.farbe,weight:2,fillColor:o.farbe,fillOpacity:o.fuell??.22,interactive:!!o.click}).addTo(map);
+      if(o.click)p.on("click",e=>{L.DomEvent.stopPropagation(e);o.click(e.latlng)});
+      return {remove:()=>p.remove(),add:()=>p.addTo(map),pfad:q=>p.setLatLngs(q)}},
     onClick:f=>map.on("click",e=>f(e.latlng)),view:(ll,z)=>map.setView(ll,z),fit:pts=>map.fitBounds(pts.map(p=>[p.lat,p.lng]),{padding:[30,30],maxZoom:19}),
     center:()=>map.getCenter(),zoom:()=>map.getZoom()}}
+/* Felder: Fläche aus den Eckpunkten (Kugelformel), Mittelpunkt für die Beschriftung */
+function flaecheHa(pts){if(!pts||pts.length<3)return 0;const R=6378137,r=Math.PI/180;let a=0;
+  for(let i=0;i<pts.length;i++){const p=pts[i],q=pts[(i+1)%pts.length];a+=(q.lng-p.lng)*r*(2+Math.sin(p.lat*r)+Math.sin(q.lat*r))}
+  return Math.abs(a*R*R/2)/10000}
+const fmtHa=h=>h.toLocaleString("de-DE",{minimumFractionDigits:2,maximumFractionDigits:2})+" ha";
+function mitte(pts){let x=0,y=0;pts.forEach(p=>{x+=p.lat;y+=p.lng});return {lat:x/pts.length,lng:y/pts.length}}
+const FELDFARBE="#f6c400";
 async function karte(mid,setzen){
   const m=mid?S.m.find(x=>x.id===mid):null;if(mid&&!m)return;
   S.open={type:"karte",id:mid||null};
   const st=m&&m.standort&&m.standort.lat?m.standort:null;
   openSheet(`<div class="sheet-head"><div><span class="label">${m?esc(m.name):"Hof"}</span><h2>${setzen?"Standort setzen":"Karte"}</h2></div><button class="ghost" data-act="${m?"back":"close"}">${m?"Zurück":"Schließen"}</button></div>
   ${setzen?`<p class="note" style="margin:0">Tippe auf die Karte, wo <b>${esc(m.name)}</b> steht – oder stell dich daneben und nimm <b>📍 Mein Standort</b>.</p>`:""}
-  ${setzen?"":`<div class="kfilter" id="kfilter">${KGRP.map(g=>`<button type="button" class="chip${kAus().includes(g.id)?"":" on"}" data-kg="${g.id}">${g.name}</button>`).join("")}</div>`}
+  ${setzen?"":`<div class="kfilter" id="kfilter">${[...KGRP,{id:"felder",name:"Felder"}].map(g=>`<button type="button" class="chip${kAus().includes(g.id)?"":" on"}" data-kg="${g.id}">${g.name}</button>`).join("")}</div>`}
   <div id="map" class="map"><div class="empty">Karte wird geladen…</div></div>
   ${setzen?`<div class="fields"><label class="f full"><span class="label">Wo genau (optional)</span><input id="k_ort" maxlength="80" value="${esc(st?st.ort||"":"")}" placeholder="z. B. Maschinenhalle hinten links"></label></div>
   <p class="err" id="kerr" hidden></p><div class="row"><button type="button" id="k_gps">📍 Mein Standort</button>${st?`<button type="button" class="danger" id="k_del">Entfernen</button>`:""}<button type="button" class="primary" id="k_save" ${st?"":"disabled"}>Speichern</button></div>`
-  :`<div class="row" style="justify-content:space-between"><small class="note" style="margin:0">${S.m.filter(x=>x.standort&&x.standort.lat).length} Maschinen auf der Karte · Name antippen öffnet die Maschine</small>${S.canWrite?`<button type="button" class="ghost" id="k_hof">Ansicht als Hof merken</button>`:""}</div>`}`);
+  :`<div id="kfeld"></div><div class="row" style="justify-content:space-between"><small class="note" style="margin:0">${S.m.filter(x=>x.standort&&x.standort.lat).length} Maschinen · ${(S.f||[]).length} ${(S.f||[]).length===1?"Feld":"Felder"}${(S.f||[]).length?` (${fmtHa((S.f||[]).reduce((a,f)=>a+flaecheHa(f.punkte),0))})`:""} · Antippen öffnet</small><span>${S.canWrite?`<button type="button" id="k_feldneu">✏️ Feld einzeichnen</button> <button type="button" class="ghost" id="k_hof">Ansicht als Hof merken</button>`:""}</span></div>`}`);
   /* Erst Google-Luftbild versuchen, sonst die freie Karte (Leaflet/Esri) */
   let G=false;try{await googleLib();G=true}catch(_){try{await kartenLib()}catch(__){$("#map").innerHTML=`<div class="empty">Karte konnte nicht geladen werden. Prüf die Internetverbindung.<br><small>Version ${esc(APPV)} · ${esc([...(googleLib.log||[]),...(kartenLib.log||[])].join(" · "))}</small></div>`;return}}
   if(!$("#map")||S.open.type!=="karte")return;$("#map").innerHTML="";
@@ -586,12 +600,49 @@ async function karte(mid,setzen){
     const g=gruppeOf(x);(grp[g]=grp[g]||[]).push(mk);if(!setzen&&kAus().includes(g))mk.remove();}
   if(!setzen)$("#kfilter").addEventListener("click",e=>{const b=e.target.closest("[data-kg]");if(!b)return;const g=b.dataset.kg;let aus=kAus();
     aus=aus.includes(g)?aus.filter(x=>x!==g):[...aus,g];lsSet("mp_kaus",JSON.stringify(aus));b.classList.toggle("on",!aus.includes(g));
+    if(g==="felder")felder.forEach(([p,lb])=>aus.includes(g)?(p.remove(),lb.remove()):(p.add(),lb.add()));
     (grp[g]||[]).forEach(mk=>aus.includes(g)?mk.remove():mk.add())});
+  /* Felder zeichnen */
+  const felder=[];let zeichne=null,setzeRef=null;
+  for(const f of (S.f||[])){if(!Array.isArray(f.punkte)||f.punkte.length<3)continue;
+    const p=K.poly(f.punkte,{farbe:f.farbe||FELDFARBE,click:ll=>{if(zeichne)zeichne.add(ll);else if(setzen)setzeRef&&setzeRef(ll);else feldInfo(f)}});
+    const lb=K.marker(mitte(f.punkte),{html:`<div class="kfl">${esc(f.name)}<small>${fmtHa(flaecheHa(f.punkte))}</small></div>`,w:1,h:1});
+    felder.push([p,lb]);if(!setzen&&kAus().includes("felder")){p.remove();lb.remove()}}
+  const feldInfo=f=>{const el=$("#kfeld");if(!el)return;
+    el.innerHTML=`<div class="kfinfo"><div><b>${esc(f.name)}</b><small>${fmtHa(flaecheHa(f.punkte))}${f.kultur?" · "+esc(f.kultur):""}${f.notiz?" · "+esc(f.notiz):""}</small></div>
+      ${S.canWrite?`<span><button type="button" id="kf_edit">Bearbeiten</button> <button type="button" class="danger" id="kf_del">Löschen</button></span>`:""}</div>`;
+    if(!S.canWrite)return;
+    $("#kf_edit").addEventListener("click",()=>feldForm(f));
+    const d=$("#kf_del");arm&&d.addEventListener("click",()=>arm(d,"Feld wirklich löschen?",async()=>{try{await S.db.doc("felder/"+f.id).delete();toast("Feld gelöscht.");karte(null,false)}catch(_){toast("Konnte nicht gelöscht werden.")}}))};
+  const feldForm=(f,punkte)=>{const el=$("#kfeld");f=f||{};
+    el.innerHTML=`<div class="kfinfo" style="display:block"><div class="fields">
+      <label class="f"><span class="label">Name des Feldes *</span><input id="kf_name" maxlength="60" value="${esc(f.name||"")}" placeholder="z. B. Am Kreuzweg"></label>
+      <label class="f"><span class="label">Kultur (optional)</span><input id="kf_kultur" maxlength="40" value="${esc(f.kultur||"")}" placeholder="z. B. Weizen, Grünland"></label>
+      <label class="f full"><span class="label">Notiz</span><input id="kf_notiz" maxlength="120" value="${esc(f.notiz||"")}"></label></div>
+      <p class="note" style="margin:4px 0">Fläche: <b>${fmtHa(flaecheHa(punkte||f.punkte))}</b></p>
+      <div class="row"><button type="button" class="ghost" id="kf_abbr">Abbrechen</button><button type="button" class="primary" id="kf_save">Speichern</button></div></div>`;
+    $("#kf_name").focus();
+    $("#kf_abbr").addEventListener("click",()=>karte(null,false));
+    $("#kf_save").addEventListener("click",async ev=>{const name=$("#kf_name").value.trim();if(!name){$("#kf_name").focus();return}ev.target.disabled=true;
+      const d={name,kultur:$("#kf_kultur").value.trim(),notiz:$("#kf_notiz").value.trim()};
+      try{if(f.id)await S.db.doc("felder/"+f.id).update(d);else await S.db.collection("felder").add({...d,punkte:punkte,farbe:FELDFARBE,angelegt:iso(new Date())});
+        toast("Feld gespeichert.");karte(null,false)}catch(_){toast("Konnte nicht gespeichert werden.");ev.target.disabled=false}})};
+  if(!setzen&&$("#k_feldneu"))$("#k_feldneu").addEventListener("click",()=>{
+    const pts=[],tmp=K.poly([],{farbe:"#ff5a36",fuell:.3}),ecken=[];
+    const upd=()=>{tmp.pfad(pts);$("#kz_info").textContent=pts.length<3?`${pts.length} Ecke${pts.length===1?"":"n"} – tippe weitere Ecken an`:`${pts.length} Ecken · ${fmtHa(flaecheHa(pts))}`;$("#kz_ok").disabled=pts.length<3};
+    zeichne={add:ll=>{pts.push({lat:+(+ll.lat).toFixed(7),lng:+(+ll.lng).toFixed(7)});ecken.push(K.marker(ll,{html:`<div class="kecke"></div>`,w:12,h:12}));upd()}};
+    $("#kfeld").innerHTML=`<div class="kfinfo zeichnen"><div><b>Feld einzeichnen</b><small id="kz_info">Tippe nacheinander die Ecken des Feldes auf der Karte an.</small></div>
+      <span><button type="button" id="kz_back">↶</button> <button type="button" class="ghost" id="kz_abbr">Abbrechen</button> <button type="button" class="primary" id="kz_ok" disabled>Fertig</button></span></div>`;
+    $("#k_feldneu").disabled=true;
+    $("#kz_back").addEventListener("click",()=>{if(!pts.length)return;pts.pop();ecken.pop().remove();upd()});
+    $("#kz_abbr").addEventListener("click",()=>karte(null,false));
+    $("#kz_ok").addEventListener("click",()=>{zeichne=null;feldForm(null,pts.slice())});});
+  if(!setzen)K.onClick(ll=>{if(zeichne)zeichne.add(ll)});
   let neu=null;
   const setze=ll=>{if(neu)neu.move(ll);else neu=K.marker(ll,{html:`<div class="kneu">📍</div>`,w:30,h:30,unten:true});$("#k_save").disabled=false};
-  if(setzen){if(st)setze({lat:st.lat,lng:st.lng});K.onClick(setze)}
+  setzeRef=setze;if(setzen){if(st)setze({lat:st.lat,lng:st.lng});K.onClick(setze)}
   if(st)K.view({lat:st.lat,lng:st.lng},19);
-  else if(!setzen&&pts.length>1)K.fit(pts);
+  else if(!setzen&&(pts.length>1||(S.f||[]).length))K.fit([...pts,...(S.f||[]).flatMap(f=>f.punkte||[])]);
   else if(!setzen&&pts.length===1)K.view(pts[0],18);
   else K.view({lat:hof.lat,lng:hof.lng},hof.zoom||17);
   const map=K;
@@ -1130,6 +1181,7 @@ if(!configured){
     let f1=1,f2=1;
     unsub.push(S.db.collection("maschinen").onSnapshot(s=>{S.m=s.docs.map(d=>({id:d.id,...d.data()}));if(f1){f1=0;done()}render()},fail));
     let f3=1;unsub.push(S.db.collection("lager").onSnapshot(s=>{S.l=s.docs.map(d=>({id:d.id,...d.data()}));if(f3){f3=0;done()}render()},fail));
+    unsub.push(S.db.collection("felder").onSnapshot(s=>{S.f=s.docs.map(d=>({id:d.id,...d.data()}))},()=>{}));
     unsub.push(S.db.collection("hofarbeiten").onSnapshot(s=>{S.h=s.docs.map(d=>({id:d.id,...d.data()}));S.hReady=true;render()},()=>{S.hReady=true;render()}));
     unsub.push(S.db.collection("kohlBestellungen").onSnapshot(s=>{S.k=s.docs.map(d=>({id:d.id,...d.data()}));S.kReady=true;render()},()=>{S.kReady=true;render()}));
     unsub.push(S.db.collection("eintraege").onSnapshot(s=>{S.e=s.docs.map(d=>({id:d.id,...d.data()}));if(f2){f2=0;done()}render()},fail));
