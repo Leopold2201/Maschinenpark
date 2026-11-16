@@ -259,6 +259,7 @@ body.kvoll-an{overflow:hidden}
 .kctl i{font-style:normal;font-size:20px;width:24px;text-align:center;filter:drop-shadow(0 0 2px #000)}
 .kctl>button:disabled{opacity:.45}
 .kwrap.voll .kctl{bottom:calc(30px + env(safe-area-inset-bottom,0px))}.kwrap.voll:has(#kfeldv:not(:empty)) .kctl{bottom:calc(160px + env(safe-area-inset-bottom,0px))}
+.kdot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:middle;box-shadow:0 0 0 1px rgba(0,0,0,.35)}.kleg{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:.85rem;margin:6px 0}.kleg small{color:var(--muted)}.knutz{display:grid;gap:6px;margin:8px 0}.knutz button{text-align:left}
 </style>
 </head>
 <body>
@@ -587,6 +588,11 @@ function flaecheHa(pts){if(!pts||pts.length<3)return 0;const R=6378137,r=Math.PI
 const fmtHa=h=>h.toLocaleString("de-DE",{minimumFractionDigits:2,maximumFractionDigits:2})+" ha";
 function mitte(pts){let x=0,y=0;pts.forEach(p=>{x+=p.lat;y+=p.lng});return {lat:x/pts.length,lng:y/pts.length}}
 const FELDFARBE="#f6c400",AUFTRAGFARBE="#ff6a00";
+/* Nutzung der Felder mit Farbe; ohne Angabe wird aus dem Namen geraten */
+const NUTZ=[["acker","Ackerland","#f6c400"],["gruen","Grünland / Wiese","#3ddc4a"],["still","Stilllegung","#c084fc"],["baeume","Weihnachtsbäume","#00d1b2"],["sonst","Sonstiges","#e5e5e5"]];
+const nutzung=f=>f.nutzung||(/stil+(legung)?\b|\bstill$/i.test(f.name||"")?"still":/wiese|weide|grünland/i.test(f.name||"")?"gruen":/tannen|weihnacht|bäume/i.test(f.name||"")?"baeume":"acker");
+const nutzFarbe=f=>(NUTZ.find(n=>n[0]===nutzung(f))||NUTZ[0])[2];
+const nutzName=f=>(NUTZ.find(n=>n[0]===nutzung(f))||NUTZ[0])[1];
 /* Felder importieren: Shapefile-ZIP (z. B. Export aus dem John Deere Operations Center) oder GeoJSON – alles im Browser, nichts geht an fremde Server */
 async function zipLesen(buf){const d=new DataView(buf),u=new Uint8Array(buf),out={};let e=buf.byteLength-22;
   while(e>=0&&d.getUint32(e,true)!==0x06054b50)e--;if(e<0)throw new Error("Keine ZIP-Datei");
@@ -639,7 +645,7 @@ async function karte(mid,setzen){
   <div class="kwrap" id="kwrap"><div id="map" class="map"><div class="empty">Karte wird geladen…</div></div><div class="kctl">${setzen||!S.canWrite?"":`<button type="button" id="k_ausw"><i>☑</i>Auswählen</button><button type="button" id="k_feldneu"><i>✏️</i>Einzeichnen</button><label id="k_imp"><i>📥</i>Import<input type="file" id="k_impf" accept=".zip,.geojson,.json" hidden></label>`}<button type="button" id="kvoll" aria-label="Vollbild"><i>⛶</i><span>Vollbild</span></button></div>${setzen?"":`<div id="kfeldv"></div>`}</div>
   ${setzen?`<div class="fields"><label class="f full"><span class="label">Wo genau (optional)</span><input id="k_ort" maxlength="80" value="${esc(st?st.ort||"":"")}" placeholder="z. B. Maschinenhalle hinten links"></label></div>
   <p class="err" id="kerr" hidden></p><div class="row"><button type="button" id="k_gps">📍 Mein Standort</button>${st?`<button type="button" class="danger" id="k_del">Entfernen</button>`:""}<button type="button" class="primary" id="k_save" ${st?"":"disabled"}>Speichern</button></div>`
-  :`<div id="kfeld"></div><div id="k_auftr"></div><div class="row" style="justify-content:space-between"><small class="note" style="margin:0">${S.m.filter(x=>x.standort&&x.standort.lat).length} Maschinen · ${(S.f||[]).length} ${(S.f||[]).length===1?"Feld":"Felder"}${(S.f||[]).length?` (${fmtHa((S.f||[]).reduce((a,f)=>a+flaecheHa(f.punkte),0))})`:""} · Antippen öffnet</small>${S.canWrite?`<button type="button" class="linkbtn" id="k_hof">Ansicht als Hof merken</button>`:""}</div>`}`;
+  :`<div id="kfeld"></div><div id="k_leg" class="kleg"></div><div id="k_auftr"></div><div class="row" style="justify-content:space-between"><small class="note" style="margin:0">${S.m.filter(x=>x.standort&&x.standort.lat).length} Maschinen · ${(S.f||[]).length} ${(S.f||[]).length===1?"Feld":"Felder"}${(S.f||[]).length?` (${fmtHa((S.f||[]).reduce((a,f)=>a+flaecheHa(f.punkte),0))})`:""} · Antippen öffnet</small>${S.canWrite?`<button type="button" class="linkbtn" id="k_hof">Ansicht als Hof merken</button>`:""}</div>`}`;
   if(tab){$("#vKarte").innerHTML=`<div class="sechead"><h2>Karte</h2></div>`+kb;kTally()}
   else openSheet(kh+kb);
   /* Erst Google-Luftbild versuchen, sonst die freie Karte (Leaflet/Esri) */
@@ -668,7 +674,7 @@ async function karte(mid,setzen){
     (grp[g]||[]).forEach(mk=>aus.includes(g)?mk.remove():mk.add())});
   /* Felder zeichnen */
   const felder=[],FO={};let zeichne=null,setzeRef=null,auswahl=null;
-  const fStil=f=>auswahl&&auswahl.has(f.id)?{farbe:"#2f8cff",fuell:.45,dick:3}:f.auftrag?{farbe:AUFTRAGFARBE,fuell:.4,dick:3}:{farbe:f.farbe||FELDFARBE};
+  const fStil=f=>auswahl&&auswahl.has(f.id)?{farbe:"#2f8cff",fuell:.45,dick:3}:f.auftrag?{farbe:AUFTRAGFARBE,fuell:.4,dick:3}:{farbe:nutzFarbe(f),fuell:.3};
   const fLabel=f=>`<div class="kfl${f.auftrag?" kfa":""}">${f.auftrag?"⚑ ":""}${esc(f.name)}<small>${f.auftrag?esc(f.auftrag.was)+(f.auftrag.wer?" · "+esc(f.auftrag.wer):""):fmtHa(flaecheHa(f.punkte))}</small></div>`;
   const fNeu=f=>{const o=FO[f.id];if(!o)return;o.p.stil(fStil(f));o.lb.html(fLabel(f))};
   for(const f of (S.f||[])){if(!Array.isArray(f.punkte)||f.punkte.length<3)continue;
@@ -691,19 +697,25 @@ async function karte(mid,setzen){
   const auswahlEnde=()=>{if(!auswahl)return;const ids=[...auswahl];auswahl=null;ids.forEach(id=>{const f=(S.f||[]).find(x=>x.id===id);if(f)fNeu(f)});const b=$("#k_ausw");if(b)b.disabled=false};
   const auswahlStart=()=>{if(zeichne)return;const set=new Set();auswahl=set;
     set.tog=f=>{set.has(f.id)?set.delete(f.id):set.add(f.id);fNeu(f);upd()};
-    const el=kPanel();const upd=()=>{const fs=(S.f||[]).filter(f=>set.has(f.id));$("#kw_info").textContent=fs.length?`${fs.length} Feld${fs.length===1?"":"er"} · ${fmtHa(fs.reduce((q,f)=>q+flaecheHa(f.punkte),0))}`:"Tippe die Felder an, die bearbeitet werden sollen.";$("#kw_ok").disabled=!fs.length;$("#kw_weg").disabled=!fs.some(f=>f.auftrag)};
+    const el=kPanel();const upd=()=>{const fs=(S.f||[]).filter(f=>set.has(f.id));$("#kw_info").textContent=fs.length?`${fs.length} Feld${fs.length===1?"":"er"} · ${fmtHa(fs.reduce((q,f)=>q+flaecheHa(f.punkte),0))}`:"Tippe die Felder an, die bearbeitet werden sollen.";$("#kw_ok").disabled=!fs.length;$("#kw_nutz").disabled=!fs.length;$("#kw_weg").disabled=!fs.some(f=>f.auftrag)};
     el.innerHTML=`<div class="kfinfo zeichnen" style="border-color:#2f8cff"><div><b>Felder auswählen</b><small id="kw_info"></small></div>
-      <span class="kbtns"><button type="button" class="ghost" id="kw_abbr">Abbrechen</button><button type="button" id="kw_weg">✓ Erledigt</button><button type="button" class="primary" id="kw_ok">⚑ Auftrag</button></span></div>`;
+      <span class="kbtns"><button type="button" class="ghost" id="kw_abbr">Abbrechen</button><button type="button" id="kw_nutz">🎨 Nutzung</button><button type="button" id="kw_weg">✓ Erledigt</button><button type="button" class="primary" id="kw_ok">⚑ Auftrag</button></span></div>`;
     upd();const b=$("#k_ausw");if(b)b.disabled=true;
     $("#kw_abbr").addEventListener("click",()=>{auswahlEnde();el.innerHTML=""});
     $("#kw_ok").addEventListener("click",()=>auftragForm([...set]));
+    $("#kw_nutz").addEventListener("click",()=>{const ids=[...set];el.innerHTML=`<div class="kfinfo" style="display:block"><b>Nutzung für ${ids.length} Feld${ids.length===1?"":"er"}</b>
+      <div class="knutz">${NUTZ.map(([k,n,c])=>`<button type="button" data-nz="${k}"><span class="kdot" style="background:${c}"></span>${n}</button>`).join("")}</div>
+      <div class="row"><button type="button" class="ghost" id="kn_abbr">Abbrechen</button></div></div>`;
+      $("#kn_abbr").addEventListener("click",()=>{auswahlEnde();el.innerHTML=""});
+      el.querySelectorAll("[data-nz]").forEach(b=>b.addEventListener("click",async()=>{const nz=b.dataset.nz;try{const bt=S.db.batch();ids.forEach(id=>bt.update(S.db.doc("felder/"+id),{nutzung:nz}));await bt.commit();
+        ids.forEach(id=>{const f=(S.f||[]).find(x=>x.id===id);if(f)f.nutzung=nz});auswahlEnde();el.innerHTML="";legende();toast("Nutzung gespeichert.")}catch(_){toast("Konnte nicht gespeichert werden.")}}))});
     $("#kw_weg").addEventListener("click",async()=>{const ids=[...set].filter(id=>((S.f||[]).find(x=>x.id===id)||{}).auftrag);try{await auftragSpeichern(ids,null);toast("Als erledigt markiert.");auswahlEnde();el.innerHTML="";auftragZahl()}catch(_){toast("Konnte nicht gespeichert werden.")}})};
   const auftragZahl=()=>{const el=$("#k_auftr");if(!el)return;const fs=(S.f||[]).filter(f=>f.auftrag);el.innerHTML=fs.length?`<button type="button" class="linkbtn" id="k_auftrl">⚑ ${fs.length} Feld${fs.length===1?"":"er"} mit Auftrag (${fmtHa(fs.reduce((q,f)=>q+flaecheHa(f.punkte),0))})</button>`:"";
     const l=$("#k_auftrl");if(l)l.addEventListener("click",()=>{const p=kPanel();p.innerHTML=`<div class="kfinfo" style="display:block"><b>Offene Aufträge</b>${fs.map(f=>`<div class="kaz" data-kf="${esc(f.id)}"><span>⚑ <b style="display:inline">${esc(f.name)}</b> – ${esc(f.auftrag.was)}${f.auftrag.wer?" ("+esc(f.auftrag.wer)+")":""}</span><small>${fmtHa(flaecheHa(f.punkte))}</small></div>`).join("")}</div>`;
       p.querySelectorAll("[data-kf]").forEach(d=>d.addEventListener("click",()=>{const f=fs.find(x=>x.id===d.dataset.kf);if(f){K.view(mitte(f.punkte),17);feldInfo(f)}}))})};
   const feldInfo=f=>{const el=kPanel();if(!el)return;
     const c=mitte(f.punkte),a=f.auftrag;
-    el.innerHTML=`<div class="kfinfo"><div><b>${esc(f.name)}</b><small>${fmtHa(flaecheHa(f.punkte))}${f.kultur?" · "+esc(f.kultur):""}${f.notiz?" · "+esc(f.notiz):""}</small>
+    el.innerHTML=`<div class="kfinfo"><div><b>${esc(f.name)}</b><small><span class="kdot" style="background:${nutzFarbe(f)}"></span>${esc(nutzName(f))} · ${fmtHa(flaecheHa(f.punkte))}${f.kultur?" · "+esc(f.kultur):""}${f.notiz?" · "+esc(f.notiz):""}</small>
       ${a?`<div class="kfa-box">⚑ <b style="display:inline">${esc(a.was)}</b>${a.wer?" · "+esc(a.wer):""}<small> · seit ${esc(fmtD(a.seit))}${a.von?" von "+esc(a.von):""}</small></div>`:""}</div>
       <span class="kbtns"><a class="btn" href="https://www.google.com/maps/dir/?api=1&destination=${c.lat.toFixed(6)},${c.lng.toFixed(6)}" target="_blank" rel="noopener">🧭 Hinfahren</a>
       ${S.canWrite?`${a?`<button type="button" class="primary" id="kf_erl">✓ Erledigt</button>`:`<button type="button" class="primary" id="kf_auf">⚑ Auftrag</button>`}<button type="button" id="kf_edit">Bearbeiten</button><button type="button" class="danger" id="kf_del">Löschen</button>`:""}</span></div>`;
@@ -715,6 +727,7 @@ async function karte(mid,setzen){
   const feldForm=(f,punkte)=>{const el=kPanel();f=f||{};
     el.innerHTML=`<div class="kfinfo" style="display:block"><div class="fields">
       <label class="f"><span class="label">Name des Feldes *</span><input id="kf_name" maxlength="60" value="${esc(f.name||"")}" placeholder="z. B. Am Kreuzweg"></label>
+      <label class="f"><span class="label">Nutzung</span><select id="kf_nutz">${NUTZ.map(([k,n])=>`<option value="${k}" ${k===nutzung({name:f.name,nutzung:f.nutzung})?"selected":""}>${n}</option>`).join("")}</select></label>
       <label class="f"><span class="label">Kultur (optional)</span><input id="kf_kultur" maxlength="40" value="${esc(f.kultur||"")}" placeholder="z. B. Weizen, Grünland"></label>
       <label class="f full"><span class="label">Notiz</span><input id="kf_notiz" maxlength="120" value="${esc(f.notiz||"")}"></label></div>
       <p class="note" style="margin:4px 0">Fläche: <b>${fmtHa(flaecheHa(punkte||f.punkte))}</b></p>
@@ -722,7 +735,7 @@ async function karte(mid,setzen){
     $("#kf_name").focus();
     $("#kf_abbr").addEventListener("click",()=>karte(null,false));
     $("#kf_save").addEventListener("click",async ev=>{const name=$("#kf_name").value.trim();if(!name){$("#kf_name").focus();return}ev.target.disabled=true;
-      const d={name,kultur:$("#kf_kultur").value.trim(),notiz:$("#kf_notiz").value.trim()};
+      const d={name,nutzung:$("#kf_nutz").value,kultur:$("#kf_kultur").value.trim(),notiz:$("#kf_notiz").value.trim()};
       try{if(f.id)await S.db.doc("felder/"+f.id).update(d);else await S.db.collection("felder").add({...d,punkte:punkte,farbe:FELDFARBE,angelegt:iso(new Date())});
         toast("Feld gespeichert.");karte(null,false)}catch(_){toast("Konnte nicht gespeichert werden.");ev.target.disabled=false}})};
   if(!setzen&&$("#k_feldneu"))$("#k_feldneu").addEventListener("click",()=>{
@@ -736,7 +749,8 @@ async function karte(mid,setzen){
     $("#kz_abbr").addEventListener("click",()=>karte(null,false));
     $("#kz_ok").addEventListener("click",()=>{zeichne=null;feldForm(null,pts.slice())});});
   if(!setzen)K.onClick(ll=>{if(zeichne)zeichne.add(ll)});
-  if(!setzen){auftragZahl();const ab=$("#k_ausw");if(ab)ab.addEventListener("click",auswahlStart)}
+  const legende=()=>{const el=$("#k_leg");if(!el)return;const fs=S.f||[];el.innerHTML=fs.length?NUTZ.map(([k,n,c])=>{const t=fs.filter(f=>nutzung(f)===k);return t.length?`<span><span class="kdot" style="background:${c}"></span>${n} <small>${fmtHa(t.reduce((q,f)=>q+flaecheHa(f.punkte),0))}</small></span>`:""}).join(""):""};
+  if(!setzen){auftragZahl();legende();const ab=$("#k_ausw");if(ab)ab.addEventListener("click",auswahlStart)}
   const lz=z=>{const el=$("#map");if(el)el.classList.toggle("kweit",z<15)};K.onZoom(lz);setTimeout(()=>lz(K.zoom()),400);
   if(!setzen&&$("#k_impf"))$("#k_impf").addEventListener("change",async e=>{const file=e.target.files[0];if(!file)return;
     try{toast("Felder werden gelesen…");const F=await felderAusDatei(file);
