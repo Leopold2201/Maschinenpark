@@ -43,7 +43,7 @@ h1{font-family:var(--f-display);font-weight:700;font-size:clamp(2.6rem,13vw,4.8r
 .brand img{height:118px;width:auto;object-fit:contain;flex:0 0 auto}
 @media (min-width:700px){.brand img{height:160px}}
 #pushBtn.on{background:var(--ok-bg);color:var(--ok);border-color:transparent}
-.signatur{text-align:center;color:var(--muted);font-size:.82rem;letter-spacing:.04em;margin:8px 0 0}
+.signatur{text-align:center;color:var(--muted);font-size:.82rem;letter-spacing:.04em;margin:8px 0 0}.wer{text-align:center;font-size:.8rem;margin:6px 0 0}.wer small{opacity:.75}
 .tally{display:flex;gap:8px;flex-wrap:wrap}
 .tally-lbl{font-size:.8rem;font-weight:700;letter-spacing:.04em;margin:0 0 4px;opacity:.9}
 .tally div{border:1px solid color-mix(in srgb,var(--band-ink) 25%,transparent);border-radius:8px;padding:6px 12px;min-width:84px}
@@ -74,7 +74,7 @@ button:disabled{opacity:.5;cursor:default}
 /* Maschinen */
 .toolbar{display:flex;gap:8px;flex-wrap:wrap}
 .viewnav{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;background:var(--sunk);border:1px solid var(--line);border-radius:12px;padding:3px;position:sticky;top:env(safe-area-inset-top,0px);z-index:5}
-.viewnav button{border:0;background:transparent;border-radius:9px;padding:10px 4px;min-width:0;font-weight:700;font-family:var(--f-display);font-size:1rem;letter-spacing:.01em;color:var(--muted)}
+.viewnav button{border:0;background:transparent;border-radius:9px;padding:10px 4px;min-width:0;font-weight:700;font-family:var(--f-display);font-size:clamp(.85rem,3.9vw,1.05rem);letter-spacing:0;color:var(--muted)}
 .viewnav button.on{background:var(--accent);color:var(--accent-ink)}
 .vgrid{display:grid;gap:28px;min-width:0}
 .vgrid>section,#vLager{min-width:0}
@@ -254,6 +254,7 @@ img{max-width:100%}[hidden]{display:none!important}
 <section class="login wrap" id="login" hidden>
   <form id="lf">
     <div><span class="label">Hof-Zugang</span><h2>Anmelden</h2></div>
+    <label class="f"><span class="label">Dein Name</span><input id="l_name" autocomplete="name" required maxlength="60" placeholder="Vor- und Nachname"></label>
     <label class="f"><span class="label">E-Mail</span><input id="l_mail" type="email" autocomplete="username" required></label>
     <label class="f"><span class="label">Passwort</span><input id="l_pw" type="password" autocomplete="current-password" required></label>
     <p class="err" id="lerr" hidden></p>
@@ -312,7 +313,8 @@ img{max-width:100%}[hidden]{display:none!important}
     <p class="klink">Bestellseite für Kunden: <a id="kUrl" target="_blank" rel="noopener"></a> <button class="ghost" id="kCopy">Link kopieren</button></p>
   </section>
   <div class="foot"><p class="note" id="conn">Verbinde…</p><button id="pushBtn" hidden>Benachrichtigungen einschalten</button><button class="linkbtn" id="logout">Abmelden</button></div>
-  <p class="signatur">Leopold Teigeler</p>
+  <p class="signatur" id="ichName"></p>
+  <p class="note wer" id="wer"></p>
 </div></main>
 <div id="toast" class="toast" hidden></div>
 
@@ -346,7 +348,7 @@ let DUE="tuev"; /* startet immer mit TÜV */
 let TAB="alle";try{TAB=localStorage.getItem("mp_tab")||"alle"}catch(_){}
 const STD_PUNKTE=[["Motoröl",12],["Kraftstofffilter",12],["Getriebeöl",24],["Hydrauliköl",24],["Abschmieren",""]];
 const ARTEN=["Wartung","Reparatur","TÜV / HU","Sonstiges"];
-const S={m:[],e:[],l:[],k:[],h:[],hReady:false,kReady:false,ready:false,canWrite:true,open:null,db:null};
+const S={m:[],e:[],l:[],k:[],h:[],a:[],hReady:false,kReady:false,ready:false,canWrite:true,open:null,db:null};
 /* Lager */
 const LKATS=["Öle & Fette","Filter","Kugellager","Ersatzteile","Sonstiges"];
 const EINHEITEN=["Stk","l","kg","Kanister","Eimer","Packung"];
@@ -485,7 +487,32 @@ function lagerForm(a){
   });
 }
 
-function render(){renderMasch();renderLager();renderKohl();renderHof()}
+function render(){renderMasch();renderLager();renderKohl();renderHof();renderWer()}
+/* ── Wer ist angemeldet: Name pro Gerät (gemeinsamer Hof-Login) ── */
+const lsGet=k=>{try{return localStorage.getItem(k)||""}catch(_){return ""}};
+const lsSet=(k,v)=>{try{localStorage.setItem(k,v)}catch(_){}};
+const meinName=()=>lsGet("mp_name");
+const geraetId=()=>{let d=lsGet("mp_geraet");if(!d){d=uid()+uid();lsSet("mp_geraet",d)}return d};
+const geraetArt=()=>/iPhone|iPad/.test(navigator.userAgent)?"iPhone":/Android/.test(navigator.userAgent)?"Android":"Computer";
+async function meldeAn(){try{await S.db.doc("angemeldet/"+geraetId()).set({name:meinName(),geraet:geraetArt(),zuletzt:new Date().toISOString()},{merge:true})}catch(_){}renderWer()}
+function nameFragen(){
+  S.open={type:"name"};
+  openSheet(`<div class="sheet-head"><h2>Wer bist du?</h2>${meinName()?`<button class="ghost" data-act="close">Abbrechen</button>`:""}</div>
+  <form id="nf"><div class="fields"><label class="f full"><span class="label">Dein voller Name</span><input id="n_name" required maxlength="60" autocomplete="name" value="${esc(meinName())}" placeholder="Vor- und Nachname"></label></div>
+  <p class="note">Der Name steht unten in der App, damit alle sehen, wer auf welchem Gerät angemeldet ist.</p><p class="err" id="nferr" hidden></p>
+  <div class="row"><button class="primary" type="submit">Speichern</button></div></form>`);
+  $("#nf").addEventListener("submit",ev=>{ev.preventDefault();const nm=$("#n_name").value.trim().replace(/\s+/g," ");
+    if(nm.length<3){$("#nferr").hidden=false;$("#nferr").textContent="Bitte deinen vollen Namen eintragen.";return}
+    lsSet("mp_name",nm);closeSheet();meldeAn()});
+}
+function renderWer(){
+  const ich=meinName(),el=$("#ichName");if(!el)return;
+  el.innerHTML=ich?`${esc(ich)} <button class="linkbtn" id="nameAendern" style="font-size:.78rem">ändern</button>`:"";
+  const me=geraetId(),liste=(S.a||[]).slice().sort((a,b)=>String(b.zuletzt||"").localeCompare(String(a.zuletzt||"")));
+  const tag=z=>{if(!z)return "";const d=new Date(z),h=today();const t=Math.round((h-new Date(d.getFullYear(),d.getMonth(),d.getDate()))/864e5);return t<=0?"heute":t===1?"gestern":d.toLocaleDateString("de-DE",{day:"numeric",month:"numeric"})};
+  $("#wer").innerHTML=liste.length?`<b>Angemeldet:</b> ${liste.map(a=>`${esc(a.name||"?")} <small>(${esc(a.geraet||"")}${a.id===me?", dieses Gerät":", zuletzt "+esc(tag(a.zuletzt))})</small>`).join(" · ")}`:"";
+}
+document.addEventListener("click",e=>{if(e.target.closest("#nameAendern"))nameFragen()});
 /* ── Hofarbeiten: was am Hof zu tun ist (Dach, Futterbahn, Zäune …) ── */
 const HBER=["Gebäude & Dach","Stall","Futter & Futterbahn","Hof & Wege","Zäune & Weide","Werkstatt","Sonstiges"];
 const HPRIO=[["dringend","Dringend"],["normal","Normal"],["irgendwann","Irgendwann"]];
@@ -953,18 +980,23 @@ if(!configured){
   try{S.db.settings({experimentalForceLongPolling:true,merge:true})}catch(_){}
   S.db.enablePersistence({synchronizeTabs:true}).catch(()=>{});
 
+  try{$("#l_name").value=meinName()}catch(_){}
   $("#lf").addEventListener("submit",async ev=>{
     ev.preventDefault();const btn=ev.submitter;btn.disabled=true;$("#lerr").hidden=true;
+    const nm=$("#l_name").value.trim().replace(/\s+/g," ");if(nm.length<3){$("#lerr").hidden=false;$("#lerr").textContent="Bitte deinen vollen Namen eintragen.";btn.disabled=false;return}
+    lsSet("mp_name",nm);
     try{await auth.signInWithEmailAndPassword($("#l_mail").value.trim(),$("#l_pw").value)}
     catch(e){$("#lerr").hidden=false;$("#lerr").textContent=/invalid|wrong|user-not-found/.test(e.code)?"E-Mail oder Passwort stimmt nicht.":e.code==="auth/too-many-requests"?"Zu viele Versuche. Warte ein paar Minuten.":"Anmelden hat nicht geklappt. Prüf die Internetverbindung."}
     btn.disabled=false;
   });
-  $("#logout").addEventListener("click",()=>auth.signOut());
+  $("#logout").addEventListener("click",async()=>{try{await S.db.doc("angemeldet/"+geraetId()).delete()}catch(_){}auth.signOut()});
 
   auth.onAuthStateChanged(user=>{
     unsub.forEach(f=>f());unsub=[];
     $("#login").hidden=!!user;$("#app").hidden=!user;
-    if(!user){S.m=[];S.e=[];S.l=[];S.ready=false;closeSheet();return}
+    if(!user){S.m=[];S.e=[];S.l=[];S.ready=false;closeSheet();try{$("#l_name").value=meinName()}catch(_){};return}
+    if(meinName())meldeAn();else nameFragen();
+    unsub.push(S.db.collection("angemeldet").onSnapshot(s=>{S.a=s.docs.map(d=>({id:d.id,...d.data()}));renderWer()},()=>{}));
     S.ready=false;render();
     let got=0;const done=()=>{if(++got===3){S.ready=true;$("#conn").textContent="Alle Änderungen werden sofort für die ganze Familie gespeichert.";migrate()}};
     const fail=e=>{$("#conn").textContent=e&&e.code==="permission-denied"?"Dieser Login hat keinen Zugriff auf die Hof-Daten.":"Keine Verbindung. Änderungen werden gespeichert, sobald du wieder online bist."};
