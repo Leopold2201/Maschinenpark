@@ -510,7 +510,7 @@ function markenFarbe(m){const t=((m.hersteller||"")+" "+(m.name||"")+" "+(m.mode
   if(/bautz/.test(t))return ["#b5392f","#e5e5e5"];if(/schlueter|schluter/.test(t))return ["#7a8b3d","#333"];if(/alldog/.test(t))return ["#c0392b","#333"];
   if(/mercedes|benz|vw|caddy|tiguan|audi|gla|golf/.test(t))return ["#8b939c","#3a3f44"];return ["#5d6b55","#2f2f2f"]}
 function kartenSymbol(m){
-  if(m.kartenBild&&m.kartenFrei){const w=Math.min(130,m.kartenW||60);return {html:`<img class="kfrei" src="${m.kartenBild}" alt="" style="width:${w}px;height:52px">`,w,h:52}} /* freigestelltes Foto */
+  if(m.kartenBild&&m.kartenFrei)return {html:`<img class="kfrei" src="${m.kartenBild}" alt="" style="width:64px;height:44px">`,w:64,h:44}; /* freigestelltes Foto – alle gleich groß */
   if(m.kartenBild)return {html:`<div class="kfoto" style="background-image:url('${m.kartenBild}')"></div>`,w:44,h:44};
   const [k,f]=markenFarbe(m),g=gruppeOf(m),o='stroke="#fff" stroke-width="1.6"';
   const svg=g==="traktoren"?`<svg viewBox="0 0 48 36"><rect x="20" y="4" width="14" height="14" rx="2" fill="${k}" ${o}/><rect x="23" y="7" width="8" height="7" fill="#cfe3f2"/><rect x="6" y="14" width="30" height="9" rx="2" fill="${k}" ${o}/><rect x="4" y="10" width="3" height="6" fill="#444"/><circle cx="31" cy="26" r="9" fill="#222" ${o}/><circle cx="31" cy="26" r="4" fill="${f}"/><circle cx="11" cy="29" r="5.5" fill="#222" ${o}/><circle cx="11" cy="29" r="2.4" fill="${f}"/></svg>`
