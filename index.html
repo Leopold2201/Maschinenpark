@@ -239,6 +239,7 @@ img{max-width:100%}[hidden]{display:none!important}
 .import{display:grid;gap:10px;justify-items:start}
 .esub{display:flex;flex-wrap:wrap;gap:4px 16px;margin:-2px 0 8px 30px;padding:6px 10px;border-left:3px solid var(--line,#ccd5c6)}.esub .check{font-size:.93em}.esub small{flex-basis:100%;opacity:.75}
 .due.hof li{grid-template-columns:6px 1fr auto auto}.due.hof .what b{white-space:normal}.hok{min-width:44px;padding:6px 10px;font-size:1.1rem}.hsub{margin:18px 0 8px;font-size:1rem;color:var(--muted)}
+.map{height:min(62vh,560px);border-radius:12px;overflow:hidden;border:1px solid var(--line);background:var(--sunk)}.map .empty{margin:20px}.ktip{font-weight:700;font-size:12px;padding:2px 6px;cursor:pointer;pointer-events:auto}.kneu{font-size:28px;line-height:30px;text-align:center;background:none;border:0}.standort{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px 14px;padding:12px 14px;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}.standort b{display:block}.standort small{color:var(--muted)}
 </style>
 </head>
 <body>
@@ -278,6 +279,7 @@ img{max-width:100%}[hidden]{display:none!important}
         <input id="q" type="search" placeholder="Suchen…" aria-label="Maschinen durchsuchen">
         <select id="fcat" aria-label="Kategorie filtern"></select>
         <label class="toggle"><input id="showAb" type="checkbox" checked> Abgemeldete zeigen</label>
+        <button id="karteBtn">🗺 Karte</button>
         <button class="primary" id="addM">+ Neu</button>
       </div>
     </div>
@@ -487,6 +489,55 @@ function lagerForm(a){
   });
 }
 
+/* ── Karte: wo die Maschinen auf dem Hof stehen (Leaflet + Satellitenbild, ohne Google-Schlüssel) ── */
+let LP=null;
+function leaflet(){if(window.L)return Promise.resolve();if(LP)return LP;
+  LP=new Promise((res,rej)=>{const c=document.createElement("link");c.rel="stylesheet";c.href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css";document.head.appendChild(c);
+    const sc=document.createElement("script");sc.src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js";sc.onload=res;sc.onerror=()=>{LP=null;rej()};document.head.appendChild(sc)});return LP}
+const HOF_START={lat:50.9985,lng:9.2370,zoom:16}; /* grob Neuental – „Diese Ansicht als Hof merken“ speichert den genauen Ausschnitt */
+async function karte(mid,setzen){
+  const m=mid?S.m.find(x=>x.id===mid):null;if(mid&&!m)return;
+  S.open={type:"karte",id:mid||null};
+  const st=m&&m.standort&&m.standort.lat?m.standort:null;
+  openSheet(`<div class="sheet-head"><div><span class="label">${m?esc(m.name):"Hof"}</span><h2>${setzen?"Standort setzen":"Karte"}</h2></div><button class="ghost" data-act="${m?"back":"close"}">${m?"Zurück":"Schließen"}</button></div>
+  ${setzen?`<p class="note" style="margin:0">Tippe auf die Karte, wo <b>${esc(m.name)}</b> steht – oder stell dich daneben und nimm <b>📍 Mein Standort</b>.</p>`:""}
+  <div id="map" class="map"><div class="empty">Karte wird geladen…</div></div>
+  ${setzen?`<div class="fields"><label class="f full"><span class="label">Wo genau (optional)</span><input id="k_ort" maxlength="80" value="${esc(st?st.ort||"":"")}" placeholder="z. B. Maschinenhalle hinten links"></label></div>
+  <p class="err" id="kerr" hidden></p><div class="row"><button type="button" id="k_gps">📍 Mein Standort</button>${st?`<button type="button" class="danger" id="k_del">Entfernen</button>`:""}<button type="button" class="primary" id="k_save" ${st?"":"disabled"}>Speichern</button></div>`
+  :`<div class="row" style="justify-content:space-between"><small class="note" style="margin:0">${S.m.filter(x=>x.standort&&x.standort.lat).length} Maschinen auf der Karte · Name antippen öffnet die Maschine</small>${S.canWrite?`<button type="button" class="ghost" id="k_hof">Ansicht als Hof merken</button>`:""}</div>`}`);
+  try{await leaflet()}catch(_){$("#map").innerHTML=`<div class="empty">Karte konnte nicht geladen werden. Prüf die Internetverbindung.</div>`;return}
+  if(!$("#map")||S.open.type!=="karte")return;$("#map").innerHTML="";
+  let hof=HOF_START;try{const h=await S.db.doc("meta/hof").get();if(h.exists&&h.data().lat)hof=h.data()}catch(_){}
+  const map=L.map("map",{zoomControl:true,attributionControl:true});
+  const sat=L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",{maxZoom:21,maxNativeZoom:19,attribution:"Luftbild © Esri"}).addTo(map);
+  const osm=L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:21,maxNativeZoom:19,attribution:"© OpenStreetMap"});
+  L.control.layers({"Luftbild":sat,"Karte":osm},null,{position:"topright"}).addTo(map);
+  const alle=S.m.filter(x=>x.standort&&x.standort.lat&&(!setzen||x.id!==mid));
+  const pts=[];
+  for(const x of alle){const ll=[x.standort.lat,x.standort.lng];pts.push(ll);
+    const mk=L.circleMarker(ll,{radius:7,weight:2,color:"#fff",fillColor:x.id===mid?"#f6c46d":"#2f6b2a",fillOpacity:1}).addTo(map);
+    mk.bindTooltip(esc(x.name),{permanent:true,direction:"top",offset:[0,-6],className:"ktip"});
+    if(!setzen)mk.on("click",()=>{S.open={type:"detail",id:x.id};drawDetail()});}
+  let neu=null;
+  const setze=ll=>{if(neu)neu.setLatLng(ll);else neu=L.marker(ll,{icon:L.divIcon({className:"kneu",html:"📍",iconSize:[30,30],iconAnchor:[15,28]})}).addTo(map);$("#k_save").disabled=false};
+  if(setzen){if(st)setze([st.lat,st.lng]);map.on("click",e=>setze(e.latlng))}
+  if(st)map.setView([st.lat,st.lng],19);
+  else if(!setzen&&pts.length>1)map.fitBounds(pts,{padding:[30,30],maxZoom:19});
+  else if(!setzen&&pts.length===1)map.setView(pts[0],18);
+  else map.setView([hof.lat,hof.lng],hof.zoom||17);
+  setTimeout(()=>map.invalidateSize(),150);
+  /* Namen der Maschinen in der Übersicht antippbar */
+  if(!setzen)$("#map").addEventListener("click",e=>{const t=e.target.closest(".ktip");if(!t)return;const x=alle.find(a=>esc(a.name)===t.innerHTML);if(x){S.open={type:"detail",id:x.id};drawDetail()}});
+  if(setzen){
+    $("#k_gps").addEventListener("click",()=>{if(!navigator.geolocation){toast("Dein Gerät gibt keinen Standort her.");return}
+      $("#k_gps").disabled=true;navigator.geolocation.getCurrentPosition(p=>{const ll=[p.coords.latitude,p.coords.longitude];setze(ll);map.setView(ll,19);$("#k_gps").disabled=false},
+        ()=>{toast("Standort nicht verfügbar. Erlaube den Standortzugriff oder tippe auf die Karte.");$("#k_gps").disabled=false},{enableHighAccuracy:true,timeout:15000})});
+    $("#k_save").addEventListener("click",async ev=>{if(!neu)return;const ll=neu.getLatLng();ev.target.disabled=true;
+      try{await S.db.doc("maschinen/"+mid).update({standort:{lat:+ll.lat.toFixed(6),lng:+ll.lng.toFixed(6),ort:$("#k_ort").value.trim(),zeit:new Date().toISOString(),von:meinName()}});
+        toast("Standort gespeichert.");S.open={type:"detail",id:mid};drawDetail()}catch(e){showErr("#kerr",e);ev.target.disabled=false}});
+    const del=$("#k_del");if(del)del.addEventListener("click",()=>arm(del,"Wirklich entfernen?",async()=>{try{await S.db.doc("maschinen/"+mid).update({standort:null});S.open={type:"detail",id:mid};drawDetail()}catch(e){showErr("#kerr",e)}}));
+  }else{const hb=$("#k_hof");if(hb)hb.addEventListener("click",async()=>{const c=map.getCenter();try{await S.db.doc("meta/hof").set({lat:+c.lat.toFixed(6),lng:+c.lng.toFixed(6),zoom:map.getZoom()});toast("Hof-Ansicht gemerkt.")}catch(_){toast("Konnte nicht gespeichert werden.")}})}
+}
 function render(){renderMasch();renderLager();renderKohl();renderHof();renderWer()}
 /* ── Wer ist angemeldet: Name pro Gerät (gemeinsamer Hof-Login) ── */
 const lsGet=k=>{try{return localStorage.getItem(k)||""}catch(_){return ""}};
@@ -658,6 +709,8 @@ function drawDetail(){
     const d=p.naechste?dueW(p.naechste):null;
     return `<li><span class="stripe s-${lvl(d)}"></span><span class="wn"><b>${nurFilter(p)?"Hydraulikfilter":esc(p.name)}</b><small>${esc(iv(p.intervall))||"kein Intervall"}${p.zuletzt?` · zuletzt ${p.zuletzt.length>7?fmtD(p.zuletzt):fmtMY(p.zuletzt)}`:""}</small>${extra}</span><span class="wd">${p.naechste?fmtMY(p.naechste):"–"}</span><span class="pill ${lvl(d)}">${p.naechste?rel(d):"kein Termin"}</span></li>`}).join("")}</ul>`:`<div class="empty">Keine Wartungspunkte. Über <b>Bearbeiten</b> kannst du Motoröl, Getriebeöl, Abschmieren und weitere anlegen.</div>`}</div>
   <dl class="facts">${fact("Erstzulassung",ez(m.erstzulassung))}${fact("Hersteller",m.hersteller)}${fact("Modell",m.modell)}${fact("Baujahr",m.baujahr)}${fact("Kennzeichen",m.kennzeichen)}${fact("Fahrgestell-Nr.",m.fin)}${fact("Notizen",m.notiz)}</dl>
+  <div class="standort"><div><span class="label">Standort</span>${m.standort&&m.standort.lat?`<b>${esc(m.standort.ort||"auf der Karte markiert")}</b><small>gesetzt ${esc(fmtD(String(m.standort.zeit||"").slice(0,10)))}${m.standort.von?" von "+esc(m.standort.von):""}</small>`:`<small>Noch nicht auf der Karte gesetzt.</small>`}</div>
+   <div class="row" style="justify-content:flex-start;margin:0">${m.standort&&m.standort.lat?`<button data-act="kzeigen">Auf Karte zeigen</button>`:""}${S.canWrite?`<button data-act="ksetzen">${m.standort&&m.standort.lat?"Neu setzen":"📍 Standort setzen"}</button>`:""}</div></div>
   <div class="row" style="justify-content:flex-start">${S.canWrite?`<button class="primary" data-act="entry">+ Erledigt eintragen</button><button data-act="edit">Bearbeiten</button>`:""}</div>
   ${(()=>{const li=S.l.filter(a=>(a.maschinen||[]).includes(m.id));return li.length?`<div class="docs"><div class="sechead" style="margin-bottom:6px"><h2 style="font-size:1.15rem">Im Lager für diese Maschine</h2></div><ul class="doclist">${li.map(a=>`<li><button class="linkbtn plain" data-ledit="${esc(a.id)}">${esc(a.name)}${a.teil?` <small>${esc(a.teil)}</small>`:""}</button><span class="${knapp(a)?"pill warn":""}">${fmtN(a.menge)} ${esc(a.einheit||"Stk")}</span></li>`).join("")}</ul></div>`:""})()}
   <div class="docs"><div class="sechead" style="margin-bottom:6px"><h2 style="font-size:1.15rem">Unterlagen</h2>${S.canWrite?`<span class="docacts"><label class="linkbtn upl">+ Datei hochladen<input type="file" id="d_file" accept="application/pdf,image/*" hidden></label><button class="linkbtn" data-act="docadd">+ Link</button></span>`:""}</div>
@@ -897,6 +950,8 @@ document.addEventListener("click",async e=>{
   const a=e.target.closest("[data-act]");
   if(a){const act=a.dataset.act,id=S.open&&S.open.id;
     if(act==="close")closeSheet();
+    if(act==="ksetzen"&&id){karte(id,true);return}
+    if(act==="kzeigen"&&id){karte(id,false);return}
     if(act==="back"){const from=S.open&&S.open.from;if(id&&from==="reps"){S.open={type:"reps",id};drawReps()}else if(id){S.open={type:"detail",id};drawDetail()}else closeSheet()}
     if(act==="docadd"){$("#docf").hidden=false;$("#d_url").focus()}
     if(act==="doccancel"){$("#docf").hidden=true}
@@ -933,6 +988,7 @@ document.addEventListener("click",async e=>{
 });
 document.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.matches("li[data-open]")&&!S.open){S.open={type:"detail",id:e.target.dataset.open};drawDetail()}});
 $("#addM").addEventListener("click",()=>machineForm());
+$("#karteBtn").addEventListener("click",()=>karte(null,false));
 document.querySelector(".seg").addEventListener("click",e=>{const b=e.target.closest("[data-due]");if(!b||b.dataset.due===DUE)return;DUE=b.dataset.due;render()});
 document.querySelector(".viewnav").addEventListener("click",e=>{const b=e.target.closest("[data-view]");if(!b||b.dataset.view===VIEW)return;VIEW=b.dataset.view;scrollTo(0,0);render()});
 $("#kAlle").addEventListener("change",e=>{KALLE=e.target.checked;render()});
