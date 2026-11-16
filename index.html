@@ -490,15 +490,15 @@ function lagerForm(a){
 }
 
 /* ── Karte: wo die Maschinen auf dem Hof stehen (Leaflet + Satellitenbild, ohne Google-Schlüssel) ── */
-let LP=null;const APPV="k3";
-function leaflet(){if(window.L)return Promise.resolve();if(LP)return LP;
+let LP=null;const APPV="k4";
+function kartenLib(){if(window.L)return Promise.resolve();if(LP)return LP;
   /* Mehrere Quellen probieren – manche Netze (z. B. Uni-WLAN) sperren einzelne CDNs */
   const Q=[["leaflet.js","leaflet.css"],["https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js","https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"],
            ["https://unpkg.com/leaflet@1.9.4/dist/leaflet.js","https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"],
            ["https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js","https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"]];
-  leaflet.log=[];
-  const lade=([js,css])=>new Promise((res,rej)=>{const sc=document.createElement("script");sc.src=js;sc.onload=()=>{if(!window.L){leaflet.log.push((js.split("/")[2]||"App")+": geladen, aber L fehlt ("+typeof window.module+"/"+typeof window.define+")");rej();return}
-      const c=document.createElement("link");c.rel="stylesheet";c.href=css;document.head.appendChild(c);res()};sc.onerror=()=>{leaflet.log.push((js.split("/")[2]||"App")+": nicht erreichbar");sc.remove();rej()};document.head.appendChild(sc)});
+  kartenLib.log=[];
+  const lade=([js,css])=>new Promise((res,rej)=>{const sc=document.createElement("script");sc.src=js;sc.onload=()=>{if(!window.L){kartenLib.log.push((js.split("/")[2]||"App")+": geladen, aber L fehlt ("+typeof window.module+"/"+typeof window.define+")");rej();return}
+      const c=document.createElement("link");c.rel="stylesheet";c.href=css;document.head.appendChild(c);res()};sc.onerror=()=>{kartenLib.log.push((js.split("/")[2]||"App")+": nicht erreichbar");sc.remove();rej()};document.head.appendChild(sc)});
   LP=Q.reduce((p,q)=>p.catch(()=>lade(q)),Promise.reject()).catch(e=>{LP=null;throw e});return LP}
 const HOF_START={lat:50.9985,lng:9.2370,zoom:16}; /* grob Neuental – „Diese Ansicht als Hof merken“ speichert den genauen Ausschnitt */
 async function karte(mid,setzen){
@@ -511,7 +511,7 @@ async function karte(mid,setzen){
   ${setzen?`<div class="fields"><label class="f full"><span class="label">Wo genau (optional)</span><input id="k_ort" maxlength="80" value="${esc(st?st.ort||"":"")}" placeholder="z. B. Maschinenhalle hinten links"></label></div>
   <p class="err" id="kerr" hidden></p><div class="row"><button type="button" id="k_gps">📍 Mein Standort</button>${st?`<button type="button" class="danger" id="k_del">Entfernen</button>`:""}<button type="button" class="primary" id="k_save" ${st?"":"disabled"}>Speichern</button></div>`
   :`<div class="row" style="justify-content:space-between"><small class="note" style="margin:0">${S.m.filter(x=>x.standort&&x.standort.lat).length} Maschinen auf der Karte · Name antippen öffnet die Maschine</small>${S.canWrite?`<button type="button" class="ghost" id="k_hof">Ansicht als Hof merken</button>`:""}</div>`}`);
-  try{await leaflet()}catch(_){$("#map").innerHTML=`<div class="empty">Karte konnte nicht geladen werden. Prüf die Internetverbindung.<br><small>Version ${esc(APPV)} · ${esc((leaflet.log||[]).join(" · "))}</small></div>`;return}
+  try{await kartenLib()}catch(_){$("#map").innerHTML=`<div class="empty">Karte konnte nicht geladen werden. Prüf die Internetverbindung.<br><small>Version ${esc(APPV)} · ${esc((kartenLib.log||[]).join(" · "))}</small></div>`;return}
   if(!$("#map")||S.open.type!=="karte")return;$("#map").innerHTML="";
   let hof=HOF_START;try{const h=await S.db.doc("meta/hof").get();if(h.exists&&h.data().lat)hof=h.data()}catch(_){}
   await new Promise(r=>setTimeout(r,250)); /* erst wenn das Fenster fertig aufgeklappt ist, sonst stimmen die Positionen nicht */
