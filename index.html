@@ -658,11 +658,12 @@ async function karte(mid,setzen){
   const K=G?kGoogle($("#map")):kLeaflet($("#map"));
   const neuLaden=()=>{try{KST={c:K.center(),z:K.zoom()}}catch(_){}karte(null,false)};
   /* Vollbild: Karte füllt den ganzen Bildschirm; Zeichnen-Leiste wandert mit */
-  const voll=an=>{const w=$("#kwrap");if(!w)return;if(tab)KVOLL=an;w.classList.toggle("voll",an);document.body.classList.toggle("kvoll-an",an);$("#kvoll").innerHTML=an?"<i>✕</i><span>Schließen</span>":"<i>⛶</i><span>Vollbild</span>";
+  const voll=an=>{const w=$("#kwrap");if(!w)return;if(tab)KVOLL=an;if(an)hPush("kv");else hBack("kv");w.classList.toggle("voll",an);document.body.classList.toggle("kvoll-an",an);$("#kvoll").innerHTML=an?"<i>✕</i><span>Schließen</span>":"<i>⛶</i><span>Vollbild</span>";
     const f=document.getElementById("kfeld"),fv=$("#kfeldv");if(f&&fv){if(an)fv.append(...f.childNodes);else f.append(...fv.childNodes)}setTimeout(()=>K.resize(),60)};
   const kvz=$("#kvz");if(kvz)kvz.addEventListener("click",()=>{const b=$("#k_feldneu");if(b&&!b.disabled)b.click()});
   const kvw=$("#kvw");if(kvw)kvw.addEventListener("click",()=>{const b=$("#k_ausw");if(b&&!b.disabled)b.click()});
   $("#kvoll").addEventListener("click",()=>voll(!$("#kwrap").classList.contains("voll")));
+  window.__kvollAus=()=>voll(false);
   if(tab&&KVOLL)voll(true);else document.body.classList.remove("kvoll-an");
   const alle=S.m.filter(x=>x.standort&&x.standort.lat&&(!setzen||x.id!==mid));
   const pts=[],grp={};
@@ -927,11 +928,19 @@ function renderMasch(){
 }
 
 /* ---------- Bögen ---------- */
-function openSheet(html){
+/* Zurück-Taste am Handy: schließt erst Fenster bzw. Vollbild, statt die App zu verlassen */
+let HSKIP=0,HPOP=false;
+const hState=()=>history.state||{};
+function hPush(k){if(!hState()[k])history.pushState({...hState(),[k]:1},"")}
+function hBack(k){if(!HPOP&&hState()[k]){HSKIP++;history.back()}}
+addEventListener("popstate",()=>{
+  if(HSKIP>0){HSKIP--;if($("#layer").innerHTML)hPush("sh");return}
+  HPOP=true;try{if($("#layer").innerHTML)closeSheet();else if(window.__kvollAus&&document.querySelector("#kwrap.voll"))window.__kvollAus()}finally{HPOP=false}});
+function openSheet(html){if(!$("#layer").innerHTML)hPush("sh");
   $("#layer").innerHTML=`<div class="scrim" id="scrim"><div class="sheet" role="dialog" aria-modal="true">${html}</div></div>`;
   $("#scrim").addEventListener("click",e=>{if(e.target.id==="scrim")closeSheet()});
 }
-function closeSheet(still){if(!KVOLL||VIEW!=="karte")document.body.classList.remove("kvoll-an");$("#layer").innerHTML="";S.open=null;if(!still&&VIEW==="karte"&&!document.querySelector("#vKarte #map"))setTimeout(()=>{if(VIEW==="karte"&&!S.open)karte(null,false)},0)}
+function closeSheet(still){if($("#layer").innerHTML)hBack("sh");if(!KVOLL||VIEW!=="karte")document.body.classList.remove("kvoll-an");$("#layer").innerHTML="";S.open=null;if(!still&&VIEW==="karte"&&!document.querySelector("#vKarte #map"))setTimeout(()=>{if(VIEW==="karte"&&!S.open)karte(null,false)},0)}
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&S.open)closeSheet()});
 
 function drawDetail(){
