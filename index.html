@@ -243,6 +243,7 @@ img{max-width:100%}[hidden]{display:none!important}
 .kmk{background:none;border:0}.kfz svg{width:48px;height:36px;filter:drop-shadow(0 1px 2px rgba(0,0,0,.6))}.kfoto{width:44px;height:44px;border-radius:50%;background-size:cover;background-position:center;border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.6)}.kakt .kfoto{border-color:#f6c46d}.kfoto.klein{width:56px;height:56px;border-width:2px}
 .kfrei{object-fit:contain;filter:drop-shadow(0 0 1.5px #fff) drop-shadow(0 2px 3px rgba(0,0,0,.7))}
 .kfilter{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px}.kfilter .chip{border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:999px;padding:6px 12px;font-size:.85rem}.kfilter .chip.on{background:var(--accent,#2f6b2a);border-color:var(--accent,#2f6b2a);color:#fff}
+.gmk{background:none;border:0}.gmk .kmk{position:relative;display:flex;justify-content:center}.gmk .ktip{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:2px;white-space:nowrap;background:#fff;color:#222;border-radius:4px;padding:1px 6px;font:700 11px/1.5 system-ui,sans-serif;box-shadow:0 1px 3px rgba(0,0,0,.4)}.gmk .kneu{font-size:28px;line-height:30px;text-align:center}
 </style>
 </head>
 <body>
@@ -493,7 +494,7 @@ function lagerForm(a){
 }
 
 /* ── Karte: wo die Maschinen auf dem Hof stehen (Leaflet + Satellitenbild, ohne Google-Schlüssel) ── */
-let LP=null;const APPV="k5";
+let LP=null;const APPV="g1";
 function kartenLib(){if(window.L)return Promise.resolve();if(LP)return LP;
   /* Mehrere Quellen probieren – manche Netze (z. B. Uni-WLAN) sperren einzelne CDNs */
   const Q=[["leaflet.js","leaflet.css"],["https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js","https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"],
@@ -526,6 +527,38 @@ async function kartenFoto(m,file){
 /* Kartenfilter: welche Gruppen angezeigt werden (pro Gerät gemerkt) */
 const KGRP=[{id:"traktoren",name:"Traktoren"},{id:"autos",name:"Autos"},{id:"selbstfahrer",name:"Lader & Drescher"},{id:"geraete",name:"Geräte & Anhänger"}];
 const kAus=()=>{try{return JSON.parse(lsGet("mp_kaus")||"[]")}catch(_){return []}};
+/* Google Maps (Luftbild) – Schlüssel ist auf leopold2201.github.io beschränkt */
+const GKEY="AIzaSyBjECvyM62O8G9p5h0bTBUTltI1oTzykus";let GP=null,GBAD=false;
+function googleLib(){if(GBAD)return Promise.reject();if(window.google&&google.maps&&google.maps.Map)return Promise.resolve();if(GP)return GP;googleLib.log=[];
+  GP=new Promise((res,rej)=>{const t=setTimeout(()=>{googleLib.log.push("Google: keine Antwort");rej()},10000);
+    window.gm_authFailure=()=>{GBAD=true;googleLib.log.push("Google: Schlüssel abgelehnt");clearTimeout(t);rej();
+      if(S.open&&S.open.type==="karte")karte(S.open.id,!!$("#k_save"))};
+    window.__gmOk=()=>{clearTimeout(t);res()};
+    const sc=document.createElement("script");sc.src=`https://maps.googleapis.com/maps/api/js?key=${GKEY}&v=weekly&language=de&region=DE&callback=__gmOk`;sc.async=true;
+    sc.onerror=()=>{clearTimeout(t);googleLib.log.push("Google: nicht erreichbar");GP=null;rej()};document.head.appendChild(sc)});return GP}
+function kGoogle(el){
+  const g=google.maps,map=new g.Map(el,{mapTypeId:"hybrid",tilt:0,disableDefaultUI:true,zoomControl:true,mapTypeControl:true,
+    mapTypeControlOptions:{mapTypeIds:["hybrid","roadmap"],style:g.MapTypeControlStyle.HORIZONTAL_BAR},gestureHandling:"greedy",clickableIcons:false,maxZoom:21});
+  class HM extends g.OverlayView{constructor(ll,o){super();this.ll=ll;this.o=o;this.setMap(map)}
+    onAdd(){const d=this.d=document.createElement("div");d.className="gmk";d.innerHTML=this.o.html;d.style.position="absolute";
+      if(this.o.click){d.style.cursor="pointer";d.addEventListener("click",e=>{e.stopPropagation();this.o.click()})}else d.style.pointerEvents="none";
+      this.getPanes().overlayMouseTarget.appendChild(d)}
+    draw(){const p=this.getProjection().fromLatLngToDivPixel(new g.LatLng(this.ll));if(!p||!this.d)return;
+      this.d.style.left=(p.x-this.o.w/2)+"px";this.d.style.top=(p.y-(this.o.unten?this.o.h:this.o.h/2))+"px"}
+    onRemove(){if(this.d)this.d.remove();this.d=null}}
+  return {marker:(ll,o)=>{const m=new HM(ll,o);return {remove:()=>m.setMap(null),add:()=>m.setMap(map),move:p=>{m.ll=p;m.draw()},pos:()=>m.ll}},
+    onClick:f=>map.addListener("click",e=>f(e.latLng.toJSON())),view:(ll,z)=>{map.setCenter(ll);map.setZoom(z)},
+    fit:pts=>{const b=new g.LatLngBounds();pts.forEach(p=>b.extend(p));map.fitBounds(b,40);g.event.addListenerOnce(map,"idle",()=>{if(map.getZoom()>19)map.setZoom(19)})},
+    center:()=>map.getCenter().toJSON(),zoom:()=>map.getZoom()}}
+function kLeaflet(el){
+  const map=L.map(el,{zoomControl:true,attributionControl:true});
+  const sat=L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",{maxZoom:21,maxNativeZoom:19,attribution:"Luftbild © Esri"}).addTo(map);
+  const osm=L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:21,maxNativeZoom:19,attribution:"© OpenStreetMap"});
+  L.control.layers({"Luftbild":sat,"Karte":osm},null,{position:"topright"}).addTo(map);setTimeout(()=>map.invalidateSize(),150);
+  return {marker:(ll,o)=>{const m=L.marker(ll,{interactive:!!o.click,icon:L.divIcon({className:"gmk",html:o.html,iconSize:[o.w,o.h],iconAnchor:[o.w/2,o.unten?o.h:o.h/2]})}).addTo(map);
+      if(o.click)m.on("click",o.click);return {remove:()=>m.remove(),add:()=>m.addTo(map),move:p=>m.setLatLng(p),pos:()=>m.getLatLng()}},
+    onClick:f=>map.on("click",e=>f(e.latlng)),view:(ll,z)=>map.setView(ll,z),fit:pts=>map.fitBounds(pts.map(p=>[p.lat,p.lng]),{padding:[30,30],maxZoom:19}),
+    center:()=>map.getCenter(),zoom:()=>map.getZoom()}}
 async function karte(mid,setzen){
   const m=mid?S.m.find(x=>x.id===mid):null;if(mid&&!m)return;
   S.open={type:"karte",id:mid||null};
@@ -537,45 +570,40 @@ async function karte(mid,setzen){
   ${setzen?`<div class="fields"><label class="f full"><span class="label">Wo genau (optional)</span><input id="k_ort" maxlength="80" value="${esc(st?st.ort||"":"")}" placeholder="z. B. Maschinenhalle hinten links"></label></div>
   <p class="err" id="kerr" hidden></p><div class="row"><button type="button" id="k_gps">📍 Mein Standort</button>${st?`<button type="button" class="danger" id="k_del">Entfernen</button>`:""}<button type="button" class="primary" id="k_save" ${st?"":"disabled"}>Speichern</button></div>`
   :`<div class="row" style="justify-content:space-between"><small class="note" style="margin:0">${S.m.filter(x=>x.standort&&x.standort.lat).length} Maschinen auf der Karte · Name antippen öffnet die Maschine</small>${S.canWrite?`<button type="button" class="ghost" id="k_hof">Ansicht als Hof merken</button>`:""}</div>`}`);
-  try{await kartenLib()}catch(_){$("#map").innerHTML=`<div class="empty">Karte konnte nicht geladen werden. Prüf die Internetverbindung.<br><small>Version ${esc(APPV)} · ${esc((kartenLib.log||[]).join(" · "))}</small></div>`;return}
+  /* Erst Google-Luftbild versuchen, sonst die freie Karte (Leaflet/Esri) */
+  let G=false;try{await googleLib();G=true}catch(_){try{await kartenLib()}catch(__){$("#map").innerHTML=`<div class="empty">Karte konnte nicht geladen werden. Prüf die Internetverbindung.<br><small>Version ${esc(APPV)} · ${esc([...(googleLib.log||[]),...(kartenLib.log||[])].join(" · "))}</small></div>`;return}}
   if(!$("#map")||S.open.type!=="karte")return;$("#map").innerHTML="";
   let hof=HOF_START;try{const h=await S.db.doc("meta/hof").get();if(h.exists&&h.data().lat)hof=h.data()}catch(_){}
   await new Promise(r=>setTimeout(r,250)); /* erst wenn das Fenster fertig aufgeklappt ist, sonst stimmen die Positionen nicht */
   if(!$("#map")||S.open.type!=="karte")return;
-  const map=L.map("map",{zoomControl:true,attributionControl:true});
-  const sat=L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",{maxZoom:21,maxNativeZoom:19,attribution:"Luftbild © Esri"}).addTo(map);
-  const osm=L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:21,maxNativeZoom:19,attribution:"© OpenStreetMap"});
-  L.control.layers({"Luftbild":sat,"Karte":osm},null,{position:"topright"}).addTo(map);
+  const K=G?kGoogle($("#map")):kLeaflet($("#map"));
   const alle=S.m.filter(x=>x.standort&&x.standort.lat&&(!setzen||x.id!==mid));
   const pts=[],grp={};
-  for(const x of alle){const ll=[x.standort.lat,x.standort.lng];pts.push(ll);
+  const oeffne=x=>{S.open={type:"detail",id:x.id};drawDetail()};
+  for(const x of alle){const ll={lat:x.standort.lat,lng:x.standort.lng};pts.push(ll);
     const sy=kartenSymbol(x);
-    const mk=L.marker(ll,{icon:L.divIcon({className:"kmk"+(x.id===mid?" kakt":""),html:sy.html,iconSize:[sy.w,sy.h],iconAnchor:[sy.w/2,sy.h/2]})}).addTo(map);
-    mk.bindTooltip(esc(x.name),{permanent:true,direction:"top",offset:[0,-sy.h/2],className:"ktip"});
-    if(!setzen)mk.on("click",()=>{S.open={type:"detail",id:x.id};drawDetail()});
+    const mk=K.marker(ll,{html:`<div class="kmk${x.id===mid?" kakt":""}"><span class="ktip">${esc(x.name)}</span>${sy.html}</div>`,w:sy.w,h:sy.h,click:setzen?null:()=>oeffne(x)});
     const g=gruppeOf(x);(grp[g]=grp[g]||[]).push(mk);if(!setzen&&kAus().includes(g))mk.remove();}
   if(!setzen)$("#kfilter").addEventListener("click",e=>{const b=e.target.closest("[data-kg]");if(!b)return;const g=b.dataset.kg;let aus=kAus();
     aus=aus.includes(g)?aus.filter(x=>x!==g):[...aus,g];lsSet("mp_kaus",JSON.stringify(aus));b.classList.toggle("on",!aus.includes(g));
-    (grp[g]||[]).forEach(mk=>aus.includes(g)?mk.remove():mk.addTo(map))});
+    (grp[g]||[]).forEach(mk=>aus.includes(g)?mk.remove():mk.add())});
   let neu=null;
-  const setze=ll=>{if(neu)neu.setLatLng(ll);else neu=L.marker(ll,{icon:L.divIcon({className:"kneu",html:"📍",iconSize:[30,30],iconAnchor:[15,28]})}).addTo(map);$("#k_save").disabled=false};
-  if(setzen){if(st)setze([st.lat,st.lng]);map.on("click",e=>setze(e.latlng))}
-  if(st)map.setView([st.lat,st.lng],19);
-  else if(!setzen&&pts.length>1)map.fitBounds(pts,{padding:[30,30],maxZoom:19});
-  else if(!setzen&&pts.length===1)map.setView(pts[0],18);
-  else map.setView([hof.lat,hof.lng],hof.zoom||17);
-  setTimeout(()=>map.invalidateSize(),150);
-  /* Namen der Maschinen in der Übersicht antippbar */
-  if(!setzen)$("#map").addEventListener("click",e=>{const t=e.target.closest(".ktip");if(!t)return;const x=alle.find(a=>esc(a.name)===t.innerHTML);if(x){S.open={type:"detail",id:x.id};drawDetail()}});
+  const setze=ll=>{if(neu)neu.move(ll);else neu=K.marker(ll,{html:`<div class="kneu">📍</div>`,w:30,h:30,unten:true});$("#k_save").disabled=false};
+  if(setzen){if(st)setze({lat:st.lat,lng:st.lng});K.onClick(setze)}
+  if(st)K.view({lat:st.lat,lng:st.lng},19);
+  else if(!setzen&&pts.length>1)K.fit(pts);
+  else if(!setzen&&pts.length===1)K.view(pts[0],18);
+  else K.view({lat:hof.lat,lng:hof.lng},hof.zoom||17);
+  const map=K;
   if(setzen){
     $("#k_gps").addEventListener("click",()=>{if(!navigator.geolocation){toast("Dein Gerät gibt keinen Standort her.");return}
-      $("#k_gps").disabled=true;navigator.geolocation.getCurrentPosition(p=>{const ll=[p.coords.latitude,p.coords.longitude];setze(ll);map.setView(ll,19);$("#k_gps").disabled=false},
+      $("#k_gps").disabled=true;navigator.geolocation.getCurrentPosition(p=>{const ll={lat:p.coords.latitude,lng:p.coords.longitude};setze(ll);map.view(ll,19);$("#k_gps").disabled=false},
         ()=>{toast("Standort nicht verfügbar. Erlaube den Standortzugriff oder tippe auf die Karte.");$("#k_gps").disabled=false},{enableHighAccuracy:true,timeout:15000})});
-    $("#k_save").addEventListener("click",async ev=>{if(!neu)return;const ll=neu.getLatLng();ev.target.disabled=true;
+    $("#k_save").addEventListener("click",async ev=>{if(!neu)return;const ll=neu.pos();ev.target.disabled=true;
       try{await S.db.doc("maschinen/"+mid).update({standort:{lat:+ll.lat.toFixed(6),lng:+ll.lng.toFixed(6),ort:$("#k_ort").value.trim(),zeit:new Date().toISOString(),von:meinName()}});
         toast("Standort gespeichert.");S.open={type:"detail",id:mid};drawDetail()}catch(e){showErr("#kerr",e);ev.target.disabled=false}});
     const del=$("#k_del");if(del)del.addEventListener("click",()=>arm(del,"Wirklich entfernen?",async()=>{try{await S.db.doc("maschinen/"+mid).update({standort:null});S.open={type:"detail",id:mid};drawDetail()}catch(e){showErr("#kerr",e)}}));
-  }else{const hb=$("#k_hof");if(hb)hb.addEventListener("click",async()=>{const c=map.getCenter();try{await S.db.doc("meta/hof").set({lat:+c.lat.toFixed(6),lng:+c.lng.toFixed(6),zoom:map.getZoom()});toast("Hof-Ansicht gemerkt.")}catch(_){toast("Konnte nicht gespeichert werden.")}})}
+  }else{const hb=$("#k_hof");if(hb)hb.addEventListener("click",async()=>{const c=map.center();try{await S.db.doc("meta/hof").set({lat:+c.lat.toFixed(6),lng:+c.lng.toFixed(6),zoom:map.zoom()});toast("Hof-Ansicht gemerkt.")}catch(_){toast("Konnte nicht gespeichert werden.")}})}
 }
 function render(){renderMasch();renderLager();renderKohl();renderHof();renderWer()}
 /* ── Wer ist angemeldet: Name pro Gerät (gemeinsamer Hof-Login) ── */
