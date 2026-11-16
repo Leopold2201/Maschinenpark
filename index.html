@@ -247,6 +247,12 @@ img{max-width:100%}[hidden]{display:none!important}
 .gmk .kfl{position:absolute;transform:translate(-50%,-50%);white-space:nowrap;text-align:center;color:#fff;font:700 12px/1.2 system-ui,sans-serif;text-shadow:0 0 3px #000,0 0 2px #000;pointer-events:none}.gmk .kfl small{display:block;font-weight:600;font-size:10.5px}.gmk .kecke{width:12px;height:12px;border-radius:50%;background:#ff5a36;border:2px solid #fff;box-sizing:border-box}.kfinfo{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;padding:10px 12px;margin:8px 0;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}.kfinfo b{display:block}.kfinfo small{color:var(--muted)}.kfinfo.zeichnen{border-color:#ff5a36}
 .kweit .kfl{display:none}
 .kbtns{display:flex;flex-wrap:wrap;gap:6px}
+.kwrap{position:relative}.kvollbtn{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:5;width:42px;height:42px;border-radius:10px;border:0;background:#fff;color:#222;font-size:20px;box-shadow:0 1px 4px rgba(0,0,0,.35);cursor:pointer}
+.kwrap.voll{position:fixed;inset:0;z-index:60;background:#000}.kwrap.voll .map{height:100%;border-radius:0;border:0}
+.kwrap.voll .kvollbtn{top:calc(10px + env(safe-area-inset-top,0px))}
+#kfeldv:empty{display:none}.kwrap.voll #kfeldv{position:absolute;left:10px;right:10px;bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:5}.kwrap.voll #kfeldv .kfinfo{margin:0;box-shadow:0 2px 8px rgba(0,0,0,.4)}
+body.kvoll-an{overflow:hidden}
+.kvollzeich{display:none}.kwrap.voll .kvollzeich{display:block;position:absolute;top:calc(10px + env(safe-area-inset-top,0px));left:60px;z-index:5;height:42px;padding:0 12px;border-radius:10px;border:0;background:#fff;color:#222;font-weight:700;box-shadow:0 1px 4px rgba(0,0,0,.35)}
 </style>
 </head>
 <body>
@@ -541,7 +547,7 @@ function googleLib(){if(GBAD)return Promise.reject();if(window.google&&google.ma
     sc.onerror=()=>{clearTimeout(t);googleLib.log.push("Google: nicht erreichbar");GP=null;rej()};document.head.appendChild(sc)});return GP}
 function kGoogle(el){
   const g=google.maps,map=new g.Map(el,{mapTypeId:"hybrid",tilt:0,disableDefaultUI:true,zoomControl:true,mapTypeControl:true,
-    mapTypeControlOptions:{mapTypeIds:["hybrid","roadmap"],style:g.MapTypeControlStyle.HORIZONTAL_BAR},gestureHandling:"greedy",clickableIcons:false,maxZoom:21});
+    mapTypeControlOptions:{mapTypeIds:["hybrid","roadmap"],style:g.MapTypeControlStyle.HORIZONTAL_BAR,position:g.ControlPosition.TOP_RIGHT},gestureHandling:"greedy",clickableIcons:false,maxZoom:21});
   class HM extends g.OverlayView{constructor(ll,o){super();this.ll=ll;this.o=o;this.setMap(map)}
     onAdd(){const d=this.d=document.createElement("div");d.className="gmk";d.innerHTML=this.o.html;d.style.position="absolute";
       if(this.o.click){d.style.cursor="pointer";d.addEventListener("click",e=>{e.stopPropagation();this.o.click()})}else d.style.pointerEvents="none";
@@ -555,7 +561,7 @@ function kGoogle(el){
       return {remove:()=>p.setMap(null),add:()=>p.setMap(map),pfad:q=>p.setPath(q)}},
     onClick:f=>map.addListener("click",e=>f(e.latLng.toJSON())),view:(ll,z)=>{map.setCenter(ll);map.setZoom(z)},
     fit:pts=>{const b=new g.LatLngBounds();pts.forEach(p=>b.extend(p));map.fitBounds(b,40);g.event.addListenerOnce(map,"idle",()=>{if(map.getZoom()>19)map.setZoom(19)})},
-    center:()=>map.getCenter().toJSON(),zoom:()=>map.getZoom(),onZoom:f=>map.addListener("zoom_changed",()=>f(map.getZoom()))}}
+    center:()=>map.getCenter().toJSON(),zoom:()=>map.getZoom(),onZoom:f=>map.addListener("zoom_changed",()=>f(map.getZoom())),resize:()=>{const c=map.getCenter();g.event.trigger(map,"resize");map.setCenter(c)}}}
 function kLeaflet(el){
   const map=L.map(el,{zoomControl:true,attributionControl:true});
   const sat=L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",{maxZoom:21,maxNativeZoom:19,attribution:"Luftbild © Esri"}).addTo(map);
@@ -567,7 +573,7 @@ function kLeaflet(el){
       if(o.click)p.on("click",e=>{L.DomEvent.stopPropagation(e);o.click(e.latlng)});
       return {remove:()=>p.remove(),add:()=>p.addTo(map),pfad:q=>p.setLatLngs(q)}},
     onClick:f=>map.on("click",e=>f(e.latlng)),view:(ll,z)=>map.setView(ll,z),fit:pts=>map.fitBounds(pts.map(p=>[p.lat,p.lng]),{padding:[30,30],maxZoom:19}),
-    center:()=>map.getCenter(),zoom:()=>map.getZoom(),onZoom:f=>map.on("zoomend",()=>f(map.getZoom()))}}
+    center:()=>map.getCenter(),zoom:()=>map.getZoom(),onZoom:f=>map.on("zoomend",()=>f(map.getZoom())),resize:()=>map.invalidateSize()}}
 /* Felder: Fläche aus den Eckpunkten (Kugelformel), Mittelpunkt für die Beschriftung */
 function flaecheHa(pts){if(!pts||pts.length<3)return 0;const R=6378137,r=Math.PI/180;let a=0;
   for(let i=0;i<pts.length;i++){const p=pts[i],q=pts[(i+1)%pts.length];a+=(q.lng-p.lng)*r*(2+Math.sin(p.lat*r)+Math.sin(q.lat*r))}
@@ -614,6 +620,7 @@ async function felderSpeichern(F){const heute=iso(new Date());
       b.set(ref,{name:f.name,punkte:f.punkte,farbe:FELDFARBE,quelle:"Import",aktualisiert:heute},{merge:true})}
     await b.commit()}}
 function kTally(){const t=$("#tally");if(!t||VIEW!=="karte")return;$("#tallyLbl").hidden=true;t.innerHTML=`<div><b>${S.m.filter(x=>x.standort&&x.standort.lat).length}</b><span>Maschinen</span></div><div><b>${(S.f||[]).length}</b><span>Felder</span></div><div><b>${Math.round((S.f||[]).reduce((q,f)=>q+flaecheHa(f.punkte),0))}</b><span>ha</span></div>`}
+const kPanel=()=>{const w=$("#kwrap");return w&&w.classList.contains("voll")&&$("#kfeldv")?$("#kfeldv"):$("#kfeld")};
 const kAktiv=()=>S.open?S.open.type==="karte":VIEW==="karte";
 async function karte(mid,setzen){
   const m=mid?S.m.find(x=>x.id===mid):null;if(mid&&!m)return;
@@ -623,7 +630,7 @@ async function karte(mid,setzen){
   const kh=`<div class="sheet-head"><div><span class="label">${m?esc(m.name):"Hof"}</span><h2>${setzen?"Standort setzen":"Karte"}</h2></div><button class="ghost" data-act="${m?"back":"close"}">${m?"Zurück":"Schließen"}</button></div>`;
   const kb=`  ${setzen?`<p class="note" style="margin:0">Tippe auf die Karte, wo <b>${esc(m.name)}</b> steht – oder stell dich daneben und nimm <b>📍 Mein Standort</b>.</p>`:""}
   ${setzen?"":`<div class="kfilter" id="kfilter">${[...KGRP,{id:"felder",name:"Felder"}].map(g=>`<button type="button" class="chip${kAus().includes(g.id)?"":" on"}" data-kg="${g.id}">${g.name}</button>`).join("")}</div>`}
-  <div id="map" class="map"><div class="empty">Karte wird geladen…</div></div>
+  <div class="kwrap" id="kwrap"><div id="map" class="map"><div class="empty">Karte wird geladen…</div></div><button type="button" class="kvollbtn" id="kvoll" aria-label="Vollbild">⛶</button>${setzen?"":`<div id="kfeldv"></div>`}${setzen||!S.canWrite?"":`<button type="button" class="kvollzeich" id="kvz">✏️ Feld</button>`}</div>
   ${setzen?`<div class="fields"><label class="f full"><span class="label">Wo genau (optional)</span><input id="k_ort" maxlength="80" value="${esc(st?st.ort||"":"")}" placeholder="z. B. Maschinenhalle hinten links"></label></div>
   <p class="err" id="kerr" hidden></p><div class="row"><button type="button" id="k_gps">📍 Mein Standort</button>${st?`<button type="button" class="danger" id="k_del">Entfernen</button>`:""}<button type="button" class="primary" id="k_save" ${st?"":"disabled"}>Speichern</button></div>`
   :`<div id="kfeld"></div><div class="row" style="justify-content:space-between"><small class="note" style="margin:0">${S.m.filter(x=>x.standort&&x.standort.lat).length} Maschinen · ${(S.f||[]).length} ${(S.f||[]).length===1?"Feld":"Felder"}${(S.f||[]).length?` (${fmtHa((S.f||[]).reduce((a,f)=>a+flaecheHa(f.punkte),0))})`:""} · Antippen öffnet</small><span class="kbtns">${S.canWrite?`<button type="button" id="k_feldneu">✏️ Feld einzeichnen</button> <label class="btn ghost" id="k_imp">📥 Felder importieren<input type="file" id="k_impf" accept=".zip,.geojson,.json" hidden></label> <button type="button" class="ghost" id="k_hof">Ansicht als Hof merken</button>`:""}</span></div>`}`;
@@ -636,6 +643,11 @@ async function karte(mid,setzen){
   await new Promise(r=>setTimeout(r,250)); /* erst wenn das Fenster fertig aufgeklappt ist, sonst stimmen die Positionen nicht */
   if(!$("#map")||!kAktiv())return;
   const K=G?kGoogle($("#map")):kLeaflet($("#map"));
+  /* Vollbild: Karte füllt den ganzen Bildschirm; Zeichnen-Leiste wandert mit */
+  const voll=an=>{const w=$("#kwrap");if(!w)return;w.classList.toggle("voll",an);document.body.classList.toggle("kvoll-an",an);$("#kvoll").textContent=an?"✕":"⛶";
+    const f=kPanel(),fv=$("#kfeldv");if(f&&fv){if(an)fv.append(...f.childNodes);else f.append(...fv.childNodes)}setTimeout(()=>K.resize(),60)};
+  const kvz=$("#kvz");if(kvz)kvz.addEventListener("click",()=>{const b=$("#k_feldneu");if(b&&!b.disabled)b.click()});
+  $("#kvoll").addEventListener("click",()=>voll(!$("#kwrap").classList.contains("voll")));
   const alle=S.m.filter(x=>x.standort&&x.standort.lat&&(!setzen||x.id!==mid));
   const pts=[],grp={};
   const oeffne=x=>{S.open={type:"detail",id:x.id};drawDetail()};
@@ -653,13 +665,13 @@ async function karte(mid,setzen){
     const p=K.poly(f.punkte,{farbe:f.farbe||FELDFARBE,click:ll=>{if(zeichne)zeichne.add(ll);else if(setzen)setzeRef&&setzeRef(ll);else feldInfo(f)}});
     const lb=K.marker(mitte(f.punkte),{html:`<div class="kfl">${esc(f.name)}<small>${fmtHa(flaecheHa(f.punkte))}</small></div>`,w:1,h:1});
     felder.push([p,lb]);if(!setzen&&kAus().includes("felder")){p.remove();lb.remove()}}
-  const feldInfo=f=>{const el=$("#kfeld");if(!el)return;
+  const feldInfo=f=>{const el=kPanel();if(!el)return;
     el.innerHTML=`<div class="kfinfo"><div><b>${esc(f.name)}</b><small>${fmtHa(flaecheHa(f.punkte))}${f.kultur?" · "+esc(f.kultur):""}${f.notiz?" · "+esc(f.notiz):""}</small></div>
       ${S.canWrite?`<span><button type="button" id="kf_edit">Bearbeiten</button> <button type="button" class="danger" id="kf_del">Löschen</button></span>`:""}</div>`;
     if(!S.canWrite)return;
     $("#kf_edit").addEventListener("click",()=>feldForm(f));
     const d=$("#kf_del");arm&&d.addEventListener("click",()=>arm(d,"Feld wirklich löschen?",async()=>{try{await S.db.doc("felder/"+f.id).delete();toast("Feld gelöscht.");karte(null,false)}catch(_){toast("Konnte nicht gelöscht werden.")}}))};
-  const feldForm=(f,punkte)=>{const el=$("#kfeld");f=f||{};
+  const feldForm=(f,punkte)=>{const el=kPanel();f=f||{};
     el.innerHTML=`<div class="kfinfo" style="display:block"><div class="fields">
       <label class="f"><span class="label">Name des Feldes *</span><input id="kf_name" maxlength="60" value="${esc(f.name||"")}" placeholder="z. B. Am Kreuzweg"></label>
       <label class="f"><span class="label">Kultur (optional)</span><input id="kf_kultur" maxlength="40" value="${esc(f.kultur||"")}" placeholder="z. B. Weizen, Grünland"></label>
@@ -676,7 +688,7 @@ async function karte(mid,setzen){
     const pts=[],tmp=K.poly([],{farbe:"#ff5a36",fuell:.3}),ecken=[];
     const upd=()=>{tmp.pfad(pts);$("#kz_info").textContent=pts.length<3?`${pts.length} Ecke${pts.length===1?"":"n"} – tippe weitere Ecken an`:`${pts.length} Ecken · ${fmtHa(flaecheHa(pts))}`;$("#kz_ok").disabled=pts.length<3};
     zeichne={add:ll=>{pts.push({lat:+(+ll.lat).toFixed(7),lng:+(+ll.lng).toFixed(7)});ecken.push(K.marker(ll,{html:`<div class="kecke"></div>`,w:12,h:12}));upd()}};
-    $("#kfeld").innerHTML=`<div class="kfinfo zeichnen"><div><b>Feld einzeichnen</b><small id="kz_info">Tippe nacheinander die Ecken des Feldes auf der Karte an.</small></div>
+    kPanel().innerHTML=`<div class="kfinfo zeichnen"><div><b>Feld einzeichnen</b><small id="kz_info">Tippe nacheinander die Ecken des Feldes auf der Karte an.</small></div>
       <span><button type="button" id="kz_back">↶</button> <button type="button" class="ghost" id="kz_abbr">Abbrechen</button> <button type="button" class="primary" id="kz_ok" disabled>Fertig</button></span></div>`;
     $("#k_feldneu").disabled=true;
     $("#kz_back").addEventListener("click",()=>{if(!pts.length)return;pts.pop();ecken.pop().remove();upd()});
@@ -859,7 +871,7 @@ function openSheet(html){
   $("#layer").innerHTML=`<div class="scrim" id="scrim"><div class="sheet" role="dialog" aria-modal="true">${html}</div></div>`;
   $("#scrim").addEventListener("click",e=>{if(e.target.id==="scrim")closeSheet()});
 }
-function closeSheet(still){$("#layer").innerHTML="";S.open=null;if(!still&&VIEW==="karte"&&!document.querySelector("#vKarte #map"))setTimeout(()=>{if(VIEW==="karte"&&!S.open)karte(null,false)},0)}
+function closeSheet(still){document.body.classList.remove("kvoll-an");$("#layer").innerHTML="";S.open=null;if(!still&&VIEW==="karte"&&!document.querySelector("#vKarte #map"))setTimeout(()=>{if(VIEW==="karte"&&!S.open)karte(null,false)},0)}
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&S.open)closeSheet()});
 
 function drawDetail(){
@@ -1160,7 +1172,7 @@ document.addEventListener("click",async e=>{
 document.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.matches("li[data-open]")&&!S.open){S.open={type:"detail",id:e.target.dataset.open};drawDetail()}});
 $("#addM").addEventListener("click",()=>machineForm());
 document.querySelector(".seg").addEventListener("click",e=>{const b=e.target.closest("[data-due]");if(!b||b.dataset.due===DUE)return;DUE=b.dataset.due;render()});
-document.querySelector(".viewnav").addEventListener("click",e=>{const b=e.target.closest("[data-view]");if(!b||b.dataset.view===VIEW)return;VIEW=b.dataset.view;scrollTo(0,0);render();if(VIEW==="karte")karte(null,false)});
+document.querySelector(".viewnav").addEventListener("click",e=>{const b=e.target.closest("[data-view]");if(!b||b.dataset.view===VIEW)return;document.body.classList.remove("kvoll-an");VIEW=b.dataset.view;scrollTo(0,0);render();if(VIEW==="karte")karte(null,false)});
 $("#kAlle").addEventListener("change",e=>{KALLE=e.target.checked;render()});
 $("#hAlle").addEventListener("change",e=>{HALLE=e.target.checked;render()});
 $("#addH").addEventListener("click",()=>hofForm());
