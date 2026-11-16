@@ -493,7 +493,7 @@ function lagerForm(a){
 let LP=null;
 function leaflet(){if(window.L)return Promise.resolve();if(LP)return LP;
   /* Mehrere Quellen probieren – manche Netze (z. B. Uni-WLAN) sperren einzelne CDNs */
-  const Q=[["https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js","https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"],
+  const Q=[["leaflet.js","leaflet.css"],["https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js","https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"],
            ["https://unpkg.com/leaflet@1.9.4/dist/leaflet.js","https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"],
            ["https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js","https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"]];
   const lade=([js,css])=>new Promise((res,rej)=>{const sc=document.createElement("script");sc.src=js;sc.onload=()=>{if(!window.L){rej();return}
@@ -513,6 +513,8 @@ async function karte(mid,setzen){
   try{await leaflet()}catch(_){$("#map").innerHTML=`<div class="empty">Karte konnte nicht geladen werden. Prüf die Internetverbindung.</div>`;return}
   if(!$("#map")||S.open.type!=="karte")return;$("#map").innerHTML="";
   let hof=HOF_START;try{const h=await S.db.doc("meta/hof").get();if(h.exists&&h.data().lat)hof=h.data()}catch(_){}
+  await new Promise(r=>setTimeout(r,250)); /* erst wenn das Fenster fertig aufgeklappt ist, sonst stimmen die Positionen nicht */
+  if(!$("#map")||S.open.type!=="karte")return;
   const map=L.map("map",{zoomControl:true,attributionControl:true});
   const sat=L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",{maxZoom:21,maxNativeZoom:19,attribution:"Luftbild © Esri"}).addTo(map);
   const osm=L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:21,maxNativeZoom:19,attribution:"© OpenStreetMap"});
