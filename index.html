@@ -492,8 +492,13 @@ function lagerForm(a){
 /* ── Karte: wo die Maschinen auf dem Hof stehen (Leaflet + Satellitenbild, ohne Google-Schlüssel) ── */
 let LP=null;
 function leaflet(){if(window.L)return Promise.resolve();if(LP)return LP;
-  LP=new Promise((res,rej)=>{const c=document.createElement("link");c.rel="stylesheet";c.href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css";document.head.appendChild(c);
-    const sc=document.createElement("script");sc.src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js";sc.onload=res;sc.onerror=()=>{LP=null;rej()};document.head.appendChild(sc)});return LP}
+  /* Mehrere Quellen probieren – manche Netze (z. B. Uni-WLAN) sperren einzelne CDNs */
+  const Q=[["https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js","https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"],
+           ["https://unpkg.com/leaflet@1.9.4/dist/leaflet.js","https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"],
+           ["https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js","https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"]];
+  const lade=([js,css])=>new Promise((res,rej)=>{const sc=document.createElement("script");sc.src=js;sc.onload=()=>{if(!window.L){rej();return}
+      const c=document.createElement("link");c.rel="stylesheet";c.href=css;document.head.appendChild(c);res()};sc.onerror=()=>{sc.remove();rej()};document.head.appendChild(sc)});
+  LP=Q.reduce((p,q)=>p.catch(()=>lade(q)),Promise.reject()).catch(e=>{LP=null;throw e});return LP}
 const HOF_START={lat:50.9985,lng:9.2370,zoom:16}; /* grob Neuental – „Diese Ansicht als Hof merken“ speichert den genauen Ausschnitt */
 async function karte(mid,setzen){
   const m=mid?S.m.find(x=>x.id===mid):null;if(mid&&!m)return;
