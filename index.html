@@ -249,11 +249,16 @@ img{max-width:100%}[hidden]{display:none!important}
 .kbtns{display:flex;flex-wrap:wrap;gap:6px}
 .kwrap{position:relative}.kvollbtn{position:absolute;bottom:28px;left:10px;z-index:5;width:44px;height:44px;padding:0;border:0;background:none;color:#fff;font-size:28px;line-height:44px;text-shadow:0 0 4px #000,0 0 2px #000;cursor:pointer}
 .kwrap.voll{position:fixed;inset:0;z-index:60;background:#000}.kwrap.voll .map{height:100%;border-radius:0;border:0}
-.kwrap.voll .kvollbtn{bottom:calc(28px + env(safe-area-inset-bottom,0px))}.kwrap.voll:has(#kfeldv:not(:empty)) .kvollbtn{bottom:calc(150px + env(safe-area-inset-bottom,0px))}
+
 #kfeldv:empty{display:none}.kwrap.voll #kfeldv{position:absolute;left:10px;right:10px;bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:5}.kwrap.voll #kfeldv .kfinfo{margin:0;box-shadow:0 2px 8px rgba(0,0,0,.4)}
 body.kvoll-an{overflow:hidden}
 .kvollzeich{display:none}.kwrap.voll .kvollzeich{display:block;position:absolute;top:calc(10px + env(safe-area-inset-top,0px));left:60px;z-index:5;height:42px;padding:0 12px;border-radius:10px;border:0;background:#fff;color:#222;font-weight:700;box-shadow:0 1px 4px rgba(0,0,0,.35)}
 .gmk .kfl.kfa{color:#ffd9b8}.kfa-box{margin-top:6px;padding:6px 8px;border-radius:8px;background:#fff1e6;color:#8a3a00}.kwrap.voll .kvz2{left:160px}.kaz{display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-top:1px solid var(--line);cursor:pointer}.kaz:first-of-type{margin-top:6px}#k_auftr{margin:-4px 0 4px}
+.kctl{position:absolute;left:8px;bottom:30px;z-index:5;display:flex;flex-direction:column;align-items:flex-start;gap:2px}
+.kctl>button,.kctl>label{display:flex;align-items:center;gap:6px;background:none;border:0;padding:5px 4px;color:#fff;font:700 13px/1 system-ui,sans-serif;text-shadow:0 0 4px #000,0 0 2px #000,0 0 1px #000;cursor:pointer}
+.kctl i{font-style:normal;font-size:20px;width:24px;text-align:center;filter:drop-shadow(0 0 2px #000)}
+.kctl>button:disabled{opacity:.45}
+.kwrap.voll .kctl{bottom:calc(30px + env(safe-area-inset-bottom,0px))}.kwrap.voll:has(#kfeldv:not(:empty)) .kctl{bottom:calc(160px + env(safe-area-inset-bottom,0px))}
 </style>
 </head>
 <body>
@@ -631,10 +636,10 @@ async function karte(mid,setzen){
   const kh=`<div class="sheet-head"><div><span class="label">${m?esc(m.name):"Hof"}</span><h2>${setzen?"Standort setzen":"Karte"}</h2></div><button class="ghost" data-act="${m?"back":"close"}">${m?"Zurück":"Schließen"}</button></div>`;
   const kb=`  ${setzen?`<p class="note" style="margin:0">Tippe auf die Karte, wo <b>${esc(m.name)}</b> steht – oder stell dich daneben und nimm <b>📍 Mein Standort</b>.</p>`:""}
   ${setzen?"":`<div class="kfilter" id="kfilter">${[...KGRP,{id:"felder",name:"Felder"}].map(g=>`<button type="button" class="chip${kAus().includes(g.id)?"":" on"}" data-kg="${g.id}">${g.name}</button>`).join("")}</div>`}
-  <div class="kwrap" id="kwrap"><div id="map" class="map"><div class="empty">Karte wird geladen…</div></div><button type="button" class="kvollbtn" id="kvoll" aria-label="Vollbild">⛶</button>${setzen?"":`<div id="kfeldv"></div>`}${setzen||!S.canWrite?"":`<button type="button" class="kvollzeich" id="kvz">✏️ Feld</button><button type="button" class="kvollzeich kvz2" id="kvw">☑ Auswählen</button>`}</div>
+  <div class="kwrap" id="kwrap"><div id="map" class="map"><div class="empty">Karte wird geladen…</div></div><div class="kctl">${setzen||!S.canWrite?"":`<button type="button" id="k_ausw"><i>☑</i>Auswählen</button><button type="button" id="k_feldneu"><i>✏️</i>Einzeichnen</button><label id="k_imp"><i>📥</i>Import<input type="file" id="k_impf" accept=".zip,.geojson,.json" hidden></label>`}<button type="button" id="kvoll" aria-label="Vollbild"><i>⛶</i><span>Vollbild</span></button></div>${setzen?"":`<div id="kfeldv"></div>`}</div>
   ${setzen?`<div class="fields"><label class="f full"><span class="label">Wo genau (optional)</span><input id="k_ort" maxlength="80" value="${esc(st?st.ort||"":"")}" placeholder="z. B. Maschinenhalle hinten links"></label></div>
   <p class="err" id="kerr" hidden></p><div class="row"><button type="button" id="k_gps">📍 Mein Standort</button>${st?`<button type="button" class="danger" id="k_del">Entfernen</button>`:""}<button type="button" class="primary" id="k_save" ${st?"":"disabled"}>Speichern</button></div>`
-  :`<div id="kfeld"></div><div id="k_auftr"></div><div class="row" style="justify-content:space-between"><small class="note" style="margin:0">${S.m.filter(x=>x.standort&&x.standort.lat).length} Maschinen · ${(S.f||[]).length} ${(S.f||[]).length===1?"Feld":"Felder"}${(S.f||[]).length?` (${fmtHa((S.f||[]).reduce((a,f)=>a+flaecheHa(f.punkte),0))})`:""} · Antippen öffnet</small><span class="kbtns">${S.canWrite?`<button type="button" id="k_ausw">☑ Felder auswählen</button> <button type="button" id="k_feldneu">✏️ Feld einzeichnen</button> <label class="btn ghost" id="k_imp">📥 Felder importieren<input type="file" id="k_impf" accept=".zip,.geojson,.json" hidden></label> <button type="button" class="ghost" id="k_hof">Ansicht als Hof merken</button>`:""}</span></div>`}`;
+  :`<div id="kfeld"></div><div id="k_auftr"></div><div class="row" style="justify-content:space-between"><small class="note" style="margin:0">${S.m.filter(x=>x.standort&&x.standort.lat).length} Maschinen · ${(S.f||[]).length} ${(S.f||[]).length===1?"Feld":"Felder"}${(S.f||[]).length?` (${fmtHa((S.f||[]).reduce((a,f)=>a+flaecheHa(f.punkte),0))})`:""} · Antippen öffnet</small>${S.canWrite?`<button type="button" class="linkbtn" id="k_hof">Ansicht als Hof merken</button>`:""}</div>`}`;
   if(tab){$("#vKarte").innerHTML=`<div class="sechead"><h2>Karte</h2></div>`+kb;kTally()}
   else openSheet(kh+kb);
   /* Erst Google-Luftbild versuchen, sonst die freie Karte (Leaflet/Esri) */
@@ -645,8 +650,8 @@ async function karte(mid,setzen){
   if(!$("#map")||!kAktiv())return;
   const K=G?kGoogle($("#map")):kLeaflet($("#map"));
   /* Vollbild: Karte füllt den ganzen Bildschirm; Zeichnen-Leiste wandert mit */
-  const voll=an=>{const w=$("#kwrap");if(!w)return;w.classList.toggle("voll",an);document.body.classList.toggle("kvoll-an",an);$("#kvoll").textContent=an?"✕":"⛶";
-    const f=kPanel(),fv=$("#kfeldv");if(f&&fv){if(an)fv.append(...f.childNodes);else f.append(...fv.childNodes)}setTimeout(()=>K.resize(),60)};
+  const voll=an=>{const w=$("#kwrap");if(!w)return;w.classList.toggle("voll",an);document.body.classList.toggle("kvoll-an",an);$("#kvoll").innerHTML=an?"<i>✕</i><span>Schließen</span>":"<i>⛶</i><span>Vollbild</span>";
+    const f=document.getElementById("kfeld"),fv=$("#kfeldv");if(f&&fv){if(an)fv.append(...f.childNodes);else f.append(...fv.childNodes)}setTimeout(()=>K.resize(),60)};
   const kvz=$("#kvz");if(kvz)kvz.addEventListener("click",()=>{const b=$("#k_feldneu");if(b&&!b.disabled)b.click()});
   const kvw=$("#kvw");if(kvw)kvw.addEventListener("click",()=>{const b=$("#k_ausw");if(b&&!b.disabled)b.click()});
   $("#kvoll").addEventListener("click",()=>voll(!$("#kwrap").classList.contains("voll")));
