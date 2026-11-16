@@ -589,8 +589,8 @@ const fmtHa=h=>h.toLocaleString("de-DE",{minimumFractionDigits:2,maximumFraction
 function mitte(pts){let x=0,y=0;pts.forEach(p=>{x+=p.lat;y+=p.lng});return {lat:x/pts.length,lng:y/pts.length}}
 const FELDFARBE="#f6c400",AUFTRAGFARBE="#ff6a00";
 /* Nutzung der Felder mit Farbe; ohne Angabe wird aus dem Namen geraten */
-const NUTZ=[["acker","Ackerland","#f6c400"],["gruen","Grünland / Wiese","#3ddc4a"],["still","Stilllegung","#c084fc"],["baeume","Weihnachtsbäume","#00d1b2"],["sonst","Sonstiges","#e5e5e5"]];
-const nutzung=f=>f.nutzung||(/stil+(legung)?\b|\bstill$/i.test(f.name||"")?"still":/wiese|weide|grünland/i.test(f.name||"")?"gruen":/tannen|weihnacht|bäume/i.test(f.name||"")?"baeume":"acker");
+const NUTZ=[["acker","Ackerland","#f6c400"],["gruen","Grünland / Wiese","#3ddc4a"],["still","Stilllegung","#c084fc"],["baeume","Weihnachtsbäume","#00d1b2"],["wald","Wald","#1e8f3e"],["sonst","Sonstiges","#e5e5e5"]];
+const nutzung=f=>f.nutzung||(/stil+(legung)?\b|\bstill$/i.test(f.name||"")?"still":/wiese|weide|grünland/i.test(f.name||"")?"gruen":/tannen|weihnacht|bäume/i.test(f.name||"")?"baeume":/\bwald\b|forst|holz$/i.test(f.name||"")&&!/eichholz|buchholz|schornholz/i.test(f.name||"")?"wald":"acker");
 const nutzFarbe=f=>(NUTZ.find(n=>n[0]===nutzung(f))||NUTZ[0])[2];
 const nutzName=f=>(NUTZ.find(n=>n[0]===nutzung(f))||NUTZ[0])[1];
 /* Felder importieren: Shapefile-ZIP (z. B. Export aus dem John Deere Operations Center) oder GeoJSON – alles im Browser, nichts geht an fremde Server */
