@@ -248,7 +248,7 @@ img{max-width:100%}[hidden]{display:none!important}
 .kweit .kfl:not(.kfa){display:none}
 .kbtns{display:flex;flex-wrap:wrap;gap:6px}
 .kwrap{position:relative}.kvollbtn{position:absolute;bottom:28px;left:10px;z-index:5;width:44px;height:44px;padding:0;border:0;background:none;color:#fff;font-size:28px;line-height:44px;text-shadow:0 0 4px #000,0 0 2px #000;cursor:pointer}
-.kwrap.voll{position:fixed;inset:0;z-index:60;background:#000}.kwrap.voll .map{height:100%;border-radius:0;border:0}
+.kwrap.voll{position:fixed;inset:0;z-index:18;background:#000}.kwrap.voll .map{height:100%;border-radius:0;border:0}
 
 #kfeldv:empty{display:none}.kwrap.voll #kfeldv{position:absolute;left:10px;right:10px;bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:5}.kwrap.voll #kfeldv .kfinfo{margin:0;box-shadow:0 2px 8px rgba(0,0,0,.4)}
 body.kvoll-an{overflow:hidden}
@@ -634,6 +634,7 @@ async function felderSpeichern(F){const heute=iso(new Date());
 function kTally(){const t=$("#tally");if(!t||VIEW!=="karte")return;$("#tallyLbl").hidden=true;t.innerHTML=`<div><b>${S.m.filter(x=>x.standort&&x.standort.lat).length}</b><span>Maschinen</span></div><div><b>${(S.f||[]).length}</b><span>Felder</span></div><div><b>${Math.round((S.f||[]).reduce((q,f)=>q+flaecheHa(f.punkte),0))}</b><span>ha</span></div>`}
 const kPanel=()=>{const w=$("#kwrap");return w&&w.classList.contains("voll")&&$("#kfeldv")?$("#kfeldv"):$("#kfeld")};
 const kAktiv=()=>S.open?S.open.type==="karte":VIEW==="karte";
+let KVOLL=false,KST=null; /* Vollbild und Ausschnitt bleiben beim Neuzeichnen erhalten */
 async function karte(mid,setzen){
   const m=mid?S.m.find(x=>x.id===mid):null;if(mid&&!m)return;
   const tab=!mid&&!setzen;
@@ -655,12 +656,14 @@ async function karte(mid,setzen){
   await new Promise(r=>setTimeout(r,250)); /* erst wenn das Fenster fertig aufgeklappt ist, sonst stimmen die Positionen nicht */
   if(!$("#map")||!kAktiv())return;
   const K=G?kGoogle($("#map")):kLeaflet($("#map"));
+  const neuLaden=()=>{try{KST={c:K.center(),z:K.zoom()}}catch(_){}karte(null,false)};
   /* Vollbild: Karte füllt den ganzen Bildschirm; Zeichnen-Leiste wandert mit */
-  const voll=an=>{const w=$("#kwrap");if(!w)return;w.classList.toggle("voll",an);document.body.classList.toggle("kvoll-an",an);$("#kvoll").innerHTML=an?"<i>✕</i><span>Schließen</span>":"<i>⛶</i><span>Vollbild</span>";
+  const voll=an=>{const w=$("#kwrap");if(!w)return;if(tab)KVOLL=an;w.classList.toggle("voll",an);document.body.classList.toggle("kvoll-an",an);$("#kvoll").innerHTML=an?"<i>✕</i><span>Schließen</span>":"<i>⛶</i><span>Vollbild</span>";
     const f=document.getElementById("kfeld"),fv=$("#kfeldv");if(f&&fv){if(an)fv.append(...f.childNodes);else f.append(...fv.childNodes)}setTimeout(()=>K.resize(),60)};
   const kvz=$("#kvz");if(kvz)kvz.addEventListener("click",()=>{const b=$("#k_feldneu");if(b&&!b.disabled)b.click()});
   const kvw=$("#kvw");if(kvw)kvw.addEventListener("click",()=>{const b=$("#k_ausw");if(b&&!b.disabled)b.click()});
   $("#kvoll").addEventListener("click",()=>voll(!$("#kwrap").classList.contains("voll")));
+  if(tab&&KVOLL)voll(true);else document.body.classList.remove("kvoll-an");
   const alle=S.m.filter(x=>x.standort&&x.standort.lat&&(!setzen||x.id!==mid));
   const pts=[],grp={};
   const oeffne=x=>{S.open={type:"detail",id:x.id};drawDetail()};
@@ -723,7 +726,7 @@ async function karte(mid,setzen){
     if($("#kf_auf"))$("#kf_auf").addEventListener("click",()=>auftragForm([f.id]));
     if($("#kf_erl"))$("#kf_erl").addEventListener("click",async()=>{try{await auftragSpeichern([f.id],null);toast(`„${f.name}“ erledigt.`);feldInfo(f);auftragZahl()}catch(_){toast("Konnte nicht gespeichert werden.")}});
     $("#kf_edit").addEventListener("click",()=>feldForm(f));
-    const d=$("#kf_del");arm&&d.addEventListener("click",()=>arm(d,"Feld wirklich löschen?",async()=>{try{await S.db.doc("felder/"+f.id).delete();toast("Feld gelöscht.");karte(null,false)}catch(_){toast("Konnte nicht gelöscht werden.")}}))};
+    const d=$("#kf_del");arm&&d.addEventListener("click",()=>arm(d,"Feld wirklich löschen?",async()=>{try{await S.db.doc("felder/"+f.id).delete();toast("Feld gelöscht.");neuLaden()}catch(_){toast("Konnte nicht gelöscht werden.")}}))};
   const feldForm=(f,punkte)=>{const el=kPanel();f=f||{};
     el.innerHTML=`<div class="kfinfo" style="display:block"><div class="fields">
       <label class="f"><span class="label">Name des Feldes *</span><input id="kf_name" maxlength="60" value="${esc(f.name||"")}" placeholder="z. B. Am Kreuzweg"></label>
@@ -733,11 +736,11 @@ async function karte(mid,setzen){
       <p class="note" style="margin:4px 0">Fläche: <b>${fmtHa(flaecheHa(punkte||f.punkte))}</b></p>
       <div class="row"><button type="button" class="ghost" id="kf_abbr">Abbrechen</button><button type="button" class="primary" id="kf_save">Speichern</button></div></div>`;
     $("#kf_name").focus();
-    $("#kf_abbr").addEventListener("click",()=>karte(null,false));
+    $("#kf_abbr").addEventListener("click",()=>neuLaden());
     $("#kf_save").addEventListener("click",async ev=>{const name=$("#kf_name").value.trim();if(!name){$("#kf_name").focus();return}ev.target.disabled=true;
       const d={name,nutzung:$("#kf_nutz").value,kultur:$("#kf_kultur").value.trim(),notiz:$("#kf_notiz").value.trim()};
       try{if(f.id)await S.db.doc("felder/"+f.id).update(d);else await S.db.collection("felder").add({...d,punkte:punkte,farbe:FELDFARBE,angelegt:iso(new Date())});
-        toast("Feld gespeichert.");karte(null,false)}catch(_){toast("Konnte nicht gespeichert werden.");ev.target.disabled=false}})};
+        toast("Feld gespeichert.");neuLaden()}catch(_){toast("Konnte nicht gespeichert werden.");ev.target.disabled=false}})};
   if(!setzen&&$("#k_feldneu"))$("#k_feldneu").addEventListener("click",()=>{
     if(auswahl)return;const pts=[],tmp=K.poly([],{farbe:"#ff5a36",fuell:.3}),ecken=[];
     const upd=()=>{tmp.pfad(pts);$("#kz_info").textContent=pts.length<3?`${pts.length} Ecke${pts.length===1?"":"n"} – tippe weitere Ecken an`:`${pts.length} Ecken · ${fmtHa(flaecheHa(pts))}`;$("#kz_ok").disabled=pts.length<3};
@@ -746,7 +749,7 @@ async function karte(mid,setzen){
       <span><button type="button" id="kz_back">↶</button> <button type="button" class="ghost" id="kz_abbr">Abbrechen</button> <button type="button" class="primary" id="kz_ok" disabled>Fertig</button></span></div>`;
     $("#k_feldneu").disabled=true;
     $("#kz_back").addEventListener("click",()=>{if(!pts.length)return;pts.pop();ecken.pop().remove();upd()});
-    $("#kz_abbr").addEventListener("click",()=>karte(null,false));
+    $("#kz_abbr").addEventListener("click",()=>neuLaden());
     $("#kz_ok").addEventListener("click",()=>{zeichne=null;feldForm(null,pts.slice())});});
   if(!setzen)K.onClick(ll=>{if(zeichne)zeichne.add(ll)});
   const legende=()=>{const el=$("#k_leg");if(!el)return;const fs=S.f||[];el.innerHTML=fs.length?NUTZ.map(([k,n,c])=>{const t=fs.filter(f=>nutzung(f)===k);return t.length?`<span><span class="kdot" style="background:${c}"></span>${n} <small>${fmtHa(t.reduce((q,f)=>q+flaecheHa(f.punkte),0))}</small></span>`:""}).join(""):""};
@@ -755,12 +758,13 @@ async function karte(mid,setzen){
   if(!setzen&&$("#k_impf"))$("#k_impf").addEventListener("change",async e=>{const file=e.target.files[0];if(!file)return;
     try{toast("Felder werden gelesen…");const F=await felderAusDatei(file);
       const ha=F.reduce((a,f)=>a+flaecheHa(f.punkte),0);
-      await felderSpeichern(F);toast(`${F.length} Felder importiert (${fmtHa(ha)}).`);setTimeout(()=>karte(null,false),300)}
+      await felderSpeichern(F);toast(`${F.length} Felder importiert (${fmtHa(ha)}).`);setTimeout(()=>neuLaden(),300)}
     catch(err){toast("Import fehlgeschlagen: "+(err&&err.message||"unbekannter Fehler"))}e.target.value=""});
   let neu=null;
   const setze=ll=>{if(neu)neu.move(ll);else neu=K.marker(ll,{html:`<div class="kneu">📍</div>`,w:30,h:30,unten:true});$("#k_save").disabled=false};
   setzeRef=setze;if(setzen){if(st)setze({lat:st.lat,lng:st.lng});K.onClick(setze)}
   if(st)K.view({lat:st.lat,lng:st.lng},19);
+  else if(tab&&KST){K.view(KST.c,KST.z);KST=null}
   else K.view({lat:hof.lat,lng:hof.lng},hof.zoom||17);
   const map=K;
   if(setzen){
@@ -927,7 +931,7 @@ function openSheet(html){
   $("#layer").innerHTML=`<div class="scrim" id="scrim"><div class="sheet" role="dialog" aria-modal="true">${html}</div></div>`;
   $("#scrim").addEventListener("click",e=>{if(e.target.id==="scrim")closeSheet()});
 }
-function closeSheet(still){document.body.classList.remove("kvoll-an");$("#layer").innerHTML="";S.open=null;if(!still&&VIEW==="karte"&&!document.querySelector("#vKarte #map"))setTimeout(()=>{if(VIEW==="karte"&&!S.open)karte(null,false)},0)}
+function closeSheet(still){if(!KVOLL||VIEW!=="karte")document.body.classList.remove("kvoll-an");$("#layer").innerHTML="";S.open=null;if(!still&&VIEW==="karte"&&!document.querySelector("#vKarte #map"))setTimeout(()=>{if(VIEW==="karte"&&!S.open)karte(null,false)},0)}
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&S.open)closeSheet()});
 
 function drawDetail(){
@@ -1228,7 +1232,7 @@ document.addEventListener("click",async e=>{
 document.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.matches("li[data-open]")&&!S.open){S.open={type:"detail",id:e.target.dataset.open};drawDetail()}});
 $("#addM").addEventListener("click",()=>machineForm());
 document.querySelector(".seg").addEventListener("click",e=>{const b=e.target.closest("[data-due]");if(!b||b.dataset.due===DUE)return;DUE=b.dataset.due;render()});
-document.querySelector(".viewnav").addEventListener("click",e=>{const b=e.target.closest("[data-view]");if(!b||b.dataset.view===VIEW)return;document.body.classList.remove("kvoll-an");VIEW=b.dataset.view;scrollTo(0,0);render();if(VIEW==="karte")karte(null,false)});
+document.querySelector(".viewnav").addEventListener("click",e=>{const b=e.target.closest("[data-view]");if(!b||b.dataset.view===VIEW)return;document.body.classList.remove("kvoll-an");KVOLL=false;VIEW=b.dataset.view;scrollTo(0,0);render();if(VIEW==="karte")karte(null,false)});
 $("#kAlle").addEventListener("change",e=>{KALLE=e.target.checked;render()});
 $("#hAlle").addEventListener("change",e=>{HALLE=e.target.checked;render()});
 $("#addH").addEventListener("click",()=>hofForm());
