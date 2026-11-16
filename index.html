@@ -507,7 +507,7 @@ function kartenLib(){if(window.L)return Promise.resolve();if(LP)return LP;
   const lade=([js,css])=>new Promise((res,rej)=>{const sc=document.createElement("script");sc.src=js;sc.onload=()=>{if(!window.L){kartenLib.log.push((js.split("/")[2]||"App")+": geladen, aber L fehlt ("+typeof window.module+"/"+typeof window.define+")");rej();return}
       const c=document.createElement("link");c.rel="stylesheet";c.href=css;document.head.appendChild(c);res()};sc.onerror=()=>{kartenLib.log.push((js.split("/")[2]||"App")+": nicht erreichbar");sc.remove();rej()};document.head.appendChild(sc)});
   LP=Q.reduce((p,q)=>p.catch(()=>lade(q)),Promise.reject()).catch(e=>{LP=null;throw e});return LP}
-const HOF_START={lat:50.9985,lng:9.2370,zoom:16}; /* grob Neuental – „Diese Ansicht als Hof merken“ speichert den genauen Ausschnitt */
+const HOF_START={lat:50.9962,lng:9.2075,zoom:17}; /* Waltersbrück, Hof Teigeler – „Ansicht als Hof merken“ speichert einen eigenen Ausschnitt */ /* grob Neuental – „Diese Ansicht als Hof merken“ speichert den genauen Ausschnitt */
 /* Kartensymbol: eigenes Foto (rund) oder ein kleines Fahrzeug in Markenfarbe */
 function markenFarbe(m){const t=((m.hersteller||"")+" "+(m.name||"")+" "+(m.modell||"")).toLowerCase().replace(/ü/g,"ue");
   if(/deere|\bjd\b/.test(t))return ["#367c2b","#f2c200"];if(/lanz|bulldog/.test(t))return ["#41627f","#c8322b"];if(/fendt/.test(t))return ["#4e8a3a","#7b7b7b"];
@@ -632,7 +632,7 @@ async function karte(mid,setzen){
   /* Erst Google-Luftbild versuchen, sonst die freie Karte (Leaflet/Esri) */
   let G=false;try{await googleLib();G=true}catch(_){try{await kartenLib()}catch(__){$("#map").innerHTML=`<div class="empty">Karte konnte nicht geladen werden. Prüf die Internetverbindung.<br><small>Version ${esc(APPV)} · ${esc([...(googleLib.log||[]),...(kartenLib.log||[])].join(" · "))}</small></div>`;return}}
   if(!$("#map")||!kAktiv())return;$("#map").innerHTML="";
-  let hof=HOF_START;try{const h=await S.db.doc("meta/hof").get();if(h.exists&&h.data().lat)hof=h.data()}catch(_){}
+  let hof=HOF_START;try{const h=await S.db.doc("meta/hof").get();if(h.exists&&h.data().lat&&(h.data().zoom||0)>=15)hof=h.data()}catch(_){}
   await new Promise(r=>setTimeout(r,250)); /* erst wenn das Fenster fertig aufgeklappt ist, sonst stimmen die Positionen nicht */
   if(!$("#map")||!kAktiv())return;
   const K=G?kGoogle($("#map")):kLeaflet($("#map"));
@@ -693,8 +693,6 @@ async function karte(mid,setzen){
   const setze=ll=>{if(neu)neu.move(ll);else neu=K.marker(ll,{html:`<div class="kneu">📍</div>`,w:30,h:30,unten:true});$("#k_save").disabled=false};
   setzeRef=setze;if(setzen){if(st)setze({lat:st.lat,lng:st.lng});K.onClick(setze)}
   if(st)K.view({lat:st.lat,lng:st.lng},19);
-  else if(!setzen&&(pts.length>1||(S.f||[]).length))K.fit([...pts,...(S.f||[]).flatMap(f=>f.punkte||[])]);
-  else if(!setzen&&pts.length===1)K.view(pts[0],18);
   else K.view({lat:hof.lat,lng:hof.lng},hof.zoom||17);
   const map=K;
   if(setzen){
