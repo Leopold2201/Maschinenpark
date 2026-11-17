@@ -261,6 +261,7 @@ body.kvoll-an{overflow:hidden}
 .kwrap.voll .kctl{bottom:calc(30px + env(safe-area-inset-bottom,0px))}.kwrap.voll:has(#kfeldv:not(:empty)) .kctl{bottom:calc(160px + env(safe-area-inset-bottom,0px))}
 .kdot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:middle;box-shadow:0 0 0 1px rgba(0,0,0,.35)}.kleg{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:.85rem;margin:6px 0}.kleg small{color:var(--muted)}.knutz{display:grid;gap:6px;margin:8px 0}.knutz button{text-align:left}
 .berseg{display:flex;max-width:420px;margin:0 auto 14px}.berseg[hidden]{display:none}.berseg button{flex:1}
+.headbtns{display:flex;gap:6px;flex-wrap:nowrap;justify-content:flex-end;flex:0 0 auto}.headbtns button{padding:8px 10px;font-size:.9rem}.sheet-head>:first-child{min-width:0}.sheet-head:has(.headbtns) h2{font-size:1.3rem;line-height:1.2}
 </style>
 </head>
 <body>
@@ -947,6 +948,12 @@ addEventListener("popstate",()=>{
   HPOP=true;try{if($("#layer").innerHTML)closeSheet();else if(window.__kvollAus&&document.querySelector("#kwrap.voll"))window.__kvollAus()}finally{HPOP=false}});
 function openSheet(html){if(!$("#layer").innerHTML)hPush("sh");
   $("#layer").innerHTML=`<div class="scrim" id="scrim"><div class="sheet" role="dialog" aria-modal="true">${html}</div></div>`;
+  /* Speichern-Knopf zusätzlich oben, damit man bei langen Formularen nicht runterscrollen muss */
+  const fm=$("#layer form:not([hidden])"),sub=fm&&fm.querySelector('button[type=submit]'),hd=$("#layer .sheet-head"),last=hd&&hd.lastElementChild;
+  if(fm&&sub&&last&&last.tagName==="BUTTON"&&!sub.closest(".sheet-head")){const w=document.createElement("span");w.className="headbtns";last.replaceWith(w);
+    const sv=document.createElement("button");sv.type="button";sv.className="primary";sv.textContent=sub.textContent.trim()||"Speichern";
+    sv.addEventListener("click",()=>{if(!sub.disabled)fm.requestSubmit(sub)});w.append(last,sv);
+    new MutationObserver(()=>{sv.disabled=sub.disabled}).observe(sub,{attributes:true,attributeFilter:["disabled"]})}
   $("#scrim").addEventListener("click",e=>{if(e.target.id==="scrim")closeSheet()});
 }
 function closeSheet(still){if($("#layer").innerHTML)hBack("sh");if(!KVOLL||VIEW!=="karte")document.body.classList.remove("kvoll-an");$("#layer").innerHTML="";S.open=null;if(!still&&VIEW==="karte"&&!document.querySelector("#vKarte #map"))setTimeout(()=>{if(VIEW==="karte"&&!S.open)karte(null,false)},0)}
