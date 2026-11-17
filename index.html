@@ -584,9 +584,9 @@ function kGoogle(el){
       this.d.style.left=(p.x-this.o.w/2)+"px";this.d.style.top=(p.y-(this.o.unten?this.o.h:this.o.h/2))+"px"}
     onRemove(){if(this.d)this.d.remove();this.d=null}}
   return {marker:(ll,o)=>{const m=new HM(ll,o);return {remove:()=>m.setMap(null),add:()=>m.setMap(map),move:p=>{m.ll=p;m.draw()},pos:()=>m.ll,html:h=>{m.o.html=h;if(m.d)m.d.innerHTML=h}}},
-    poly:(pts,o)=>{const p=new g.Polygon({paths:pts,map,strokeColor:o.farbe,strokeWeight:2,fillColor:o.farbe,fillOpacity:o.fuell??.22,clickable:!!o.click,zIndex:0});
+    poly:(pts,o)=>{const p=new g.Polygon({paths:pts,map,strokeColor:o.rand||o.farbe,strokeWeight:o.dick||2,fillColor:o.farbe,fillOpacity:o.fuell??.22,clickable:!!o.click,zIndex:0});
       if(o.click)p.addListener("click",e=>o.click(e.latLng.toJSON()));
-      return {remove:()=>p.setMap(null),add:()=>p.setMap(map),pfad:q=>p.setPath(q),stil:o=>p.setOptions({strokeColor:o.farbe,fillColor:o.farbe,fillOpacity:o.fuell??.22,strokeWeight:o.dick||2}),
+      return {remove:()=>p.setMap(null),add:()=>p.setMap(map),pfad:q=>p.setPath(q),stil:o=>p.setOptions({strokeColor:o.rand||o.farbe,fillColor:o.farbe,fillOpacity:o.fuell??.22,strokeWeight:o.dick||2}),
         edit:(an,cb)=>{p.setEditable(an);if(p.__ls){p.__ls.forEach(l=>l.remove());p.__ls=null}
           if(an){const path=p.getPath(),f=()=>cb(path.getArray().map(x=>x.toJSON()));p.__ls=["set_at","insert_at","remove_at"].map(e=>path.addListener(e,f))}}}},
     onClick:f=>map.addListener("click",e=>f(e.latLng.toJSON())),view:(ll,z)=>{map.setCenter(ll);map.setZoom(z)},
@@ -599,9 +599,9 @@ function kLeaflet(el){
   L.control.layers({"Luftbild":sat,"Karte":osm},null,{position:"topright"}).addTo(map);setTimeout(()=>map.invalidateSize(),150);
   return {marker:(ll,o)=>{const m=L.marker(ll,{interactive:!!o.click,icon:L.divIcon({className:"gmk",html:o.html,iconSize:[o.w,o.h],iconAnchor:[o.w/2,o.unten?o.h:o.h/2]})}).addTo(map);
       if(o.click)m.on("click",o.click);return {remove:()=>m.remove(),add:()=>m.addTo(map),move:p=>m.setLatLng(p),pos:()=>m.getLatLng(),html:h=>m.setIcon(L.divIcon({className:"gmk",html:h,iconSize:[o.w,o.h],iconAnchor:[o.w/2,o.unten?o.h:o.h/2]}))}},
-    poly:(pts,o)=>{const p=L.polygon(pts,{color:o.farbe,weight:2,fillColor:o.farbe,fillOpacity:o.fuell??.22,interactive:!!o.click}).addTo(map);
+    poly:(pts,o)=>{const p=L.polygon(pts,{color:o.rand||o.farbe,weight:o.dick||2,fillColor:o.farbe,fillOpacity:o.fuell??.22,interactive:!!o.click}).addTo(map);
       if(o.click)p.on("click",e=>{L.DomEvent.stopPropagation(e);o.click(e.latlng)});
-      return {remove:()=>p.remove(),add:()=>p.addTo(map),pfad:q=>p.setLatLngs(q),stil:o=>p.setStyle({color:o.farbe,fillColor:o.farbe,fillOpacity:o.fuell??.22,weight:o.dick||2}),
+      return {remove:()=>p.remove(),add:()=>p.addTo(map),pfad:q=>p.setLatLngs(q),stil:o=>p.setStyle({color:o.rand||o.farbe,fillColor:o.farbe,fillOpacity:o.fuell??.22,weight:o.dick||2}),
         edit:(an,cb)=>{(p.__h||[]).forEach(m=>m.remove());p.__h=[];if(!an)return;
           const zeichne=()=>{(p.__h||[]).forEach(m=>m.remove());p.__h=[];const pts=p.getLatLngs()[0];
             pts.forEach((ll,i)=>{const m=L.marker(ll,{draggable:true,icon:L.divIcon({className:"gmk",html:`<div class="kecke gross"></div>`,iconSize:[22,22],iconAnchor:[11,11]})}).addTo(map);
@@ -710,8 +710,8 @@ async function karte(mid,setzen){
     Object.values(grp).flat().forEach(mk=>(aus.includes(mk.g)||(mk.ot&&aus.includes("oldtimer")))?mk.remove():mk.add())});
   /* Felder zeichnen */
   const felder=[],FO={};let zeichne=null,setzeRef=null,auswahl=null;
-  const fStil=f=>auswahl&&auswahl.has(f.id)?{farbe:"#2f8cff",fuell:.45,dick:3}:f.auftrag?{farbe:AUFTRAGFARBE,fuell:.4,dick:3}:{farbe:nutzFarbe(f),fuell:.3};
-  const fLabel=f=>`<div class="kfl${f.auftrag?" kfa":""}">${f.auftrag?"⚑ ":""}${esc(f.name)}<small>${f.auftrag?esc(f.auftrag.was)+(f.auftrag.wer?" · "+esc(f.auftrag.wer):""):fmtHa(flaecheHa(f.punkte))}</small></div>`;
+  const fStil=f=>auswahl&&auswahl.has(f.id)?{farbe:"#2f8cff",fuell:.45,dick:3}:f.auftrag?{farbe:AUFTRAGFARBE,fuell:.4,dick:3}:f.tausch?{farbe:nutzFarbe(f),fuell:.3,rand:"#ffffff",dick:3}:{farbe:nutzFarbe(f),fuell:.3};
+  const fLabel=f=>`<div class="kfl${f.auftrag?" kfa":""}">${f.auftrag?"⚑ ":""}${f.tausch?"⇄ ":""}${esc(f.name)}<small>${f.auftrag?esc(f.auftrag.was)+(f.auftrag.wer?" · "+esc(f.auftrag.wer):""):fmtHa(flaecheHa(f.punkte))}</small></div>`;
   const fNeu=f=>{const o=FO[f.id];if(!o)return;o.p.stil(fStil(f));o.lb.html(fLabel(f))};
   for(const f of (S.f||[])){if(!Array.isArray(f.punkte)||f.punkte.length<3)continue;
     const p=K.poly(f.punkte,{...fStil(f),click:ll=>{if(zeichne)zeichne.add(ll);else if(setzen)setzeRef&&setzeRef(ll);else if(auswahl)auswahl.tog(f);else feldInfo(f)}});
@@ -735,14 +735,16 @@ async function karte(mid,setzen){
     set.tog=f=>{set.has(f.id)?set.delete(f.id):set.add(f.id);fNeu(f);upd()};
     const el=kPanel();const upd=()=>{const fs=(S.f||[]).filter(f=>set.has(f.id));$("#kw_info").textContent=fs.length?`${fs.length} Feld${fs.length===1?"":"er"} · ${fmtHa(fs.reduce((q,f)=>q+flaecheHa(f.punkte),0))}`:"Tippe die Felder an, die bearbeitet werden sollen.";$("#kw_ok").disabled=!fs.length;$("#kw_nutz").disabled=!fs.length;$("#kw_weg").disabled=!fs.some(f=>f.auftrag)};
     el.innerHTML=`<div class="kfinfo zeichnen" style="border-color:#2f8cff"><div><b>Felder auswählen</b><small id="kw_info"></small></div>
-      <span class="kbtns"><button type="button" class="ghost" id="kw_abbr">Abbrechen</button><button type="button" id="kw_nutz">🎨 Nutzung</button><button type="button" id="kw_weg">✓ Erledigt</button><button type="button" class="primary" id="kw_ok">⚑ Auftrag</button></span></div>`;
+      <span class="kbtns"><button type="button" class="ghost" id="kw_abbr">Abbrechen</button><button type="button" id="kw_nutz">🎨 Nutzung / ⇄</button><button type="button" id="kw_weg">✓ Erledigt</button><button type="button" class="primary" id="kw_ok">⚑ Auftrag</button></span></div>`;
     upd();const b=$("#k_ausw");if(b)b.disabled=true;
     $("#kw_abbr").addEventListener("click",()=>{auswahlEnde();el.innerHTML=""});
     $("#kw_ok").addEventListener("click",()=>auftragForm([...set]));
     $("#kw_nutz").addEventListener("click",()=>{const ids=[...set];el.innerHTML=`<div class="kfinfo" style="display:block"><b>Nutzung für ${ids.length} Feld${ids.length===1?"":"er"}</b>
-      <div class="knutz">${NUTZ.map(([k,n,c])=>`<button type="button" data-nz="${k}"><span class="kdot" style="background:${c}"></span>${n}</button>`).join("")}</div>
+      <div class="knutz">${NUTZ.map(([k,n,c])=>`<button type="button" data-nz="${k}"><span class="kdot" style="background:${c}"></span>${n}</button>`).join("")}<button type="button" data-tz="1">⇄ Als Tauschfläche markieren</button><button type="button" data-tz="0">⇄ Tauschfläche entfernen</button></div>
       <div class="row"><button type="button" class="ghost" id="kn_abbr">Abbrechen</button></div></div>`;
       $("#kn_abbr").addEventListener("click",()=>{auswahlEnde();el.innerHTML=""});
+      el.querySelectorAll("[data-tz]").forEach(b=>b.addEventListener("click",async()=>{const t=b.dataset.tz==="1";try{const bt=S.db.batch();ids.forEach(id=>bt.update(S.db.doc("felder/"+id),{tausch:t}));await bt.commit();
+        ids.forEach(id=>{const f=(S.f||[]).find(x=>x.id===id);if(f)f.tausch=t});auswahlEnde();el.innerHTML="";legende();toast(t?"Als Tauschfläche markiert.":"Markierung entfernt.")}catch(_){toast("Konnte nicht gespeichert werden.")}}));
       el.querySelectorAll("[data-nz]").forEach(b=>b.addEventListener("click",async()=>{const nz=b.dataset.nz;try{const bt=S.db.batch();ids.forEach(id=>bt.update(S.db.doc("felder/"+id),{nutzung:nz}));await bt.commit();
         ids.forEach(id=>{const f=(S.f||[]).find(x=>x.id===id);if(f)f.nutzung=nz});auswahlEnde();el.innerHTML="";legende();toast("Nutzung gespeichert.")}catch(_){toast("Konnte nicht gespeichert werden.")}}))});
     $("#kw_weg").addEventListener("click",async()=>{const ids=[...set].filter(id=>((S.f||[]).find(x=>x.id===id)||{}).auftrag);try{await auftragSpeichern(ids,null);toast("Als erledigt markiert.");auswahlEnde();el.innerHTML="";auftragZahl()}catch(_){toast("Konnte nicht gespeichert werden.")}})};
@@ -761,7 +763,7 @@ async function karte(mid,setzen){
       catch(_){toast("Konnte nicht gespeichert werden.");ev.target.disabled=false}})};
   const feldInfo=f=>{const el=kPanel();if(!el)return;
     const c=mitte(f.punkte),a=f.auftrag;
-    el.innerHTML=`<div class="kfinfo"><div><b>${esc(f.name)}</b><small><span class="kdot" style="background:${nutzFarbe(f)}"></span>${esc(nutzName(f))} · ${fmtHa(flaecheHa(f.punkte))}${f.kultur?" · "+esc(f.kultur):""}${f.notiz?" · "+esc(f.notiz):""}</small>
+    el.innerHTML=`<div class="kfinfo"><div><b>${esc(f.name)}</b><small><span class="kdot" style="background:${nutzFarbe(f)}"></span>${esc(nutzName(f))}${f.tausch?` · <b style="display:inline">⇄ Tauschfläche</b>${f.tauschMit?" mit "+esc(f.tauschMit):""}`:""} · ${fmtHa(flaecheHa(f.punkte))}${f.kultur?" · "+esc(f.kultur):""}${f.notiz?" · "+esc(f.notiz):""}</small>
       ${a?`<div class="kfa-box">⚑ <b style="display:inline">${esc(a.was)}</b>${a.wer?" · "+esc(a.wer):""}<small> · seit ${esc(fmtD(a.seit))}${a.von?" von "+esc(a.von):""}</small></div>`:""}</div>
       <span class="kbtns"><a class="btn" href="https://www.google.com/maps/dir/?api=1&destination=${c.lat.toFixed(6)},${c.lng.toFixed(6)}" target="_blank" rel="noopener">🧭 Hinfahren</a>
       ${S.canWrite?`${a?`<button type="button" class="primary" id="kf_erl">✓ Erledigt</button>`:`<button type="button" class="primary" id="kf_auf">⚑ Auftrag</button>`}<button type="button" id="kf_form">⬠ Größe ändern</button><button type="button" id="kf_edit">Bearbeiten</button><button type="button" class="danger" id="kf_del">Löschen</button>`:""}</span></div>`;
@@ -775,6 +777,8 @@ async function karte(mid,setzen){
     el.innerHTML=`<div class="kfinfo" style="display:block"><div class="fields">
       <label class="f"><span class="label">Name des Feldes *</span><input id="kf_name" maxlength="60" value="${esc(f.name||"")}" placeholder="z. B. Am Kreuzweg"></label>
       <label class="f"><span class="label">Nutzung</span><select id="kf_nutz">${NUTZ.map(([k,n])=>`<option value="${k}" ${k===nutzung({name:f.name,nutzung:f.nutzung})?"selected":""}>${n}</option>`).join("")}</select></label>
+      <label class="f check" style="align-self:end"><input id="kf_tausch" type="checkbox" style="width:auto" ${f.tausch?"checked":""}><span>⇄ Tauschfläche</span></label>
+      <label class="f"><span class="label">Getauscht mit (optional)</span><input id="kf_tmit" maxlength="60" value="${esc(f.tauschMit||"")}" placeholder="z. B. Betrieb Müller"></label>
       <label class="f"><span class="label">Kultur (optional)</span><input id="kf_kultur" maxlength="40" value="${esc(f.kultur||"")}" placeholder="z. B. Weizen, Grünland"></label>
       <label class="f full"><span class="label">Notiz</span><input id="kf_notiz" maxlength="120" value="${esc(f.notiz||"")}"></label></div>
       <p class="note" style="margin:4px 0">Fläche: <b>${fmtHa(flaecheHa(punkte||f.punkte))}</b></p>
@@ -782,7 +786,7 @@ async function karte(mid,setzen){
     $("#kf_name").focus();
     $("#kf_abbr").addEventListener("click",()=>neuLaden());
     $("#kf_save").addEventListener("click",async ev=>{const name=$("#kf_name").value.trim();if(!name){$("#kf_name").focus();return}ev.target.disabled=true;
-      const d={name,nutzung:$("#kf_nutz").value,kultur:$("#kf_kultur").value.trim(),notiz:$("#kf_notiz").value.trim()};
+      const d={name,tausch:$("#kf_tausch").checked,tauschMit:$("#kf_tmit").value.trim(),nutzung:$("#kf_nutz").value,kultur:$("#kf_kultur").value.trim(),notiz:$("#kf_notiz").value.trim()};
       try{if(f.id)await S.db.doc("felder/"+f.id).update(d);else await S.db.collection("felder").add({...d,punkte:punkte,farbe:FELDFARBE,angelegt:iso(new Date())});
         toast("Feld gespeichert.");neuLaden()}catch(_){toast("Konnte nicht gespeichert werden.");ev.target.disabled=false}})};
   if(!setzen&&$("#k_feldneu"))$("#k_feldneu").addEventListener("click",()=>{
@@ -796,7 +800,7 @@ async function karte(mid,setzen){
     $("#kz_abbr").addEventListener("click",()=>neuLaden());
     $("#kz_ok").addEventListener("click",()=>{zeichne=null;feldForm(null,pts.slice())});});
   if(!setzen)K.onClick(ll=>{if(zeichne)zeichne.add(ll)});
-  const legende=()=>{const el=$("#k_leg");if(!el)return;const fs=S.f||[];el.innerHTML=fs.length?NUTZ.map(([k,n,c])=>{const t=fs.filter(f=>nutzung(f)===k);return t.length?`<span><span class="kdot" style="background:${c}"></span>${n} <small>${fmtHa(t.reduce((q,f)=>q+flaecheHa(f.punkte),0))}</small></span>`:""}).join(""):""};
+  const legende=()=>{const el=$("#k_leg");if(!el)return;const fs=S.f||[];el.innerHTML=fs.length?NUTZ.map(([k,n,c])=>{const t=fs.filter(f=>nutzung(f)===k);return t.length?`<span><span class="kdot" style="background:${c}"></span>${n} <small>${fmtHa(t.reduce((q,f)=>q+flaecheHa(f.punkte),0))}</small></span>`:""}).join("")+(()=>{const t=fs.filter(f=>f.tausch);return t.length?`<span>⇄ Tauschflächen <small>${t.length} · ${fmtHa(t.reduce((q,f)=>q+flaecheHa(f.punkte),0))}</small></span>`:""})():""};
   if(!setzen){auftragZahl();legende();const ab=$("#k_ausw");if(ab)ab.addEventListener("click",auswahlStart)}
   const lz=z=>{const el=$("#map");if(el)el.classList.toggle("kweit",z<15)};K.onZoom(lz);setTimeout(()=>lz(K.zoom()),400);
   if(!setzen&&$("#k_impf"))$("#k_impf").addEventListener("change",async e=>{const file=e.target.files[0];if(!file)return;
