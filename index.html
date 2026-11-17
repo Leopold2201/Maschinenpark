@@ -133,7 +133,7 @@ main .wrap>section{min-width:0}
 .mcard.is-ab{opacity:.62}
 .tag.ab{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 45%,transparent)}
 .toggle{display:flex;align-items:center;gap:6px;font-size:.9rem;color:var(--muted);white-space:nowrap}
-.mcard h3{font-family:var(--f-display);font-size:1.25rem;margin:0;line-height:1.1;min-width:0;overflow-wrap:anywhere}
+.mcard h3{font-family:var(--f-display);font-size:1.25rem;margin:0;line-height:1.1;min-width:0;overflow-wrap:break-word;hyphens:auto}
 .mcard .meta{color:var(--muted);font-size:.86rem}
 .mcard .chips{display:flex;gap:6px;flex-wrap:wrap}
 .tag{font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:1px 6px;white-space:nowrap}
@@ -928,9 +928,9 @@ function renderMasch(){
     if(w[0])chips.push(`<span class="pill ${lvl(w[0].d)}">${esc(w[0].typ)}: ${w[0].kurz}</span>`);
     if(w.length>1)chips.push(`<span class="pill none">+${w.length-1} weitere</span>`);
     return `<button class="mcard${m.abgemeldet?" is-ab":""}" data-open="${esc(m.id)}">
-    <div class="top"><h3>${esc(m.name)}</h3>${m.abgemeldet?`<span class="tag ab">Abgemeldet</span>`:`<span class="tag">${m.beispiel?"Beispiel":esc(katOf(m))}</span>`}${BER==="alle"&&istOldtimer(m)?`<span class="tag">Oldtimer</span>`:""}</div>
+    <div class="top"><h3>${esc(m.name)}</h3>${m.abgemeldet?`<span class="tag ab">Abgemeldet</span>`:`<span class="tag">${m.beispiel?"Beispiel":esc(katOf(m))}</span>`}</div>
     <div class="meta">${esc([m.hersteller,m.modell].filter(Boolean).join(" ")||"–")}${m.kennzeichen?` · ${esc(m.kennzeichen)}`:""}${m.erstzulassung?` · EZ ${esc(ez(m.erstzulassung))}`:m.baujahr?` · Bj. ${esc(m.baujahr)}`:""}</div>
-    <div class="chips">${chips.length?chips.join(""):`<span class="pill none">keine Termine</span>`}</div></button>`});
+    <div class="chips">${chips.length?chips.join(""):`<span class="pill none">keine Termine</span>`}${BER==="alle"&&istOldtimer(m)?`<span class="tag" style="align-self:center">Oldtimer</span>`:""}</div></button>`});
 
   $("#addM").disabled=!S.canWrite;
   if(S.open&&S.open.type==="detail")drawDetail();
