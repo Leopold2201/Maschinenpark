@@ -263,6 +263,7 @@ body.kvoll-an{overflow:hidden}
 .berseg{display:flex;max-width:420px;margin:0 auto 14px}.berseg[hidden]{display:none}.berseg button{flex:1}
 .headbtns{display:flex;gap:6px;flex-wrap:nowrap;justify-content:flex-end;flex:0 0 auto}.headbtns button{padding:8px 10px;font-size:.9rem}.sheet-head>:first-child{min-width:0}.sheet-head:has(.headbtns) h2{font-size:1.3rem;line-height:1.2}
 .dher{margin-bottom:14px}.dart{border:1px solid var(--line);border-radius:var(--r);background:var(--surface);margin:6px 0}.dart summary{cursor:pointer;padding:11px 14px;font-weight:700;list-style:none;display:flex;justify-content:space-between}.dart summary::-webkit-details-marker{display:none}.dart summary span{color:var(--muted);font-weight:600}.dart[open] summary{border-bottom:1px solid var(--line)}.dart ul{margin:0;padding:6px 14px 10px 30px}.dart li{padding:3px 0}.dart li small{display:block;color:var(--muted)}.dx{font-size:.78rem;font-weight:700;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:0 4px;margin-left:4px}
+.gmk .kecke.gross{width:22px;height:22px;border-width:3px;cursor:grab}.gmk .kecke.mitte{width:16px;height:16px;background:rgba(255,255,255,.75);border-color:#ff5a36;cursor:grab}
 </style>
 </head>
 <body>
@@ -585,7 +586,9 @@ function kGoogle(el){
   return {marker:(ll,o)=>{const m=new HM(ll,o);return {remove:()=>m.setMap(null),add:()=>m.setMap(map),move:p=>{m.ll=p;m.draw()},pos:()=>m.ll,html:h=>{m.o.html=h;if(m.d)m.d.innerHTML=h}}},
     poly:(pts,o)=>{const p=new g.Polygon({paths:pts,map,strokeColor:o.farbe,strokeWeight:2,fillColor:o.farbe,fillOpacity:o.fuell??.22,clickable:!!o.click,zIndex:0});
       if(o.click)p.addListener("click",e=>o.click(e.latLng.toJSON()));
-      return {remove:()=>p.setMap(null),add:()=>p.setMap(map),pfad:q=>p.setPath(q),stil:o=>p.setOptions({strokeColor:o.farbe,fillColor:o.farbe,fillOpacity:o.fuell??.22,strokeWeight:o.dick||2})}},
+      return {remove:()=>p.setMap(null),add:()=>p.setMap(map),pfad:q=>p.setPath(q),stil:o=>p.setOptions({strokeColor:o.farbe,fillColor:o.farbe,fillOpacity:o.fuell??.22,strokeWeight:o.dick||2}),
+        edit:(an,cb)=>{p.setEditable(an);if(p.__ls){p.__ls.forEach(l=>l.remove());p.__ls=null}
+          if(an){const path=p.getPath(),f=()=>cb(path.getArray().map(x=>x.toJSON()));p.__ls=["set_at","insert_at","remove_at"].map(e=>path.addListener(e,f))}}}},
     onClick:f=>map.addListener("click",e=>f(e.latLng.toJSON())),view:(ll,z)=>{map.setCenter(ll);map.setZoom(z)},
     fit:pts=>{const b=new g.LatLngBounds();pts.forEach(p=>b.extend(p));map.fitBounds(b,40);g.event.addListenerOnce(map,"idle",()=>{if(map.getZoom()>19)map.setZoom(19)})},
     center:()=>map.getCenter().toJSON(),zoom:()=>map.getZoom(),onZoom:f=>map.addListener("zoom_changed",()=>f(map.getZoom())),resize:()=>{const c=map.getCenter();g.event.trigger(map,"resize");map.setCenter(c)}}}
@@ -598,7 +601,16 @@ function kLeaflet(el){
       if(o.click)m.on("click",o.click);return {remove:()=>m.remove(),add:()=>m.addTo(map),move:p=>m.setLatLng(p),pos:()=>m.getLatLng(),html:h=>m.setIcon(L.divIcon({className:"gmk",html:h,iconSize:[o.w,o.h],iconAnchor:[o.w/2,o.unten?o.h:o.h/2]}))}},
     poly:(pts,o)=>{const p=L.polygon(pts,{color:o.farbe,weight:2,fillColor:o.farbe,fillOpacity:o.fuell??.22,interactive:!!o.click}).addTo(map);
       if(o.click)p.on("click",e=>{L.DomEvent.stopPropagation(e);o.click(e.latlng)});
-      return {remove:()=>p.remove(),add:()=>p.addTo(map),pfad:q=>p.setLatLngs(q),stil:o=>p.setStyle({color:o.farbe,fillColor:o.farbe,fillOpacity:o.fuell??.22,weight:o.dick||2})}},
+      return {remove:()=>p.remove(),add:()=>p.addTo(map),pfad:q=>p.setLatLngs(q),stil:o=>p.setStyle({color:o.farbe,fillColor:o.farbe,fillOpacity:o.fuell??.22,weight:o.dick||2}),
+        edit:(an,cb)=>{(p.__h||[]).forEach(m=>m.remove());p.__h=[];if(!an)return;
+          const zeichne=()=>{(p.__h||[]).forEach(m=>m.remove());p.__h=[];const pts=p.getLatLngs()[0];
+            pts.forEach((ll,i)=>{const m=L.marker(ll,{draggable:true,icon:L.divIcon({className:"gmk",html:`<div class="kecke gross"></div>`,iconSize:[22,22],iconAnchor:[11,11]})}).addTo(map);
+              m.on("drag",e=>{const q=p.getLatLngs()[0];q[i]=e.target.getLatLng();p.setLatLngs(q)});m.on("dragend",()=>{cb(p.getLatLngs()[0].map(x=>({lat:x.lat,lng:x.lng})));zeichne()});p.__h.push(m)});
+            pts.forEach((ll,i)=>{const n=pts[(i+1)%pts.length],mid=L.latLng((ll.lat+n.lat)/2,(ll.lng+n.lng)/2);
+              const m=L.marker(mid,{draggable:true,icon:L.divIcon({className:"gmk",html:`<div class="kecke mitte"></div>`,iconSize:[16,16],iconAnchor:[8,8]})}).addTo(map);
+              m.on("dragstart",()=>{const q=p.getLatLngs()[0];q.splice(i+1,0,m.getLatLng());p.setLatLngs(q);m.__i=i+1});
+              m.on("drag",e=>{const q=p.getLatLngs()[0];q[m.__i]=e.target.getLatLng();p.setLatLngs(q)});m.on("dragend",()=>{cb(p.getLatLngs()[0].map(x=>({lat:x.lat,lng:x.lng})));zeichne()});p.__h.push(m)})};
+          zeichne()}}},
     onClick:f=>map.on("click",e=>f(e.latlng)),view:(ll,z)=>map.setView(ll,z),fit:pts=>map.fitBounds(pts.map(p=>[p.lat,p.lng]),{padding:[30,30],maxZoom:19}),
     center:()=>map.getCenter(),zoom:()=>map.getZoom(),onZoom:f=>map.on("zoomend",()=>f(map.getZoom())),resize:()=>map.invalidateSize()}}
 /* Felder: Fläche aus den Eckpunkten (Kugelformel), Mittelpunkt für die Beschriftung */
@@ -737,16 +749,27 @@ async function karte(mid,setzen){
   const auftragZahl=()=>{const el=$("#k_auftr");if(!el)return;const fs=(S.f||[]).filter(f=>f.auftrag);el.innerHTML=fs.length?`<button type="button" class="linkbtn" id="k_auftrl">⚑ ${fs.length} Feld${fs.length===1?"":"er"} mit Auftrag (${fmtHa(fs.reduce((q,f)=>q+flaecheHa(f.punkte),0))})</button>`:"";
     const l=$("#k_auftrl");if(l)l.addEventListener("click",()=>{const p=kPanel();p.innerHTML=`<div class="kfinfo" style="display:block"><b>Offene Aufträge</b>${fs.map(f=>`<div class="kaz" data-kf="${esc(f.id)}"><span>⚑ <b style="display:inline">${esc(f.name)}</b> – ${esc(f.auftrag.was)}${f.auftrag.wer?" ("+esc(f.auftrag.wer)+")":""}</span><small>${fmtHa(flaecheHa(f.punkte))}</small></div>`).join("")}</div>`;
       p.querySelectorAll("[data-kf]").forEach(d=>d.addEventListener("click",()=>{const f=fs.find(x=>x.id===d.dataset.kf);if(f){K.view(mitte(f.punkte),17);feldInfo(f)}}))})};
+  /* Feldgrenze ändern: Ecken verschieben, über die Mittelpunkte neue Ecken einfügen */
+  const formAendern=f=>{const o=FO[f.id];if(!o||!o.p.edit)return;const el=kPanel(),alt=f.punkte.map(p=>({...p}));let neu=alt;
+    o.lb.remove();zeichne={add:()=>{}};
+    el.innerHTML=`<div class="kfinfo zeichnen"><div><b>${esc(f.name)}: Grenze ändern</b><small id="kg_info">Ecken ziehen · Punkt in der Mitte einer Kante ziehen = neue Ecke · ${fmtHa(flaecheHa(alt))}</small></div>
+      <span class="kbtns"><button type="button" class="ghost" id="kg_abbr">Abbrechen</button><button type="button" class="primary" id="kg_ok">Speichern</button></span></div>`;
+    o.p.edit(true,pts=>{neu=pts.map(p=>({lat:+(+p.lat).toFixed(7),lng:+(+p.lng).toFixed(7)}));$("#kg_info").textContent=`${neu.length} Ecken · ${fmtHa(flaecheHa(neu))} (vorher ${fmtHa(flaecheHa(alt))})`});
+    $("#kg_abbr").addEventListener("click",()=>{o.p.edit(false);o.p.pfad(alt);neuLaden()});
+    $("#kg_ok").addEventListener("click",async ev=>{ev.target.disabled=true;
+      try{await S.db.doc("felder/"+f.id).update({punkte:neu});f.punkte=neu;o.p.edit(false);toast(`Neue Fläche: ${fmtHa(flaecheHa(neu))}`);neuLaden()}
+      catch(_){toast("Konnte nicht gespeichert werden.");ev.target.disabled=false}})};
   const feldInfo=f=>{const el=kPanel();if(!el)return;
     const c=mitte(f.punkte),a=f.auftrag;
     el.innerHTML=`<div class="kfinfo"><div><b>${esc(f.name)}</b><small><span class="kdot" style="background:${nutzFarbe(f)}"></span>${esc(nutzName(f))} · ${fmtHa(flaecheHa(f.punkte))}${f.kultur?" · "+esc(f.kultur):""}${f.notiz?" · "+esc(f.notiz):""}</small>
       ${a?`<div class="kfa-box">⚑ <b style="display:inline">${esc(a.was)}</b>${a.wer?" · "+esc(a.wer):""}<small> · seit ${esc(fmtD(a.seit))}${a.von?" von "+esc(a.von):""}</small></div>`:""}</div>
       <span class="kbtns"><a class="btn" href="https://www.google.com/maps/dir/?api=1&destination=${c.lat.toFixed(6)},${c.lng.toFixed(6)}" target="_blank" rel="noopener">🧭 Hinfahren</a>
-      ${S.canWrite?`${a?`<button type="button" class="primary" id="kf_erl">✓ Erledigt</button>`:`<button type="button" class="primary" id="kf_auf">⚑ Auftrag</button>`}<button type="button" id="kf_edit">Bearbeiten</button><button type="button" class="danger" id="kf_del">Löschen</button>`:""}</span></div>`;
+      ${S.canWrite?`${a?`<button type="button" class="primary" id="kf_erl">✓ Erledigt</button>`:`<button type="button" class="primary" id="kf_auf">⚑ Auftrag</button>`}<button type="button" id="kf_form">⬠ Größe ändern</button><button type="button" id="kf_edit">Bearbeiten</button><button type="button" class="danger" id="kf_del">Löschen</button>`:""}</span></div>`;
     if(!S.canWrite)return;
     if($("#kf_auf"))$("#kf_auf").addEventListener("click",()=>auftragForm([f.id]));
     if($("#kf_erl"))$("#kf_erl").addEventListener("click",async()=>{try{await auftragSpeichern([f.id],null);toast(`„${f.name}“ erledigt.`);feldInfo(f);auftragZahl()}catch(_){toast("Konnte nicht gespeichert werden.")}});
     $("#kf_edit").addEventListener("click",()=>feldForm(f));
+    $("#kf_form").addEventListener("click",()=>formAendern(f));
     const d=$("#kf_del");arm&&d.addEventListener("click",()=>arm(d,"Feld wirklich löschen?",async()=>{try{await S.db.doc("felder/"+f.id).delete();toast("Feld gelöscht.");neuLaden()}catch(_){toast("Konnte nicht gelöscht werden.")}}))};
   const feldForm=(f,punkte)=>{const el=kPanel();f=f||{};
     el.innerHTML=`<div class="kfinfo" style="display:block"><div class="fields">
