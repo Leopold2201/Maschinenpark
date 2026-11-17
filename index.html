@@ -265,6 +265,7 @@ body.kvoll-an{overflow:hidden}
 .dher{margin-bottom:14px}.dart{border:1px solid var(--line);border-radius:var(--r);background:var(--surface);margin:6px 0}.dart summary{cursor:pointer;padding:11px 14px;font-weight:700;list-style:none;display:flex;justify-content:space-between}.dart summary::-webkit-details-marker{display:none}.dart summary span{color:var(--muted);font-weight:600}.dart[open] summary{border-bottom:1px solid var(--line)}.dart ul{margin:0;padding:6px 14px 10px 30px}.dart li{padding:3px 0}.dart li small{display:block;color:var(--muted)}.dx{font-size:.78rem;font-weight:700;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:0 4px;margin-left:4px}
 .gmk .kecke.gross{width:22px;height:22px;border-width:3px;cursor:grab}.gmk .kecke.mitte{width:16px;height:16px;background:rgba(255,255,255,.75);border-color:#ff5a36;cursor:grab}
 .gmk .kecke.messp{background:#ffeb3b;border-color:#222}
+.bleg{margin:6px 0;font-size:.85rem}.bleg i{display:block;height:10px;border-radius:5px;margin:4px 0 2px;background:linear-gradient(90deg,#fc002b,#fc8c20,#fce054,#cceb5e,#5dc232,#068041)}.bleg small:first-of-type{display:flex;justify-content:space-between;color:var(--muted)}.bleg .note{display:block;margin-top:2px}
 </style>
 </head>
 <body>
@@ -585,6 +586,8 @@ function kGoogle(el){
       this.d.style.left=(p.x-this.o.w/2)+"px";this.d.style.top=(p.y-(this.o.unten?this.o.h:this.o.h/2))+"px"}
     onRemove(){if(this.d)this.d.remove();this.d=null}}
   return {marker:(ll,o)=>{const m=new HM(ll,o);return {remove:()=>m.setMap(null),add:()=>m.setMap(map),move:p=>{m.ll=p;m.draw()},pos:()=>m.ll,html:h=>{m.o.html=h;if(m.d)m.d.innerHTML=h}}},
+    ebene:(url,op)=>{const t=new g.ImageMapType({getTileUrl:(c,z)=>url(c.x,c.y,z),tileSize:new g.Size(256,256),opacity:op,minZoom:14,maxZoom:21});
+      return {an:()=>{if(map.overlayMapTypes.getArray().indexOf(t)<0)map.overlayMapTypes.push(t)},aus:()=>{const i=map.overlayMapTypes.getArray().indexOf(t);if(i>=0)map.overlayMapTypes.removeAt(i)}}},
     line:(pts,o)=>{const l=new g.Polyline({path:pts,map,strokeColor:o.farbe,strokeWeight:o.dick||3,clickable:false,zIndex:5});return {remove:()=>l.setMap(null),pfad:q=>l.setPath(q)}},
     poly:(pts,o)=>{const p=new g.Polygon({paths:pts,map,strokeColor:o.rand||o.farbe,strokeWeight:o.dick||2,fillColor:o.farbe,fillOpacity:o.fuell??.22,clickable:!!o.click,zIndex:0});
       if(o.click)p.addListener("click",e=>o.click(e.latLng.toJSON()));
@@ -601,6 +604,8 @@ function kLeaflet(el){
   L.control.layers({"Luftbild":sat,"Karte":osm},null,{position:"topright"}).addTo(map);setTimeout(()=>map.invalidateSize(),150);
   return {marker:(ll,o)=>{const m=L.marker(ll,{interactive:!!o.click,icon:L.divIcon({className:"gmk",html:o.html,iconSize:[o.w,o.h],iconAnchor:[o.w/2,o.unten?o.h:o.h/2]})}).addTo(map);
       if(o.click)m.on("click",o.click);return {remove:()=>m.remove(),add:()=>m.addTo(map),move:p=>m.setLatLng(p),pos:()=>m.getLatLng(),html:h=>m.setIcon(L.divIcon({className:"gmk",html:h,iconSize:[o.w,o.h],iconAnchor:[o.w/2,o.unten?o.h:o.h/2]}))}},
+    ebene:(url,op)=>{const T=L.TileLayer.extend({getTileUrl(c){return url(c.x,c.y,c.z)}});const t=new T("",{opacity:op,minZoom:14,maxZoom:21,attribution:"Bodenschätzung © HLNUG"});
+      return {an:()=>{if(!map.hasLayer(t))t.addTo(map)},aus:()=>t.remove()}},
     line:(pts,o)=>{const l=L.polyline(pts,{color:o.farbe,weight:o.dick||3,interactive:false}).addTo(map);return {remove:()=>l.remove(),pfad:q=>l.setLatLngs(q)}},
     poly:(pts,o)=>{const p=L.polygon(pts,{color:o.rand||o.farbe,weight:o.dick||2,fillColor:o.farbe,fillOpacity:o.fuell??.22,interactive:!!o.click}).addTo(map);
       if(o.click)p.on("click",e=>{L.DomEvent.stopPropagation(e);o.click(e.latlng)});
@@ -672,6 +677,13 @@ const kAktiv=()=>S.open?S.open.type==="karte":VIEW==="karte";
 let KVOLL=false,KST=null; /* Vollbild und Ausschnitt bleiben beim Neuzeichnen erhalten */
 function distM(a,b){const R=6371008.8,r=Math.PI/180,dl=(b.lat-a.lat)*r,dn=(b.lng-a.lng)*r,x=Math.sin(dl/2)**2+Math.cos(a.lat*r)*Math.cos(b.lat*r)*Math.sin(dn/2)**2;return 2*R*Math.asin(Math.sqrt(x))}
 const fmtMeter=m=>m>=1000?(m/1000).toLocaleString("de-DE",{maximumFractionDigits:2})+" km":Math.round(m).toLocaleString("de-DE")+" m";
+/* Bodenschätzung Hessen (HLNUG, BFD5L Acker-/Grünlandzahl) als Kartenebene */
+const bsText=w=>{const m=String(w).match(/(\d+)\D+(\d+)/);return m?`${m[1]}–${m[2]}`:String(w)};
+const BS_URL="https://geodienste-umwelt.hessen.de/arcgis/rest/services/boden/bfd5l/MapServer";
+function bsTile(x,y,z){const S=40075016.685578,o=S/2,t=S/Math.pow(2,z),x0=-o+x*t,y1=o-y*t,px=z>16?Math.max(32,256>>(z-16)):256;
+  return `${BS_URL}/export?bbox=${x0},${y1-t},${x0+t},${y1}&bboxSR=3857&imageSR=3857&size=${px},${px}&layers=show:7&transparent=true&format=png32&f=image`}
+async function bsWert(ll){try{const r=await fetch(`${BS_URL}/7/query?geometry=${ll.lng},${ll.lat}&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=*&returnGeometry=false&f=json`);
+  const j=await r.json(),a=j.features&&j.features[0]&&j.features[0].attributes;if(!a)return null;return a.BEZEICHNER||Object.values(a).find(v=>typeof v==="string"&&/bis/.test(v))||null}catch(_){return undefined}}
 async function karte(mid,setzen){
   const m=mid?S.m.find(x=>x.id===mid):null;if(mid&&!m)return;
   const tab=!mid&&!setzen;
@@ -679,11 +691,11 @@ async function karte(mid,setzen){
   const st=m&&m.standort&&m.standort.lat?m.standort:null;
   const kh=`<div class="sheet-head"><div><span class="label">${m?esc(m.name):"Hof"}</span><h2>${setzen?"Standort setzen":"Karte"}</h2></div><button class="ghost" data-act="${m?"back":"close"}">${m?"Zurück":"Schließen"}</button></div>`;
   const kb=`  ${setzen?`<p class="note" style="margin:0">Tippe auf die Karte, wo <b>${esc(m.name)}</b> steht – oder stell dich daneben und nimm <b>📍 Mein Standort</b>.</p>`:""}
-  ${setzen?"":`<div class="kfilter" id="kfilter">${[...KGRP,{id:"oldtimer",name:"Oldtimer"},{id:"felder",name:"Felder"}].map(g=>`<button type="button" class="chip${kAus().includes(g.id)?"":" on"}" data-kg="${g.id}">${g.name}</button>`).join("")}</div>`}
+  ${setzen?"":`<div class="kfilter" id="kfilter">${[...KGRP,{id:"oldtimer",name:"Oldtimer"},{id:"felder",name:"Felder"}].map(g=>`<button type="button" class="chip${kAus().includes(g.id)?"":" on"}" data-kg="${g.id}">${g.name}</button>`).join("")}<button type="button" class="chip${lsGet("mp_boden")==="1"?" on":""}" id="k_boden">Bodenzahl</button></div>`}
   <div class="kwrap${tab&&KVOLL?" voll":""}" id="kwrap"><div id="map" class="map"><div class="empty">Karte wird geladen…</div></div><div class="kctl">${setzen?"":`<button type="button" id="k_mess"><i>📏</i>Messen</button>`}${setzen||!S.canWrite?"":`<button type="button" id="k_ausw"><i>☑</i>Auswählen</button><button type="button" id="k_feldneu"><i>✏️</i>Einzeichnen</button><label id="k_imp"><i>📥</i>Import<input type="file" id="k_impf" accept=".zip,.geojson,.json" hidden></label>`}<button type="button" id="kvoll" aria-label="Vollbild">${tab&&KVOLL?"<i>✕</i><span>Schließen</span>":"<i>⛶</i><span>Vollbild</span>"}</button></div>${setzen?"":`<div id="kfeldv"></div>`}</div>
   ${setzen?`<div class="fields"><label class="f full"><span class="label">Wo genau (optional)</span><input id="k_ort" maxlength="80" value="${esc(st?st.ort||"":"")}" placeholder="z. B. Maschinenhalle hinten links"></label></div>
   <p class="err" id="kerr" hidden></p><div class="row"><button type="button" id="k_gps">📍 Mein Standort</button>${st?`<button type="button" class="danger" id="k_del">Entfernen</button>`:""}<button type="button" class="primary" id="k_save" ${st?"":"disabled"}>Speichern</button></div>`
-  :`<div id="kfeld"></div><div id="k_leg" class="kleg"></div><div id="k_auftr"></div><div class="row" style="justify-content:space-between"><small class="note" style="margin:0">${S.m.filter(x=>x.standort&&x.standort.lat).length} Maschinen · ${(S.f||[]).length} ${(S.f||[]).length===1?"Feld":"Felder"}${(S.f||[]).length?` (${fmtHa((S.f||[]).reduce((a,f)=>a+flaecheHa(f.punkte),0))})`:""} · Antippen öffnet</small>${S.canWrite?`<button type="button" class="linkbtn" id="k_hof">Ansicht als Hof merken</button>`:""}</div>`}`;
+  :`<div id="kfeld"></div><div id="k_bleg"></div><div id="k_leg" class="kleg"></div><div id="k_auftr"></div><div class="row" style="justify-content:space-between"><small class="note" style="margin:0">${S.m.filter(x=>x.standort&&x.standort.lat).length} Maschinen · ${(S.f||[]).length} ${(S.f||[]).length===1?"Feld":"Felder"}${(S.f||[]).length?` (${fmtHa((S.f||[]).reduce((a,f)=>a+flaecheHa(f.punkte),0))})`:""} · Antippen öffnet</small>${S.canWrite?`<button type="button" class="linkbtn" id="k_hof">Ansicht als Hof merken</button>`:""}</div>`}`;
   if(tab){$("#vKarte").innerHTML=`<div class="sechead"><h2>Karte</h2></div>`+kb;kTally()}
   else openSheet(kh+kb);
   /* Erst Google-Luftbild versuchen, sonst die freie Karte (Leaflet/Esri) */
@@ -719,7 +731,7 @@ async function karte(mid,setzen){
   const fLabel=f=>`<div class="kfl${f.auftrag?" kfa":""}">${f.auftrag?"⚑ ":""}${f.tausch?"⇄ ":""}${esc(f.name)}<small>${f.auftrag?esc(f.auftrag.was)+(f.auftrag.wer?" · "+esc(f.auftrag.wer):""):fmtHa(flaecheHa(f.punkte))}</small></div>`;
   const fNeu=f=>{const o=FO[f.id];if(!o)return;o.p.stil(fStil(f));o.lb.html(fLabel(f))};
   for(const f of (S.f||[])){if(!Array.isArray(f.punkte)||f.punkte.length<3)continue;
-    const p=K.poly(f.punkte,{...fStil(f),click:ll=>{if(zeichne)zeichne.add(ll);else if(setzen)setzeRef&&setzeRef(ll);else if(auswahl)auswahl.tog(f);else feldInfo(f)}});
+    const p=K.poly(f.punkte,{...fStil(f),click:ll=>{if(zeichne)zeichne.add(ll);else if(setzen)setzeRef&&setzeRef(ll);else if(auswahl)auswahl.tog(f);else{feldInfo(f);if(bodenAn)bsWert(ll).then(w=>{const el=kPanel(),b=el&&el.querySelector(".kfinfo>div");if(b&&w)b.insertAdjacentHTML("beforeend",`<small>Acker-/Grünlandzahl hier: ${esc(bsText(w))}</small>`)})}}});
     const lb=K.marker(mitte(f.punkte),{html:fLabel(f),w:1,h:1});FO[f.id]={p,lb};
     felder.push([p,lb]);if(!setzen&&kAus().includes("felder")){p.remove();lb.remove()}}
   /* Aufträge: Felder markieren, damit jemand weiß, wo er hin soll */
@@ -821,6 +833,15 @@ async function karte(mid,setzen){
     $("#km_neu").addEventListener("click",()=>{pts.length=0;ecken.splice(0).forEach(e=>e.remove());upd()});
     $("#km_ende").addEventListener("click",ende)};
   if(!setzen&&$("#k_mess"))$("#k_mess").addEventListener("click",messen);
+  /* Bodenzahl-Ebene */
+  const BE=K.ebene&&K.ebene(bsTile,.6);let bodenAn=false;
+  const bodenSetzen=an=>{bodenAn=an;lsSet("mp_boden",an?"1":"0");const b=$("#k_boden");if(b)b.classList.toggle("on",an);if(BE)an?BE.an():BE.aus();
+    const lg=$("#k_bleg");if(lg)lg.innerHTML=an?`<div class="bleg"><span>Acker-/Grünlandzahl</span><i></i><small><span>0</span><span>50</span><span>105</span></small><small class="note">Erst ab näherem Zoom sichtbar · Punkt antippen zeigt den Wert · Quelle: HLNUG</small></div>`:""};
+  if(!setzen&&$("#k_boden")){$("#k_boden").addEventListener("click",()=>bodenSetzen(!bodenAn));if(lsGet("mp_boden")==="1")bodenSetzen(true)}
+  const bodenZeigen=async ll=>{const el=kPanel();if(!el)return;el.innerHTML=`<div class="kfinfo"><div><b>Bodenzahl</b><small id="kb_w">wird abgefragt…</small></div><button type="button" class="ghost" id="kb_x">✕</button></div>`;
+    $("#kb_x").addEventListener("click",()=>{el.innerHTML=""});const w=await bsWert(ll);const z=$("#kb_w");if(!z)return;
+    z.textContent=w===undefined?"Konnte nicht abgefragt werden (Netz oder Dienst nicht erreichbar).":w?`Acker-/Grünlandzahl ${bsText(w)}`:"An dieser Stelle keine Angabe (z. B. Wald, Hof, Weg)."};
+  if(!setzen)K.onClick(ll=>{if(!zeichne&&!auswahl&&bodenAn)bodenZeigen(ll)});
   const legende=()=>{const el=$("#k_leg");if(!el)return;const fs=S.f||[];el.innerHTML=fs.length?NUTZ.map(([k,n,c])=>{const t=fs.filter(f=>nutzung(f)===k);return t.length?`<span><span class="kdot" style="background:${c}"></span>${n} <small>${fmtHa(t.reduce((q,f)=>q+flaecheHa(f.punkte),0))}</small></span>`:""}).join("")+(()=>{const t=fs.filter(f=>f.tausch);return t.length?`<span>⇄ Tauschflächen <small>${t.length} · ${fmtHa(t.reduce((q,f)=>q+flaecheHa(f.punkte),0))}</small></span>`:""})():""};
   if(!setzen){auftragZahl();legende();const ab=$("#k_ausw");if(ab)ab.addEventListener("click",auswahlStart)}
   const lz=z=>{const el=$("#map");if(el)el.classList.toggle("kweit",z<15)};K.onZoom(lz);setTimeout(()=>lz(K.zoom()),400);
