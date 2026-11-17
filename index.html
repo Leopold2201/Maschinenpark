@@ -74,7 +74,7 @@ button:disabled{opacity:.5;cursor:default}
 /* Maschinen */
 .toolbar{display:flex;gap:8px;flex-wrap:wrap}
 .viewnav{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;background:var(--sunk);border:1px solid var(--line);border-radius:12px;padding:3px;position:sticky;top:env(safe-area-inset-top,0px);z-index:5}
-.viewnav button{border:0;background:transparent;border-radius:9px;padding:10px 4px;min-width:0;font-weight:700;font-family:var(--f-display);font-size:clamp(.78rem,3.4vw,1.05rem);letter-spacing:0;color:var(--muted)}
+.viewnav button{border:0;background:transparent;border-radius:9px;padding:10px 1px;min-width:0;letter-spacing:-.01em;font-weight:700;font-family:var(--f-display);font-size:clamp(.78rem,3.4vw,1.05rem);letter-spacing:0;color:var(--muted)}
 .viewnav button.on{background:var(--accent);color:var(--accent-ink)}
 .vgrid{display:grid;gap:28px;min-width:0}
 .vgrid>section,#vLager{min-width:0}
@@ -260,6 +260,7 @@ body.kvoll-an{overflow:hidden}
 .kctl>button:disabled{opacity:.45}
 .kwrap.voll .kctl{bottom:calc(30px + env(safe-area-inset-bottom,0px))}.kwrap.voll:has(#kfeldv:not(:empty)) .kctl{bottom:calc(160px + env(safe-area-inset-bottom,0px))}
 .kdot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:middle;box-shadow:0 0 0 1px rgba(0,0,0,.35)}.kleg{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:.85rem;margin:6px 0}.kleg small{color:var(--muted)}.knutz{display:grid;gap:6px;margin:8px 0}.knutz button{text-align:left}
+.berseg{display:flex;max-width:420px;margin:0 auto 14px}.berseg[hidden]{display:none}.berseg button{flex:1}
 </style>
 </head>
 <body>
@@ -285,6 +286,7 @@ body.kvoll-an{overflow:hidden}
 </section>
 <main id="app" hidden><div class="wrap">
   <nav class="viewnav" role="tablist" aria-label="Bereich"><button role="tab" data-view="maschinen" class="on" aria-selected="true">Maschinen</button><button role="tab" data-view="karte" aria-selected="false">Karte</button><button role="tab" data-view="lager" aria-selected="false">Lager</button><button role="tab" data-view="hof" aria-selected="false">Hof</button><button role="tab" data-view="kohl" aria-selected="false">Kohl</button></nav>
+  <div class="seg berseg" role="radiogroup" aria-label="Bereich" id="berseg"><button role="radio" data-ber="betrieb">Betrieb</button><button role="radio" data-ber="oldtimer">Oldtimer</button><button role="radio" data-ber="alle">Alle</button></div>
   <div id="vMasch" class="vgrid">
   <section>
     <div class="sechead stack"><h2 id="dueTitle">Anstehende TÜV-Termine</h2>
@@ -419,6 +421,11 @@ const seit=s=>{const d=-days(parse(s));return d<=0?"heute":d===1?"gestern":d<60?
 const seitM=s=>{const[y,m]=ym(s).split("-").map(Number);const t=new Date();const n=(t.getFullYear()*12+t.getMonth())-(y*12+m-1);return n<=0?"diesen Monat":n===1?"letzten Monat":n<24?`vor ${n} Monaten`:`vor ${Math.floor(n/12)} Jahren`};
 /* TÜV-pflichtig? Alte Einträge ohne Angabe gelten als ja. Neue Geräte (außer Anhänger) standardmäßig nein. */
 const hatTuev=m=>m.tuevPflicht!==false;
+/* Betrieb oder Oldtimer-Sammlung; ohne Angabe: Baujahr/Erstzulassung vor 1990 = Oldtimer */
+const jahrVon=v=>{const x=String(v||"").match(/(19|20)\d\d/);return x?+x[0]:0};
+const istOldtimer=m=>typeof m.oldtimer==="boolean"?m.oldtimer:(()=>{const j=jahrVon(m.baujahr)||jahrVon(m.erstzulassung);return j>0&&j<1990})();
+let BER=(()=>{try{return localStorage.getItem("mp_ber")||"betrieb"}catch(_){return "betrieb"}})();
+const inBer=m=>BER==="alle"||(BER==="oldtimer")===istOldtimer(m);
 const tuevStd=k=>!(GRUPPEN[3].kats.includes(k)&&k!=="Anhänger"&&k!=="Pflanzenschutz");
 const fmtE=s=>!s?"–":s.length>7?fmtD(s):fmtM(s); /* Einträge: neu nur Monat/Jahr, alte mit Tag */
 const istRep=e=>e.art==="Reparatur"||e.art==="Sonstiges";
@@ -459,7 +466,7 @@ document.fonts&&document.fonts.ready.then(fitTitle);
 setTimeout(fitTitle,0);
 function renderLager(){
   document.querySelectorAll("[data-view]").forEach(b=>{const on=b.dataset.view===VIEW;b.classList.toggle("on",on);b.setAttribute("aria-selected",on)});
-  $("#vMasch").hidden=VIEW!=="maschinen";$("#vLager").hidden=VIEW!=="lager";$("#vKohl").hidden=VIEW!=="kohl";$("#vHof").hidden=VIEW!=="hof";$("#vKarte").hidden=VIEW!=="karte";
+  $("#vMasch").hidden=VIEW!=="maschinen";$("#berseg").hidden=VIEW!=="maschinen";$("#vLager").hidden=VIEW!=="lager";$("#vKohl").hidden=VIEW!=="kohl";$("#vHof").hidden=VIEW!=="hof";$("#vKarte").hidden=VIEW!=="karte";
   if(VIEW!=="lager")return;
   const nach=S.l.filter(knapp);
   const liter=S.l.filter(a=>a.einheit==="l").reduce((x,a)=>x+(+a.menge||0),0);
@@ -642,7 +649,7 @@ async function karte(mid,setzen){
   const st=m&&m.standort&&m.standort.lat?m.standort:null;
   const kh=`<div class="sheet-head"><div><span class="label">${m?esc(m.name):"Hof"}</span><h2>${setzen?"Standort setzen":"Karte"}</h2></div><button class="ghost" data-act="${m?"back":"close"}">${m?"Zurück":"Schließen"}</button></div>`;
   const kb=`  ${setzen?`<p class="note" style="margin:0">Tippe auf die Karte, wo <b>${esc(m.name)}</b> steht – oder stell dich daneben und nimm <b>📍 Mein Standort</b>.</p>`:""}
-  ${setzen?"":`<div class="kfilter" id="kfilter">${[...KGRP,{id:"felder",name:"Felder"}].map(g=>`<button type="button" class="chip${kAus().includes(g.id)?"":" on"}" data-kg="${g.id}">${g.name}</button>`).join("")}</div>`}
+  ${setzen?"":`<div class="kfilter" id="kfilter">${[...KGRP,{id:"oldtimer",name:"Oldtimer"},{id:"felder",name:"Felder"}].map(g=>`<button type="button" class="chip${kAus().includes(g.id)?"":" on"}" data-kg="${g.id}">${g.name}</button>`).join("")}</div>`}
   <div class="kwrap${tab&&KVOLL?" voll":""}" id="kwrap"><div id="map" class="map"><div class="empty">Karte wird geladen…</div></div><div class="kctl">${setzen||!S.canWrite?"":`<button type="button" id="k_ausw"><i>☑</i>Auswählen</button><button type="button" id="k_feldneu"><i>✏️</i>Einzeichnen</button><label id="k_imp"><i>📥</i>Import<input type="file" id="k_impf" accept=".zip,.geojson,.json" hidden></label>`}<button type="button" id="kvoll" aria-label="Vollbild">${tab&&KVOLL?"<i>✕</i><span>Schließen</span>":"<i>⛶</i><span>Vollbild</span>"}</button></div>${setzen?"":`<div id="kfeldv"></div>`}</div>
   ${setzen?`<div class="fields"><label class="f full"><span class="label">Wo genau (optional)</span><input id="k_ort" maxlength="80" value="${esc(st?st.ort||"":"")}" placeholder="z. B. Maschinenhalle hinten links"></label></div>
   <p class="err" id="kerr" hidden></p><div class="row"><button type="button" id="k_gps">📍 Mein Standort</button>${st?`<button type="button" class="danger" id="k_del">Entfernen</button>`:""}<button type="button" class="primary" id="k_save" ${st?"":"disabled"}>Speichern</button></div>`
@@ -671,11 +678,11 @@ async function karte(mid,setzen){
   for(const x of alle){const ll={lat:x.standort.lat,lng:x.standort.lng};pts.push(ll);
     const sy=kartenSymbol(x);
     const mk=K.marker(ll,{html:`<div class="kmk${x.id===mid?" kakt":""}"><span class="ktip">${esc(x.name)}</span>${sy.html}</div>`,w:sy.w,h:sy.h,click:setzen?null:()=>oeffne(x)});
-    const g=gruppeOf(x);(grp[g]=grp[g]||[]).push(mk);if(!setzen&&kAus().includes(g))mk.remove();}
+    const g=gruppeOf(x),ot=istOldtimer(x);mk.g=g;mk.ot=ot;(grp[g]=grp[g]||[]).push(mk);if(!setzen&&(kAus().includes(g)||(ot&&kAus().includes("oldtimer"))))mk.remove();}
   if(!setzen)$("#kfilter").addEventListener("click",e=>{const b=e.target.closest("[data-kg]");if(!b)return;const g=b.dataset.kg;let aus=kAus();
     aus=aus.includes(g)?aus.filter(x=>x!==g):[...aus,g];lsSet("mp_kaus",JSON.stringify(aus));b.classList.toggle("on",!aus.includes(g));
     if(g==="felder")felder.forEach(([p,lb])=>aus.includes(g)?(p.remove(),lb.remove()):(p.add(),lb.add()));
-    (grp[g]||[]).forEach(mk=>aus.includes(g)?mk.remove():mk.add())});
+    Object.values(grp).flat().forEach(mk=>(aus.includes(mk.g)||(mk.ot&&aus.includes("oldtimer")))?mk.remove():mk.add())});
   /* Felder zeichnen */
   const felder=[],FO={};let zeichne=null,setzeRef=null,auswahl=null;
   const fStil=f=>auswahl&&auswahl.has(f.id)?{farbe:"#2f8cff",fuell:.45,dick:3}:f.auftrag?{farbe:AUFTRAGFARBE,fuell:.4,dick:3}:{farbe:nutzFarbe(f),fuell:.3};
@@ -888,17 +895,19 @@ function renderKohl(){
         <button class="danger" data-kdel="${esc(b.id)}">Löschen</button></div></div>`}).join("")}).join(""));
 }
 function renderMasch(){
-  const all=S.m.flatMap(m=>termine(m).filter(t=>DUE==="tuev"?t.typ==="TÜV / HU":t.typ!=="TÜV / HU").map(t=>({...t,m})));
+  const MB=S.m.filter(inBer);
+  document.querySelectorAll("[data-ber]").forEach(x=>{const on=x.dataset.ber===BER;x.classList.toggle("on",on);x.setAttribute("aria-checked",on)});
+  const all=MB.flatMap(m=>termine(m).filter(t=>DUE==="tuev"?t.typ==="TÜV / HU":t.typ!=="TÜV / HU").map(t=>({...t,m})));
   $("#dueTitle").textContent=DUE==="tuev"?"Anstehende TÜV-Termine":"Anstehende Wartungen";
   document.querySelectorAll("[data-due]").forEach(b=>{const on=b.dataset.due===DUE;b.classList.toggle("on",on);b.setAttribute("aria-checked",on)});
   const over=all.filter(t=>t.d<0).length, soon=all.filter(t=>t.d>=0&&t.d<=30).length;
   $("#tallyLbl").hidden=true;
-  $("#tally").innerHTML=`${DUE==="tuev"?`<div><b>${S.m.filter(m=>!m.abgemeldet&&hatTuev(m)).length}</b><span>mit TÜV</span></div>`:`<div><b>${S.m.filter(m=>!m.abgemeldet&&punkte(m).some(p=>!nurZuletzt(p)&&(p.intervall||p.naechste))).length}</b><span>mit Wartung</span></div>`}<div><b style="color:${over?"#ff9d92":"inherit"}">${over}</b><span>überfällig</span></div><div><b style="color:${soon?"#f6c46d":"inherit"}">${soon}</b><span>≤ 30 Tage</span></div>`;
+  $("#tally").innerHTML=`${DUE==="tuev"?`<div><b>${MB.filter(m=>!m.abgemeldet&&hatTuev(m)).length}</b><span>mit TÜV</span></div>`:`<div><b>${MB.filter(m=>!m.abgemeldet&&punkte(m).some(p=>!nurZuletzt(p)&&(p.intervall||p.naechste))).length}</b><span>mit Wartung</span></div>`}<div><b style="color:${over?"#ff9d92":"inherit"}">${over}</b><span>überfällig</span></div><div><b style="color:${soon?"#f6c46d":"inherit"}">${soon}</b><span>≤ 30 Tage</span></div>`;
 
   const list=all.filter(t=>t.d<=60).sort((a,b)=>a.d-b.d);
   $("#due").innerHTML=!S.ready?`<div class="empty">Termine werden geladen…</div>`:list.length?`<ul class="due">${list.map(t=>`<li data-open="${esc(t.m.id)}" tabindex="0"><span class="stripe s-${lvl(t.d)}"></span><span class="what"><b>${esc(t.m.name)}</b><small>${esc(t.typ)} · ${esc(t.label)}</small></span><span class="pill ${lvl(t.d)}">${rel(t.d)}</span></li>`).join("")}</ul>`:`<div class="empty">${S.m.length?(DUE==="tuev"?"Alles im grünen Bereich. In den nächsten 60 Tagen läuft kein TÜV ab.":"Alles im grünen Bereich. In den nächsten 60 Tagen ist keine Wartung fällig."):"Sobald du Fahrzeuge anlegst, erscheinen ihre Termine hier."}</div>`;
 
-  const sichtbar=S.m.filter(m=>$("#showAb").checked||!m.abgemeldet);
+  const sichtbar=MB.filter(m=>$("#showAb").checked||!m.abgemeldet);
   const anz=id=>sichtbar.filter(m=>id==="alle"||gruppeOf(m)===id).length;
   $("#tabs").innerHTML=[{id:"alle",name:"Alle"},...GRUPPEN].map(g=>`<button role="tab" class="tab${TAB===g.id?" on":""}" aria-selected="${TAB===g.id}" data-tab="${g.id}">${g.name} <span>${anz(g.id)}</span></button>`).join("");
   const inTab=sichtbar.filter(m=>TAB==="alle"||gruppeOf(m)===TAB);
@@ -918,7 +927,7 @@ function renderMasch(){
     if(w[0])chips.push(`<span class="pill ${lvl(w[0].d)}">${esc(w[0].typ)}: ${w[0].kurz}</span>`);
     if(w.length>1)chips.push(`<span class="pill none">+${w.length-1} weitere</span>`);
     return `<button class="mcard${m.abgemeldet?" is-ab":""}" data-open="${esc(m.id)}">
-    <div class="top"><h3>${esc(m.name)}</h3>${m.abgemeldet?`<span class="tag ab">Abgemeldet</span>`:`<span class="tag">${m.beispiel?"Beispiel":esc(katOf(m))}</span>`}</div>
+    <div class="top"><h3>${esc(m.name)}</h3>${m.abgemeldet?`<span class="tag ab">Abgemeldet</span>`:`<span class="tag">${m.beispiel?"Beispiel":esc(katOf(m))}</span>`}${BER==="alle"&&istOldtimer(m)?`<span class="tag">Oldtimer</span>`:""}</div>
     <div class="meta">${esc([m.hersteller,m.modell].filter(Boolean).join(" ")||"–")}${m.kennzeichen?` · ${esc(m.kennzeichen)}`:""}${m.erstzulassung?` · EZ ${esc(ez(m.erstzulassung))}`:m.baujahr?` · Bj. ${esc(m.baujahr)}`:""}</div>
     <div class="chips">${chips.length?chips.join(""):`<span class="pill none">keine Termine</span>`}</div></button>`});
 
@@ -1089,6 +1098,7 @@ function machineForm(m){
    <label class="f"><span class="label">Kennzeichen</span><input id="m_kennzeichen" value="${v("kennzeichen")}" placeholder="SO-AB 123"></label>
    <label class="f"><span class="label">Fahrgestell-Nr.</span><input id="m_fin" value="${v("fin")}"></label>
    <label class="f full check"><input id="m_abgemeldet" type="checkbox" ${m.abgemeldet?"checked":""} style="width:auto"><span>Abgemeldet <small>· TÜV wird dann nicht mehr als Termin angezeigt</small></span></label>
+   <label class="f full check"><input id="m_oldtimer" type="checkbox" ${istOldtimer(m)?"checked":""} style="width:auto"><span>Oldtimer-Sammlung <small>· sonst aktive Maschine im Betrieb</small></span></label>
    <label class="f full check"><input id="m_tuevPflicht" type="checkbox" ${(m.id?hatTuev(m):tuevStd(startKat))?"checked":""} style="width:auto"><span>TÜV-pflichtig <small>· abwählen bei Geräten ohne TÜV</small></span></label>
    <label class="f" id="m_tuevBox"><span class="label">Letzter TÜV / HU</span><input id="m_letzterTuev" type="month" value="${esc(letzter(m))}"><small id="m_tuevHint">${m.tuevBis?`Gültig bis ${fmtM(m.tuevBis)}`:`Gültig wird automatisch ${tuevJahre(startKat)} Jahre`}</small></label>
    <label class="f full"><span class="label">Notizen</span><textarea id="m_notiz" rows="3" placeholder="Ölsorten, Füllmengen, Filternummern, Reifengröße…">${v("notiz")}</textarea></label>
@@ -1122,7 +1132,7 @@ function machineForm(m){
   $("#m_letzterTuev").addEventListener("input",tuevHint);$("#m_kategorie").addEventListener("change",tuevHint);
   $("#mf").addEventListener("submit",async ev=>{
     ev.preventDefault();
-    const body={};["name","kategorie","hersteller","modell","baujahr","erstzulassung","kennzeichen","fin","letzterTuev","notiz"].forEach(k=>body[k]=$("#m_"+k).value.trim());body.tuevBis=plusJ(body.letzterTuev,tuevJahre(body.kategorie));body.abgemeldet=$("#m_abgemeldet").checked;body.tuevPflicht=$("#m_tuevPflicht").checked;if(!body.tuevPflicht){body.letzterTuev="";body.tuevBis=""}
+    const body={};["name","kategorie","hersteller","modell","baujahr","erstzulassung","kennzeichen","fin","letzterTuev","notiz"].forEach(k=>body[k]=$("#m_"+k).value.trim());body.tuevBis=plusJ(body.letzterTuev,tuevJahre(body.kategorie));body.abgemeldet=$("#m_abgemeldet").checked;body.oldtimer=$("#m_oldtimer").checked;body.tuevPflicht=$("#m_tuevPflicht").checked;if(!body.tuevPflicht){body.letzterTuev="";body.tuevBis=""}
     if(!body.name)return;
     body.wartung=[...document.querySelectorAll(".wrow")].map(r=>({id:r.dataset.wid,name:r.querySelector(".w_name").value.trim(),...(()=>{const zz=r.querySelector(".w_modus").value==="zuletzt"||istAbschmieren({name:r.querySelector(".w_name").value});
       return zz?{modus:"zuletzt",intervall:"",naechste:"",zuletzt:r.querySelector(".w_last").value}
@@ -1243,6 +1253,7 @@ $("#addM").addEventListener("click",()=>machineForm());
 document.querySelector(".seg").addEventListener("click",e=>{const b=e.target.closest("[data-due]");if(!b||b.dataset.due===DUE)return;DUE=b.dataset.due;render()});
 document.querySelector(".viewnav").addEventListener("click",e=>{const b=e.target.closest("[data-view]");if(!b||b.dataset.view===VIEW)return;document.body.classList.remove("kvoll-an");KVOLL=false;VIEW=b.dataset.view;scrollTo(0,0);render();if(VIEW==="karte")karte(null,false)});
 $("#kAlle").addEventListener("change",e=>{KALLE=e.target.checked;render()});
+$("#berseg").addEventListener("click",e=>{const b=e.target.closest("[data-ber]");if(!b)return;BER=b.dataset.ber;try{localStorage.setItem("mp_ber",BER)}catch(_){}render()});
 $("#hAlle").addEventListener("change",e=>{HALLE=e.target.checked;render()});
 $("#addH").addEventListener("click",()=>hofForm());
 $("#hlist").addEventListener("click",async e=>{
