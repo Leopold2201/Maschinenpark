@@ -264,6 +264,7 @@ body.kvoll-an{overflow:hidden}
 .headbtns{display:flex;gap:6px;flex-wrap:nowrap;justify-content:flex-end;flex:0 0 auto}.headbtns button{padding:8px 10px;font-size:.9rem}.sheet-head>:first-child{min-width:0}.sheet-head:has(.headbtns) h2{font-size:1.3rem;line-height:1.2}
 .dher{margin-bottom:14px}.dart{border:1px solid var(--line);border-radius:var(--r);background:var(--surface);margin:6px 0}.dart summary{cursor:pointer;padding:11px 14px;font-weight:700;list-style:none;display:flex;justify-content:space-between}.dart summary::-webkit-details-marker{display:none}.dart summary span{color:var(--muted);font-weight:600}.dart[open] summary{border-bottom:1px solid var(--line)}.dart ul{margin:0;padding:6px 14px 10px 30px}.dart li{padding:3px 0}.dart li small{display:block;color:var(--muted)}.dx{font-size:.78rem;font-weight:700;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:0 4px;margin-left:4px}
 .gmk .kecke.gross{width:22px;height:22px;border-width:3px;cursor:grab}.gmk .kecke.mitte{width:16px;height:16px;background:rgba(255,255,255,.75);border-color:#ff5a36;cursor:grab}
+.gmk .kecke.messp{background:#ffeb3b;border-color:#222}
 </style>
 </head>
 <body>
@@ -584,6 +585,7 @@ function kGoogle(el){
       this.d.style.left=(p.x-this.o.w/2)+"px";this.d.style.top=(p.y-(this.o.unten?this.o.h:this.o.h/2))+"px"}
     onRemove(){if(this.d)this.d.remove();this.d=null}}
   return {marker:(ll,o)=>{const m=new HM(ll,o);return {remove:()=>m.setMap(null),add:()=>m.setMap(map),move:p=>{m.ll=p;m.draw()},pos:()=>m.ll,html:h=>{m.o.html=h;if(m.d)m.d.innerHTML=h}}},
+    line:(pts,o)=>{const l=new g.Polyline({path:pts,map,strokeColor:o.farbe,strokeWeight:o.dick||3,clickable:false,zIndex:5});return {remove:()=>l.setMap(null),pfad:q=>l.setPath(q)}},
     poly:(pts,o)=>{const p=new g.Polygon({paths:pts,map,strokeColor:o.rand||o.farbe,strokeWeight:o.dick||2,fillColor:o.farbe,fillOpacity:o.fuell??.22,clickable:!!o.click,zIndex:0});
       if(o.click)p.addListener("click",e=>o.click(e.latLng.toJSON()));
       return {remove:()=>p.setMap(null),add:()=>p.setMap(map),pfad:q=>p.setPath(q),stil:o=>p.setOptions({strokeColor:o.rand||o.farbe,fillColor:o.farbe,fillOpacity:o.fuell??.22,strokeWeight:o.dick||2}),
@@ -599,6 +601,7 @@ function kLeaflet(el){
   L.control.layers({"Luftbild":sat,"Karte":osm},null,{position:"topright"}).addTo(map);setTimeout(()=>map.invalidateSize(),150);
   return {marker:(ll,o)=>{const m=L.marker(ll,{interactive:!!o.click,icon:L.divIcon({className:"gmk",html:o.html,iconSize:[o.w,o.h],iconAnchor:[o.w/2,o.unten?o.h:o.h/2]})}).addTo(map);
       if(o.click)m.on("click",o.click);return {remove:()=>m.remove(),add:()=>m.addTo(map),move:p=>m.setLatLng(p),pos:()=>m.getLatLng(),html:h=>m.setIcon(L.divIcon({className:"gmk",html:h,iconSize:[o.w,o.h],iconAnchor:[o.w/2,o.unten?o.h:o.h/2]}))}},
+    line:(pts,o)=>{const l=L.polyline(pts,{color:o.farbe,weight:o.dick||3,interactive:false}).addTo(map);return {remove:()=>l.remove(),pfad:q=>l.setLatLngs(q)}},
     poly:(pts,o)=>{const p=L.polygon(pts,{color:o.rand||o.farbe,weight:o.dick||2,fillColor:o.farbe,fillOpacity:o.fuell??.22,interactive:!!o.click}).addTo(map);
       if(o.click)p.on("click",e=>{L.DomEvent.stopPropagation(e);o.click(e.latlng)});
       return {remove:()=>p.remove(),add:()=>p.addTo(map),pfad:q=>p.setLatLngs(q),stil:o=>p.setStyle({color:o.rand||o.farbe,fillColor:o.farbe,fillOpacity:o.fuell??.22,weight:o.dick||2}),
@@ -667,6 +670,8 @@ function kTally(){const t=$("#tally");if(!t||VIEW!=="karte")return;$("#tallyLbl"
 const kPanel=()=>{const w=$("#kwrap");return w&&w.classList.contains("voll")&&$("#kfeldv")?$("#kfeldv"):$("#kfeld")};
 const kAktiv=()=>S.open?S.open.type==="karte":VIEW==="karte";
 let KVOLL=false,KST=null; /* Vollbild und Ausschnitt bleiben beim Neuzeichnen erhalten */
+function distM(a,b){const R=6371008.8,r=Math.PI/180,dl=(b.lat-a.lat)*r,dn=(b.lng-a.lng)*r,x=Math.sin(dl/2)**2+Math.cos(a.lat*r)*Math.cos(b.lat*r)*Math.sin(dn/2)**2;return 2*R*Math.asin(Math.sqrt(x))}
+const fmtMeter=m=>m>=1000?(m/1000).toLocaleString("de-DE",{maximumFractionDigits:2})+" km":Math.round(m).toLocaleString("de-DE")+" m";
 async function karte(mid,setzen){
   const m=mid?S.m.find(x=>x.id===mid):null;if(mid&&!m)return;
   const tab=!mid&&!setzen;
@@ -675,7 +680,7 @@ async function karte(mid,setzen){
   const kh=`<div class="sheet-head"><div><span class="label">${m?esc(m.name):"Hof"}</span><h2>${setzen?"Standort setzen":"Karte"}</h2></div><button class="ghost" data-act="${m?"back":"close"}">${m?"Zurück":"Schließen"}</button></div>`;
   const kb=`  ${setzen?`<p class="note" style="margin:0">Tippe auf die Karte, wo <b>${esc(m.name)}</b> steht – oder stell dich daneben und nimm <b>📍 Mein Standort</b>.</p>`:""}
   ${setzen?"":`<div class="kfilter" id="kfilter">${[...KGRP,{id:"oldtimer",name:"Oldtimer"},{id:"felder",name:"Felder"}].map(g=>`<button type="button" class="chip${kAus().includes(g.id)?"":" on"}" data-kg="${g.id}">${g.name}</button>`).join("")}</div>`}
-  <div class="kwrap${tab&&KVOLL?" voll":""}" id="kwrap"><div id="map" class="map"><div class="empty">Karte wird geladen…</div></div><div class="kctl">${setzen||!S.canWrite?"":`<button type="button" id="k_ausw"><i>☑</i>Auswählen</button><button type="button" id="k_feldneu"><i>✏️</i>Einzeichnen</button><label id="k_imp"><i>📥</i>Import<input type="file" id="k_impf" accept=".zip,.geojson,.json" hidden></label>`}<button type="button" id="kvoll" aria-label="Vollbild">${tab&&KVOLL?"<i>✕</i><span>Schließen</span>":"<i>⛶</i><span>Vollbild</span>"}</button></div>${setzen?"":`<div id="kfeldv"></div>`}</div>
+  <div class="kwrap${tab&&KVOLL?" voll":""}" id="kwrap"><div id="map" class="map"><div class="empty">Karte wird geladen…</div></div><div class="kctl">${setzen?"":`<button type="button" id="k_mess"><i>📏</i>Messen</button>`}${setzen||!S.canWrite?"":`<button type="button" id="k_ausw"><i>☑</i>Auswählen</button><button type="button" id="k_feldneu"><i>✏️</i>Einzeichnen</button><label id="k_imp"><i>📥</i>Import<input type="file" id="k_impf" accept=".zip,.geojson,.json" hidden></label>`}<button type="button" id="kvoll" aria-label="Vollbild">${tab&&KVOLL?"<i>✕</i><span>Schließen</span>":"<i>⛶</i><span>Vollbild</span>"}</button></div>${setzen?"":`<div id="kfeldv"></div>`}</div>
   ${setzen?`<div class="fields"><label class="f full"><span class="label">Wo genau (optional)</span><input id="k_ort" maxlength="80" value="${esc(st?st.ort||"":"")}" placeholder="z. B. Maschinenhalle hinten links"></label></div>
   <p class="err" id="kerr" hidden></p><div class="row"><button type="button" id="k_gps">📍 Mein Standort</button>${st?`<button type="button" class="danger" id="k_del">Entfernen</button>`:""}<button type="button" class="primary" id="k_save" ${st?"":"disabled"}>Speichern</button></div>`
   :`<div id="kfeld"></div><div id="k_leg" class="kleg"></div><div id="k_auftr"></div><div class="row" style="justify-content:space-between"><small class="note" style="margin:0">${S.m.filter(x=>x.standort&&x.standort.lat).length} Maschinen · ${(S.f||[]).length} ${(S.f||[]).length===1?"Feld":"Felder"}${(S.f||[]).length?` (${fmtHa((S.f||[]).reduce((a,f)=>a+flaecheHa(f.punkte),0))})`:""} · Antippen öffnet</small>${S.canWrite?`<button type="button" class="linkbtn" id="k_hof">Ansicht als Hof merken</button>`:""}</div>`}`;
@@ -800,6 +805,22 @@ async function karte(mid,setzen){
     $("#kz_abbr").addEventListener("click",()=>neuLaden());
     $("#kz_ok").addEventListener("click",()=>{zeichne=null;feldForm(null,pts.slice())});});
   if(!setzen)K.onClick(ll=>{if(zeichne)zeichne.add(ll)});
+  /* Messen: Strecke oder Fläche antippen, wird nicht gespeichert */
+  const messen=()=>{if(zeichne||auswahl)return;let art="strecke";const pts=[],ecken=[];const ln=K.line([],{farbe:"#ffeb3b",dick:3}),fl=K.poly([],{farbe:"#ffeb3b",fuell:.25});const el=kPanel();
+    const upd=()=>{ln.pfad(art==="strecke"?pts:[]);fl.pfad(art==="flaeche"?pts:[]);
+      let len=0;for(let i=1;i<pts.length;i++)len+=distM(pts[i-1],pts[i]);const umf=art==="flaeche"&&pts.length>2?len+distM(pts[pts.length-1],pts[0]):len;
+      $("#km_info").innerHTML=!pts.length?"Tippe Punkte auf der Karte an.":art==="strecke"?`Länge: <b>${fmtMeter(len)}</b>${pts.length>1?` · letzter Abschnitt ${fmtMeter(distM(pts[pts.length-2],pts[pts.length-1]))}`:""}`
+        :pts.length<3?`${pts.length} Ecke${pts.length===1?"":"n"} – weitere antippen`:`Fläche: <b>${fmtHa(flaecheHa(pts))}</b> (${Math.round(flaecheHa(pts)*10000).toLocaleString("de-DE")} m²) · Umfang ${fmtMeter(umf)}`};
+    const ende=()=>{zeichne=null;ln.remove();fl.remove();ecken.forEach(e=>e.remove());el.innerHTML=""};
+    zeichne={add:ll=>{pts.push({lat:+ll.lat,lng:+ll.lng});ecken.push(K.marker(ll,{html:`<div class="kecke messp"></div>`,w:12,h:12}));upd()}};
+    el.innerHTML=`<div class="kfinfo zeichnen" style="border-color:#e6c200"><div><span class="seg" style="margin-bottom:6px"><button type="button" class="on" data-ma="strecke">Strecke</button><button type="button" data-ma="flaeche">Fläche</button></span><small id="km_info" style="display:block"></small></div>
+      <span class="kbtns"><button type="button" id="km_back">↶</button><button type="button" id="km_neu">Neu</button><button type="button" class="primary" id="km_ende">Fertig</button></span></div>`;
+    upd();
+    el.querySelectorAll("[data-ma]").forEach(b=>b.addEventListener("click",()=>{art=b.dataset.ma;el.querySelectorAll("[data-ma]").forEach(x=>x.classList.toggle("on",x===b));upd()}));
+    $("#km_back").addEventListener("click",()=>{if(!pts.length)return;pts.pop();ecken.pop().remove();upd()});
+    $("#km_neu").addEventListener("click",()=>{pts.length=0;ecken.splice(0).forEach(e=>e.remove());upd()});
+    $("#km_ende").addEventListener("click",ende)};
+  if(!setzen&&$("#k_mess"))$("#k_mess").addEventListener("click",messen);
   const legende=()=>{const el=$("#k_leg");if(!el)return;const fs=S.f||[];el.innerHTML=fs.length?NUTZ.map(([k,n,c])=>{const t=fs.filter(f=>nutzung(f)===k);return t.length?`<span><span class="kdot" style="background:${c}"></span>${n} <small>${fmtHa(t.reduce((q,f)=>q+flaecheHa(f.punkte),0))}</small></span>`:""}).join("")+(()=>{const t=fs.filter(f=>f.tausch);return t.length?`<span>⇄ Tauschflächen <small>${t.length} · ${fmtHa(t.reduce((q,f)=>q+flaecheHa(f.punkte),0))}</small></span>`:""})():""};
   if(!setzen){auftragZahl();legende();const ab=$("#k_ausw");if(ab)ab.addEventListener("click",auswahlStart)}
   const lz=z=>{const el=$("#map");if(el)el.classList.toggle("kweit",z<15)};K.onZoom(lz);setTimeout(()=>lz(K.zoom()),400);
