@@ -775,7 +775,7 @@ async function karte(mid,setzen){
     const pinNeu=()=>{const mk=ORTE.find(m=>m.oid===o.id);if(mk)mk.html(oHtml(o))};
     const hs=(S.h||[]).filter(h=>h.ortId===o.id).sort((a,b)=>(a.status==="erledigt")-(b.status==="erledigt")||({dringend:0,normal:1,irgendwann:2}[a.prio]??1)-({dringend:0,normal:1,irgendwann:2}[b.prio]??1));
     const offen=hs.filter(h=>h.status!=="erledigt"),erl=hs.filter(h=>h.status==="erledigt").slice(0,3);
-    const zeile=h=>{const done=h.status==="erledigt",d=hTage(h.bis);return `<div class="koh${done?" erl":""}" data-koh="${esc(h.id)}"><span><b>${h.prio==="dringend"&&!done?"❗ ":""}${esc(h.titel)}</b><small>${esc([h.wer,done?(h.erledigtAm?"erledigt "+fmtD(h.erledigtAm):"erledigt"):h.bis?(d<0?"überfällig seit ":"bis ")+fmtD(h.bis):""].filter(Boolean).join(" · "))}</small></span>${S.canWrite?`<button type="button" data-kohok="${esc(h.id)}" aria-label="${done?"Wieder offen":"Erledigt"}">${done?"↺":"✓"}</button>`:""}</div>`};
+    const zeile=h=>{const done=h.status==="erledigt",d=hTage(h.bis);return `<div class="koh${done?" erl":""}" data-koh="${esc(h.id)}"><span><b>${h.prio==="dringend"&&!done?"❗ ":""}${esc(h.titel)}</b><small>${esc([h.stelle??h.bereich,h.wer,done?(h.erledigtAm?"erledigt "+fmtD(h.erledigtAm):"erledigt"):h.bis?(d<0?"überfällig seit ":"bis ")+fmtD(h.bis):""].filter(Boolean).join(" · "))}</small></span>${S.canWrite?`<button type="button" data-kohok="${esc(h.id)}" aria-label="${done?"Wieder offen":"Erledigt"}">${done?"↺":"✓"}</button>`:""}</div>`};
     el.innerHTML=`<div class="kfinfo" style="display:block"><div class="kohk"><div><b><span class="koi" style="background:${OICO[oKey(o)].c}">${oSvg(oKey(o),15)}</span> ${esc(o.name)}</b>${o.notiz?`<small>${esc(o.notiz)}</small>`:""}</div><button type="button" class="ghost" id="ko_x">✕</button></div>
       <div class="kohl">${offen.length?offen.map(zeile).join(""):`<small class="note">Keine offenen Arbeiten hier.</small>`}${erl.length?`<small class="note" style="display:block;margin-top:6px">Zuletzt erledigt</small>${erl.map(zeile).join("")}`:""}</div>
       <span class="kbtns">${S.canWrite?`<button type="button" class="primary" id="ko_arb">+ Arbeit</button>`:""}<a class="btn" href="https://www.google.com/maps/dir/?api=1&destination=${(+o.lat).toFixed(6)},${(+o.lng).toFixed(6)}" target="_blank" rel="noopener">🧭 Hinfahren</a>
@@ -784,7 +784,7 @@ async function karte(mid,setzen){
     el.querySelectorAll("[data-koh]").forEach(z=>z.addEventListener("click",e=>{if(e.target.closest("[data-kohok]"))return;const h=S.h.find(x=>x.id===z.dataset.koh);if(h)hofForm(h,null,wieder)}));
     el.querySelectorAll("[data-kohok]").forEach(b=>b.addEventListener("click",async()=>{const h=S.h.find(x=>x.id===b.dataset.kohok);if(!h)return;b.disabled=true;const e2=h.status!=="erledigt";
       try{await S.db.doc("hofarbeiten/"+h.id).update({status:e2?"erledigt":"offen",erledigtAm:e2?iso(new Date()):""});h.status=e2?"erledigt":"offen";h.erledigtAm=e2?iso(new Date()):"";toast(e2?`„${h.titel}“ erledigt.`:`„${h.titel}“ ist wieder offen.`);wieder()}catch(_){toast("Konnte nicht gespeichert werden.");b.disabled=false}}));
-    if($("#ko_arb"))$("#ko_arb").addEventListener("click",()=>hofForm(null,{ortId:o.id,bereich:/stall|sau|mast|ferkel/.test(oKey(o))?"Stall":oKey(o)==="werkstatt"?"Werkstatt":""},wieder));
+    if($("#ko_arb"))$("#ko_arb").addEventListener("click",()=>hofForm(null,{ortId:o.id},wieder));
     $("#ko_x").addEventListener("click",()=>{el.innerHTML=""});
     if(!S.canWrite)return;$("#ko_edit").addEventListener("click",()=>ortForm(o));
     const d=$("#ko_del");arm&&d.addEventListener("click",()=>arm(d,"Ort wirklich löschen?",async()=>{try{await S.db.doc("orte/"+o.id).delete();S.o=(S.o||[]).filter(x=>x.id!==o.id);toast("Ort gelöscht.");neuLaden()}catch(_){toast("Konnte nicht gelöscht werden.")}}))};
@@ -989,7 +989,7 @@ function renderHof(){
   const erl=S.h.filter(h=>h.status==="erledigt").sort((a,b)=>String(b.erledigtAm||"").localeCompare(String(a.erledigtAm||"")));
   const li=h=>{const done=h.status==="erledigt",d=hTage(h.bis);
     const st=done?"ok":h.prio==="dringend"||(d!==null&&d<0)?"bad":h.prio==="normal"?"warn":"none";
-    const ort=h.ortId&&(S.o||[]).find(o=>o.id===h.ortId);const info=[ort?"📍 "+ort.name:"",h.bereich,h.wer,done?(h.erledigtAm?"erledigt "+fmtD(h.erledigtAm):"erledigt"):h.bis?"bis "+fmtD(h.bis):""].filter(Boolean).map(esc).join(" · ");
+    const ort=h.ortId&&(S.o||[]).find(o=>o.id===h.ortId);const wo=[ort?"📍 "+ort.name:"",h.stelle??h.bereich].filter(Boolean).join(" – ");const info=[wo,h.wer,done?(h.erledigtAm?"erledigt "+fmtD(h.erledigtAm):"erledigt"):h.bis?"bis "+fmtD(h.bis):""].filter(Boolean).map(esc).join(" · ");
     const pill=done?"":h.prio==="dringend"?`<span class="pill bad">dringend</span>`:d!==null?`<span class="pill ${lvl(d)}">${rel(d)}</span>`:`<span></span>`;
     return `<li data-hopen="${esc(h.id)}" tabindex="0"><span class="stripe s-${st}"></span><span class="what"><b${done?' style="text-decoration:line-through;opacity:.7"':""}>${esc(h.titel)}</b><small>${info||"&nbsp;"}</small></span>${pill}<button class="hok" data-hok="${esc(h.id)}" ${S.canWrite?"":"disabled"} aria-label="${done?"Wieder offen":"Erledigt"}">${done?"↺":"✓"}</button></li>`};
   $("#hlist").innerHTML=!S.hReady?`<div class="empty">Hofarbeiten werden geladen…</div>`:
@@ -1002,8 +1002,8 @@ function hofForm(h,vor,nachher){
   openSheet(`<div class="sheet-head"><h2>${h.id?"Arbeit bearbeiten":"Neue Hofarbeit"}</h2><button class="ghost" data-act="close">Abbrechen</button></div>
   <form id="hf"><div class="fields">
    <label class="f full"><span class="label">Was ist zu tun? *</span><input id="h_titel" required maxlength="120" value="${v("titel")}" placeholder="z. B. Dach Maschinenhalle reparieren"></label>
-   <label class="f"><span class="label">Bereich</span><input id="h_bereich" list="h_berl" value="${v("bereich")}" placeholder="z. B. Stall"><datalist id="h_berl">${HBER.map(b=>`<option value="${esc(b)}">`).join("")}</datalist></label>
-   <label class="f"><span class="label">Ort auf der Karte</span><select id="h_ort"><option value="">– kein Ort –</option>${[...(S.o||[])].sort((a,b)=>String(a.name).localeCompare(String(b.name),"de")).map(o=>`<option value="${esc(o.id)}" ${o.id===h.ortId?"selected":""}>${esc(o.name)}</option>`).join("")}</select></label>
+   <label class="f"><span class="label">Wo? (Ort auf der Karte)</span><select id="h_ort"><option value="">– kein Ort –</option>${[...(S.o||[])].sort((a,b)=>String(a.name).localeCompare(String(b.name),"de")).map(o=>`<option value="${esc(o.id)}" ${o.id===h.ortId?"selected":""}>${esc(o.name)}</option>`).join("")}</select></label>
+   <label class="f"><span class="label">Genaue Stelle</span><input id="h_stelle" maxlength="120" value="${esc(h.stelle??h.bereich??"")}" placeholder="z. B. Abteil 3, hinten links"></label>
    <label class="f"><span class="label">Wichtigkeit</span><select id="h_prio">${HPRIO.map(([k,n])=>`<option value="${k}" ${k===(h.prio||"normal")?"selected":""}>${n}</option>`).join("")}</select></label>
    <label class="f"><span class="label">Bis wann (optional)</span><input id="h_bis" type="date" value="${v("bis")}"></label>
    <label class="f"><span class="label">Wer (optional)</span><input id="h_wer" value="${v("wer")}" placeholder="z. B. Leopold"></label>
@@ -1011,7 +1011,7 @@ function hofForm(h,vor,nachher){
   </div><p class="err" id="hferr" hidden></p><div class="row">${h.id?`<button type="button" class="danger" data-hdel="${esc(h.id)}" style="margin-right:auto">Löschen</button>`:""}<button class="primary" type="submit">Speichern</button></div></form>`);
   $("#hf").addEventListener("submit",async ev=>{
     ev.preventDefault();
-    const body={titel:$("#h_titel").value.trim(),bereich:$("#h_bereich").value.trim(),ortId:$("#h_ort").value,prio:$("#h_prio").value,bis:$("#h_bis").value,wer:$("#h_wer").value.trim(),notiz:$("#h_notiz").value.trim()};
+    const body={titel:$("#h_titel").value.trim(),stelle:$("#h_stelle").value.trim(),bereich:"",ortId:$("#h_ort").value,prio:$("#h_prio").value,bis:$("#h_bis").value,wer:$("#h_wer").value.trim(),notiz:$("#h_notiz").value.trim()};
     if(!body.titel)return;const btn=ev.submitter;btn.disabled=true;
     try{if(h.id)await S.db.doc("hofarbeiten/"+h.id).update(body);else await S.db.collection("hofarbeiten").add({...body,status:"offen",erledigtAm:"",angelegt:iso(new Date())});closeSheet(!!nachher);if(nachher)setTimeout(nachher,250)}
     catch(e){showErr("#hferr",e);btn.disabled=false}
