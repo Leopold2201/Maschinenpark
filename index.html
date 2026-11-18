@@ -258,6 +258,7 @@ body.kvoll-an{overflow:hidden}
 .kctl>button,.kctl>label{display:flex;align-items:center;gap:6px;background:none;border:0;padding:5px 4px;color:#fff;font:700 13px/1 system-ui,sans-serif;text-shadow:0 0 4px #000,0 0 2px #000,0 0 1px #000;cursor:pointer}
 .kctl i{font-style:normal;font-size:20px;width:24px;text-align:center;filter:drop-shadow(0 0 2px #000)}
 .kctl>button:disabled{opacity:.45}
+.kwrap.voll .kfilter{position:absolute;top:calc(58px + env(safe-area-inset-top,0px));right:8px;z-index:5;margin:0;flex-direction:column;align-items:flex-end;gap:5px}.kwrap.voll .kfilter .chip{background:rgba(0,0,0,.45);border-color:rgba(255,255,255,.55);color:#fff;font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.4)}.kwrap.voll .kfilter .chip.on{background:var(--accent,#2f6b2a);border-color:#fff}
 .kwrap.voll .kctl{bottom:calc(30px + env(safe-area-inset-bottom,0px))}.kwrap.voll:has(#kfeldv:not(:empty)) .kctl{bottom:calc(160px + env(safe-area-inset-bottom,0px))}
 .kdot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:middle;box-shadow:0 0 0 1px rgba(0,0,0,.35)}.kleg{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:.85rem;margin:6px 0}.kleg small{color:var(--muted)}.knutz{display:grid;gap:6px;margin:8px 0}.knutz button{text-align:left}
 .berseg{display:flex;max-width:420px;margin:0 auto 14px}.berseg[hidden]{display:none}.berseg button{flex:1}
@@ -708,6 +709,7 @@ async function karte(mid,setzen){
   const neuLaden=()=>{try{KST={c:K.center(),z:K.zoom()}}catch(_){}karte(null,false)};
   /* Vollbild: Karte füllt den ganzen Bildschirm; Zeichnen-Leiste wandert mit */
   const voll=an=>{const w=$("#kwrap");if(!w)return;if(tab)KVOLL=an;if(an)hPush("kv");else hBack("kv");w.classList.toggle("voll",an);document.body.classList.toggle("kvoll-an",an);$("#kvoll").innerHTML=an?"<i>✕</i><span>Schließen</span>":"<i>⛶</i><span>Vollbild</span>";
+    const kf=$("#kfilter");if(kf){if(an)w.append(kf);else w.before(kf)}
     const f=document.getElementById("kfeld"),fv=$("#kfeldv");if(f&&fv){if(an)fv.append(...f.childNodes);else f.append(...fv.childNodes)}setTimeout(()=>K.resize(),60)};
   const kvz=$("#kvz");if(kvz)kvz.addEventListener("click",()=>{const b=$("#k_feldneu");if(b&&!b.disabled)b.click()});
   const kvw=$("#kvw");if(kvw)kvw.addEventListener("click",()=>{const b=$("#k_ausw");if(b&&!b.disabled)b.click()});
