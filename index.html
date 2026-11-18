@@ -260,9 +260,9 @@ body.kvoll-an{overflow:hidden}
 .kctl>button:disabled{opacity:.45}
 .kwrap.voll .kfilter{position:absolute;top:calc(58px + env(safe-area-inset-top,0px));right:8px;z-index:5;margin:0;flex-direction:column;align-items:flex-end;gap:5px}.kfbtn{display:none}.kwrap.voll .kfbtn{display:flex;align-items:center;gap:5px;background:none;border:0;padding:4px 2px;color:#fff;font:700 13px/1 system-ui,sans-serif;text-shadow:0 0 4px #000,0 0 2px #000,0 0 1px #000;cursor:pointer}.kfbtn i{font-style:normal;font-size:18px;filter:drop-shadow(0 0 2px #000)}.kwrap.voll .kfilter.zu .chip{display:none}.kwrap.voll .kfilter .chip{padding:4px 10px;font-size:.8rem;background:rgba(0,0,0,.45);border-color:rgba(255,255,255,.55);color:#fff;font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.4)}.kwrap.voll .kfilter .chip.on{background:var(--accent,#2f6b2a);border-color:#fff}
 .kwrap.voll .kctl{bottom:calc(30px + env(safe-area-inset-bottom,0px))}.kwrap.voll:has(#kfeldv:not(:empty)) .kctl{bottom:calc(160px + env(safe-area-inset-bottom,0px))}
-.kpin{position:relative;width:34px;height:42px;display:flex;justify-content:center;cursor:pointer}.kpin b{display:flex;align-items:center;justify-content:center;width:30px;height:30px;margin-top:2px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:#d32f2f;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.6)}.kpin b i{transform:rotate(45deg);font-style:normal;font-size:15px;line-height:1}
+.kpin{position:relative;width:36px;height:44px;display:flex;justify-content:center;cursor:pointer}.kpin b{display:flex;align-items:center;justify-content:center;width:32px;height:32px;margin-top:2px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:#d32f2f;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.6)}.kpin b i{transform:rotate(45deg);font-style:normal;line-height:0}.koi{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:6px;vertical-align:-5px}.koic .koi{width:30px;height:30px;border-radius:8px}
 .kpn{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:1px;white-space:nowrap;background:#fff;color:#222;border-radius:4px;padding:1px 6px;font:700 11px/1.5 system-ui,sans-serif;box-shadow:0 1px 3px rgba(0,0,0,.45);pointer-events:none}.kweit .kpn{display:none}
-.koic{display:flex;flex-wrap:wrap;gap:4px;margin:4px 0 8px}.koic button{font-size:20px;width:40px;height:40px;padding:0;border-radius:10px;border:1px solid var(--line);background:var(--surface)}.koic button.on{border:2px solid var(--accent,#2f6b2a);background:#e7f1e4}
+.koic{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:4px;margin:4px 0 8px;max-height:150px;overflow:auto}.koic button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 2px;border-radius:10px;border:1px solid var(--line);background:var(--surface)}.koic small{font-size:9.5px;line-height:1.1;color:var(--muted);text-align:center}.koic button.on{border:2px solid var(--accent,#2f6b2a);background:#e7f1e4}
 .kdot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:middle;box-shadow:0 0 0 1px rgba(0,0,0,.35)}.kleg{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:.85rem;margin:6px 0}.kleg small{color:var(--muted)}.knutz{display:grid;gap:6px;margin:8px 0}.knutz button{text-align:left}
 .berseg{display:flex;max-width:420px;margin:0 auto 14px}.berseg[hidden]{display:none}.berseg button{flex:1}
 .headbtns{display:flex;gap:6px;flex-wrap:nowrap;justify-content:flex-end;flex:0 0 auto}.headbtns button{padding:8px 10px;font-size:.9rem}.sheet-head>:first-child{min-width:0}.sheet-head:has(.headbtns) h2{font-size:1.3rem;line-height:1.2}
@@ -677,6 +677,30 @@ async function felderSpeichern(F){const heute=iso(new Date());
     await b.commit()}}
 function kTally(){const t=$("#tally");if(!t||VIEW!=="karte")return;$("#tallyLbl").hidden=true;t.innerHTML=`<div><b>${S.m.filter(x=>x.standort&&x.standort.lat).length}</b><span>Maschinen</span></div><div><b>${(S.f||[]).length}</b><span>Felder</span></div><div><b>${Math.round((S.f||[]).reduce((q,f)=>q+flaecheHa(f.punkte),0))}</b><span>ha</span></div>`}
 const kPanel=()=>{const w=$("#kwrap");return w&&w.classList.contains("voll")&&$("#kfeldv")?$("#kfeldv"):$("#kfeld")};
+const OSAU=(x,y,s,c)=>`<g transform="translate(${x} ${y}) scale(${s})"><ellipse cx="10.5" cy="12.5" rx="7.5" ry="5.2"/><circle cx="17" cy="11" r="3.6"/><rect x="19.2" y="9.6" width="3.3" height="3.4" rx="1.2"/><path d="M14.6 8.6 15.6 4.8 18.6 8"/><rect x="5" y="15.5" width="2.4" height="4.5" rx="1"/><rect x="12.6" y="15.5" width="2.4" height="4.5" rx="1"/><path d="M3.4 11.5c-1.6-.2-2-1.8-.8-2.4s1.6 1 .4 1.4" fill="none" stroke="#fff" stroke-width="1.1" stroke-linecap="round"/><circle cx="17.6" cy="10.2" r=".75" fill="${c}"/><circle cx="21.4" cy="11.3" r=".45" fill="${c}"/></g>`;
+const OICO={
+ hof:{n:"Hof / Wohnhaus",c:"#b5452a",s:c=>`<path d="M2.5 11.5 12 4l9.5 7.5-1.2 1.5L19 12v8H5v-8l-1.3 1z"/><rect x="15.5" y="4" width="2.2" height="4.5"/><rect x="10" y="14" width="4" height="6" fill="${c}"/><rect x="6.5" y="13" width="2.5" height="2.5" fill="${c}"/>`},
+ sauen:{n:"Sauenstall",c:"#c2185b",s:c=>OSAU(-1,-2.5,.82,c)+OSAU(11.5,9.2,.5,c)},
+ mast:{n:"Maststall",c:"#d81b60",s:c=>OSAU(0,0,1,c)},
+ ferkel:{n:"Ferkel",c:"#ec407a",s:c=>OSAU(-.5,1.5,.58,c)+OSAU(10,6,.58,c)},
+ halle:{n:"Halle",c:"#6d4c41",s:c=>`<path d="M1.5 11 12 5l10.5 6v9h-21z"/><path d="M6 20v-7h12v7" fill="${c}"/><path d="M6 15.3h12M6 17.6h12" stroke="#fff" stroke-width=".9"/>`},
+ scheune:{n:"Scheune",c:"#a1452e",s:c=>`<path d="M2 12 5 6.5 12 3l7 3.5 3 5.5v8.5H2z"/><rect x="8" y="12" width="8" height="8.5" fill="${c}"/><path d="M8 12l8 8.5M16 12l-8 8.5" stroke="#fff" stroke-width="1.2"/><rect x="10.5" y="7" width="3" height="2.6" fill="${c}"/>`},
+ werkstatt:{n:"Werkstatt",c:"#455a64",s:c=>`<g transform="rotate(45 12 12)"><rect x="10.6" y="9" width="2.8" height="13.5" rx="1.4"/><path fill-rule="evenodd" d="M12 1a5 5 0 1 1 0 10 5 5 0 0 1 0-10zM10.4 0h3.2v5.3h-3.2z"/></g>`},
+ silo:{n:"Silo",c:"#546e7a",s:c=>`<path d="M9 8.5a3.5 3.5 0 0 1 7 0V21H9z"/><path d="M3.5 12a2.5 2.5 0 0 1 5 0v9h-5z"/><path d="M9 12h7M9 16h7M3.5 15.5h5" stroke="${c}" stroke-width="1"/><path d="M17.5 21V10h3v11" fill="none" stroke="#fff" stroke-width="1"/><path d="M17.5 13h3M17.5 16h3M17.5 19h3" stroke="#fff" stroke-width=".8"/>`},
+ guelle:{n:"Güllebehälter",c:"#5d4037",s:c=>`<path d="M2 9.5v8c0 1.7 4.5 3 10 3s10-1.3 10-3v-8"/><ellipse cx="12" cy="9.5" rx="10" ry="3" fill="${c}" stroke="#fff" stroke-width="1.2"/><path d="M2 13.5c0 1.7 4.5 3 10 3s10-1.3 10-3" fill="none" stroke="${c}" stroke-width=".9"/><path d="M12 2.5c1.6 2 2.2 3 2.2 3.8a2.2 2.2 0 0 1-4.4 0c0-.8.6-1.8 2.2-3.8z"/>`},
+ fahrsilo:{n:"Fahrsilo",c:"#33691e",s:c=>`<path d="M1.5 20 4 10h2.5v3.5c3 -2 8 -2 11 0V10H20l2.5 10z"/><circle cx="9" cy="14.6" r="1.1" fill="${c}"/><circle cx="12" cy="14.2" r="1.1" fill="${c}"/><circle cx="15" cy="14.6" r="1.1" fill="${c}"/>`},
+ getreide:{n:"Getreidelager",c:"#c58b00",s:c=>`<path d="M12 22V6" stroke="#fff" stroke-width="1.4"/>${[7,10.5,14].map(y=>`<ellipse cx="9.6" cy="${y}" rx="1.6" ry="2.6" transform="rotate(-30 9.6 ${y})"/><ellipse cx="14.4" cy="${y}" rx="1.6" ry="2.6" transform="rotate(30 14.4 ${y})"/>`).join("")}<ellipse cx="12" cy="3.8" rx="1.5" ry="2.4"/>`},
+ futter:{n:"Futter / Mühle",c:"#8d6e63",s:c=>`<path d="M8 3h8v10l-2.5 4h-3L8 13z"/><path d="M11 17h2v3h-2z"/><path d="M4 21h16" stroke="#fff" stroke-width="1.6"/><path d="M8 7h8M8 10h8" stroke="${c}" stroke-width="1"/>`},
+ tank:{n:"Tankstelle",c:"#ef6c00",s:c=>`<rect x="4" y="3" width="10" height="18" rx="1.5"/><rect x="6" y="5.5" width="6" height="4.5" rx=".6" fill="${c}"/><path d="M14 8h2.5a1.5 1.5 0 0 1 1.5 1.5V17a1.5 1.5 0 0 0 3 0V8l-2.5-3" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/>`},
+ trafo:{n:"Strom / PV",c:"#f9a825",s:c=>`<path d="M13.5 2 5 13.5h6L9.5 22 19 9.5h-6.2z"/>`},
+ wald:{n:"Wald",c:"#2e7d32",s:c=>`<path d="M12 2 6.5 9.5h2.5L5 15h3.5L4.5 19.5h15L15.5 15H19l-4-5.5h2.5z"/><rect x="10.8" y="19" width="2.4" height="3"/>`},
+ wasser:{n:"Wasser / Brunnen",c:"#1976d2",s:c=>`<path d="M12 2.5c3.5 4.6 5.6 8 5.6 10.7a5.6 5.6 0 0 1-11.2 0c0-2.7 2.1-6.1 5.6-10.7z"/>`},
+ sonst:{n:"Sonstiges",c:"#d32f2f",s:c=>`<circle cx="12" cy="12" r="5"/>`}
+};
+const OEMO={"🏠":"hof","🐖":"mast","🐷":"sauen","🏚️":"halle","🌾":"getreide","⛽":"tank","🔧":"werkstatt","🌲":"wald","📍":"sonst","🚜":"halle"};
+const oKey=o=>OICO[o.icon]?o.icon:OEMO[o.icon]||"sonst";
+const oRaten=n=>{n=(n||"").toLowerCase();return /sau|abferkel|deck|warte/.test(n)?"sauen":/ferkel|aufzucht/.test(n)?"ferkel":/mast|schwein|stall/.test(n)?"mast":/gülle|guelle|pott|jauche/.test(n)?"guelle":/fahrsilo|silage|mais/.test(n)?"fahrsilo":/silo/.test(n)?"silo":/werkst/.test(n)?"werkstatt":/scheun/.test(n)?"scheune":/halle|garage|unterstand/.test(n)?"halle":/getreide|korn|lager/.test(n)?"getreide":/futter|mühle|muehle|misch/.test(n)?"futter":/tank|diesel/.test(n)?"tank":/strom|pv|solar|trafo/.test(n)?"trafo":/wald|holz/.test(n)?"wald":/wasser|brunnen/.test(n)?"wasser":/hof|haus|wohn/.test(n)?"hof":null};
+const oSvg=(k,px)=>{const v=OICO[k]||OICO.sonst;return `<svg viewBox="0 0 24 24" width="${px}" height="${px}" fill="#fff">${v.s(v.c)}</svg>`};
 const kAktiv=()=>S.open?S.open.type==="karte":VIEW==="karte";
 let KVOLL=false,KST=null; /* Vollbild und Ausschnitt bleiben beim Neuzeichnen erhalten */
 function distM(a,b){const R=6371008.8,r=Math.PI/180,dl=(b.lat-a.lat)*r,dn=(b.lng-a.lng)*r,x=Math.sin(dl/2)**2+Math.cos(a.lat*r)*Math.cos(b.lat*r)*Math.sin(dn/2)**2;return 2*R*Math.asin(Math.sqrt(x))}
@@ -743,35 +767,34 @@ async function karte(mid,setzen){
     felder.push([p,lb]);if(!setzen&&kAus().includes("felder")){p.remove();lb.remove()}}
   /* Orte: Stecknadeln für Hof, Ställe, Hallen … */
   const ORTE=[];
-  const oHtml=o=>`<div class="kpin"><span class="kpn">${esc(o.name)}</span><b><i>${esc(o.icon||"📍")}</i></b></div>`;
+  const oHtml=o=>{const k=oKey(o);return `<div class="kpin"><span class="kpn">${esc(o.name)}</span><b style="background:${OICO[k].c}"><i>${oSvg(k,20)}</i></b></div>`};
   const ortInfo=o=>{const el=kPanel();if(!el)return;
-    el.innerHTML=`<div class="kfinfo"><div><b>${esc(o.icon||"📍")} ${esc(o.name)}</b>${o.notiz?`<small>${esc(o.notiz)}</small>`:""}</div>
+    el.innerHTML=`<div class="kfinfo"><div><b><span class="koi" style="background:${OICO[oKey(o)].c}">${oSvg(oKey(o),15)}</span> ${esc(o.name)}</b>${o.notiz?`<small>${esc(o.notiz)}</small>`:""}</div>
       <span class="kbtns"><a class="btn" href="https://www.google.com/maps/dir/?api=1&destination=${(+o.lat).toFixed(6)},${(+o.lng).toFixed(6)}" target="_blank" rel="noopener">🧭 Hinfahren</a>
       ${S.canWrite?`<button type="button" id="ko_edit">Bearbeiten</button><button type="button" class="danger" id="ko_del">Löschen</button>`:""}<button type="button" class="ghost" id="ko_x">✕</button></span></div>`;
     $("#ko_x").addEventListener("click",()=>{el.innerHTML=""});
     if(!S.canWrite)return;$("#ko_edit").addEventListener("click",()=>ortForm(o));
     const d=$("#ko_del");arm&&d.addEventListener("click",()=>arm(d,"Ort wirklich löschen?",async()=>{try{await S.db.doc("orte/"+o.id).delete();S.o=(S.o||[]).filter(x=>x.id!==o.id);toast("Ort gelöscht.");neuLaden()}catch(_){toast("Konnte nicht gelöscht werden.")}}))};
-  const OICON=["🏠","🐖","🐷","🏚️","🌾","🚜","⛽","🔧","🌲","📍"];
-  const ortForm=o=>{if(auswahl)return;const el=kPanel();o=o||{};let ic=o.icon||"📍";
+    const ortForm=o=>{if(auswahl)return;const el=kPanel();o=o||{};let ic=o.id?oKey(o):"sonst",icFest=!!o.id;
     let pos=o.lat?{lat:+o.lat,lng:+o.lng}:K.center();pos={lat:+pos.lat,lng:+pos.lng};
     const altMk=o.id&&ORTE.find(m=>m.oid===o.id);if(altMk)altMk.remove();
-    const pin=K.marker(pos,{html:oHtml({name:o.name||"Neuer Ort",icon:ic}),w:34,h:42,unten:true});
+    const pin=K.marker(pos,{html:oHtml({name:o.name||"Neuer Ort",icon:ic}),w:36,h:44,unten:true});
     zeichne={add:ll=>{pos={lat:+(+ll.lat).toFixed(7),lng:+(+ll.lng).toFixed(7)};pin.move(pos)}};
     el.innerHTML=`<div class="kfinfo" style="display:block"><b>${o.id?"Ort bearbeiten":"Neuer Ort"}</b><small> · Tippe auf die Karte, um die Stecknadel zu versetzen.</small><div class="fields" style="margin-top:8px">
       <label class="f"><span class="label">Name *</span><input id="ko_name" maxlength="50" value="${esc(o.name||"")}" list="ko_l" placeholder="z. B. Maststall"><datalist id="ko_l">${["Hof","Maststall","Sauenstall","Ferkelaufzucht","Halle","Maschinenhalle","Scheune","Getreidelager","Güllebehälter","Fahrsilo","Werkstatt","Tankstelle"].map(x=>`<option value="${x}">`).join("")}</datalist></label>
       <label class="f"><span class="label">Notiz (optional)</span><input id="ko_notiz" maxlength="120" value="${esc(o.notiz||"")}"></label></div>
-      <div class="koic">${OICON.map(x=>`<button type="button" data-oi="${x}" class="${x===ic?"on":""}">${x}</button>`).join("")}</div>
+      <div class="koic">${Object.entries(OICO).map(([k,v])=>`<button type="button" data-oi="${k}" class="${k===ic?"on":""}" title="${esc(v.n)}"><span class="koi" style="background:${v.c}">${oSvg(k,18)}</span><small>${esc(v.n)}</small></button>`).join("")}</div>
       <div class="row"><button type="button" class="ghost" id="ko_abbr">Abbrechen</button><button type="button" class="primary" id="ko_save">Speichern</button></div></div>`;
     const vor=()=>pin.html(oHtml({name:$("#ko_name").value.trim()||"Neuer Ort",icon:ic}));
-    $("#ko_name").addEventListener("input",vor);if(!o.id)$("#ko_name").focus();
-    el.querySelectorAll("[data-oi]").forEach(b=>b.addEventListener("click",()=>{ic=b.dataset.oi;el.querySelectorAll("[data-oi]").forEach(x=>x.classList.toggle("on",x===b));vor()}));
+    $("#ko_name").addEventListener("input",()=>{if(!icFest){const r=oRaten($("#ko_name").value);if(r&&r!==ic){ic=r;el.querySelectorAll("[data-oi]").forEach(x=>x.classList.toggle("on",x.dataset.oi===ic))}}vor()});if(!o.id)$("#ko_name").focus();
+    el.querySelectorAll("[data-oi]").forEach(b=>b.addEventListener("click",()=>{ic=b.dataset.oi;icFest=true;el.querySelectorAll("[data-oi]").forEach(x=>x.classList.toggle("on",x===b));vor()}));
     $("#ko_abbr").addEventListener("click",()=>{zeichne=null;neuLaden()});
     $("#ko_save").addEventListener("click",async ev=>{const name=$("#ko_name").value.trim();if(!name){$("#ko_name").focus();return}ev.target.disabled=true;
       const d={name,icon:ic,notiz:$("#ko_notiz").value.trim(),lat:+(+pos.lat).toFixed(7),lng:+(+pos.lng).toFixed(7)};
       try{if(o.id){await S.db.doc("orte/"+o.id).update(d);Object.assign(o,d)}else{const r=await S.db.collection("orte").add({...d,angelegt:iso(new Date())});if(!(S.o||[]).some(x=>x.id===r.id))S.o=[...(S.o||[]),{id:r.id,...d}]}
         zeichne=null;toast("Ort gespeichert.");neuLaden()}catch(_){toast("Konnte nicht gespeichert werden.");ev.target.disabled=false}})};
   for(const o of (S.o||[])){if(!o.lat)continue;
-    const mk=K.marker({lat:+o.lat,lng:+o.lng},{html:oHtml(o),w:34,h:42,unten:true,click:setzen?null:()=>{if(zeichne)return;if(auswahl)return;ortInfo(o)}});mk.oid=o.id;
+    const mk=K.marker({lat:+o.lat,lng:+o.lng},{html:oHtml(o),w:36,h:44,unten:true,click:setzen?null:()=>{if(zeichne)return;if(auswahl)return;ortInfo(o)}});mk.oid=o.id;
     ORTE.push(mk);if(!setzen&&kAus().includes("orte"))mk.remove()}
   if(!setzen&&$("#k_ortneu"))$("#k_ortneu").addEventListener("click",()=>{if(!zeichne)ortForm(null)});
   /* Aufträge: Felder markieren, damit jemand weiß, wo er hin soll */
