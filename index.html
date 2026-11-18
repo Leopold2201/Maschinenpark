@@ -262,6 +262,8 @@ body.kvoll-an{overflow:hidden}
 .kwrap.voll .kctl{bottom:calc(30px + env(safe-area-inset-bottom,0px))}.kwrap.voll:has(#kfeldv:not(:empty)) .kctl{bottom:calc(160px + env(safe-area-inset-bottom,0px))}
 .kpin{position:relative;width:36px;height:44px;display:flex;justify-content:center;cursor:pointer}.kpin b{display:flex;align-items:center;justify-content:center;width:32px;height:32px;margin-top:2px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:#d32f2f;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.6)}.kpin b i{transform:rotate(45deg);font-style:normal;line-height:0}.koi{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:6px;vertical-align:-5px}.koic .koi{width:30px;height:30px;border-radius:8px}
 .kpn{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:1px;white-space:nowrap;background:#fff;color:#222;border-radius:4px;padding:1px 6px;font:700 11px/1.5 system-ui,sans-serif;box-shadow:0 1px 3px rgba(0,0,0,.45);pointer-events:none}.kweit .kpn{display:none}
+.kpin em{position:absolute;top:-3px;right:-5px;z-index:2;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:#f6c400;color:#222;border:1.5px solid #fff;font:800 10.5px/14px system-ui,sans-serif;text-align:center;font-style:normal;box-shadow:0 1px 2px rgba(0,0,0,.5)}.kpin em.dr{background:#e53935;color:#fff}
+.kohk{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}.kohl{margin:6px 0 8px;max-height:34vh;overflow:auto}.koh{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 0;border-top:1px solid var(--line);cursor:pointer}.koh b{display:block}.koh small{display:block;color:var(--muted)}.koh.erl b{text-decoration:line-through;opacity:.65}.koh button{flex:none;width:36px;height:36px;padding:0;border-radius:10px}
 .koic{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:4px;margin:4px 0 8px;max-height:150px;overflow:auto}.koic button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 2px;border-radius:10px;border:1px solid var(--line);background:var(--surface)}.koic small{font-size:9.5px;line-height:1.1;color:var(--muted);text-align:center}.koic button.on{border:2px solid var(--accent,#2f6b2a);background:#e7f1e4}
 .kdot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:middle;box-shadow:0 0 0 1px rgba(0,0,0,.35)}.kleg{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:.85rem;margin:6px 0}.kleg small{color:var(--muted)}.knutz{display:grid;gap:6px;margin:8px 0}.knutz button{text-align:left}
 .berseg{display:flex;max-width:420px;margin:0 auto 14px}.berseg[hidden]{display:none}.berseg button{flex:1}
@@ -767,11 +769,22 @@ async function karte(mid,setzen){
     felder.push([p,lb]);if(!setzen&&kAus().includes("felder")){p.remove();lb.remove()}}
   /* Orte: Stecknadeln für Hof, Ställe, Hallen … */
   const ORTE=[];
-  const oHtml=o=>{const k=oKey(o);return `<div class="kpin"><span class="kpn">${esc(o.name)}</span><b style="background:${OICO[k].c}"><i>${oSvg(k,20)}</i></b></div>`};
+  const oOffen=o=>(S.h||[]).filter(h=>h.ortId===o.id&&h.status!=="erledigt");
+  const oHtml=o=>{const k=oKey(o),n=o.id?oOffen(o):[];return `<div class="kpin">${n.length?`<em class="${n.some(h=>h.prio==="dringend"||(h.bis&&hTage(h.bis)<0))?"dr":""}">${n.length}</em>`:""}<span class="kpn">${esc(o.name)}</span><b style="background:${OICO[k].c}"><i>${oSvg(k,20)}</i></b></div>`};
   const ortInfo=o=>{const el=kPanel();if(!el)return;
-    el.innerHTML=`<div class="kfinfo"><div><b><span class="koi" style="background:${OICO[oKey(o)].c}">${oSvg(oKey(o),15)}</span> ${esc(o.name)}</b>${o.notiz?`<small>${esc(o.notiz)}</small>`:""}</div>
-      <span class="kbtns"><a class="btn" href="https://www.google.com/maps/dir/?api=1&destination=${(+o.lat).toFixed(6)},${(+o.lng).toFixed(6)}" target="_blank" rel="noopener">🧭 Hinfahren</a>
-      ${S.canWrite?`<button type="button" id="ko_edit">Bearbeiten</button><button type="button" class="danger" id="ko_del">Löschen</button>`:""}<button type="button" class="ghost" id="ko_x">✕</button></span></div>`;
+    const pinNeu=()=>{const mk=ORTE.find(m=>m.oid===o.id);if(mk)mk.html(oHtml(o))};
+    const hs=(S.h||[]).filter(h=>h.ortId===o.id).sort((a,b)=>(a.status==="erledigt")-(b.status==="erledigt")||({dringend:0,normal:1,irgendwann:2}[a.prio]??1)-({dringend:0,normal:1,irgendwann:2}[b.prio]??1));
+    const offen=hs.filter(h=>h.status!=="erledigt"),erl=hs.filter(h=>h.status==="erledigt").slice(0,3);
+    const zeile=h=>{const done=h.status==="erledigt",d=hTage(h.bis);return `<div class="koh${done?" erl":""}" data-koh="${esc(h.id)}"><span><b>${h.prio==="dringend"&&!done?"❗ ":""}${esc(h.titel)}</b><small>${esc([h.wer,done?(h.erledigtAm?"erledigt "+fmtD(h.erledigtAm):"erledigt"):h.bis?(d<0?"überfällig seit ":"bis ")+fmtD(h.bis):""].filter(Boolean).join(" · "))}</small></span>${S.canWrite?`<button type="button" data-kohok="${esc(h.id)}" aria-label="${done?"Wieder offen":"Erledigt"}">${done?"↺":"✓"}</button>`:""}</div>`};
+    el.innerHTML=`<div class="kfinfo" style="display:block"><div class="kohk"><div><b><span class="koi" style="background:${OICO[oKey(o)].c}">${oSvg(oKey(o),15)}</span> ${esc(o.name)}</b>${o.notiz?`<small>${esc(o.notiz)}</small>`:""}</div><button type="button" class="ghost" id="ko_x">✕</button></div>
+      <div class="kohl">${offen.length?offen.map(zeile).join(""):`<small class="note">Keine offenen Arbeiten hier.</small>`}${erl.length?`<small class="note" style="display:block;margin-top:6px">Zuletzt erledigt</small>${erl.map(zeile).join("")}`:""}</div>
+      <span class="kbtns">${S.canWrite?`<button type="button" class="primary" id="ko_arb">+ Arbeit</button>`:""}<a class="btn" href="https://www.google.com/maps/dir/?api=1&destination=${(+o.lat).toFixed(6)},${(+o.lng).toFixed(6)}" target="_blank" rel="noopener">🧭 Hinfahren</a>
+      ${S.canWrite?`<button type="button" id="ko_edit">Bearbeiten</button><button type="button" class="danger" id="ko_del">Löschen</button>`:""}</span></div>`;
+    const wieder=()=>{pinNeu();ortInfo(o)};
+    el.querySelectorAll("[data-koh]").forEach(z=>z.addEventListener("click",e=>{if(e.target.closest("[data-kohok]"))return;const h=S.h.find(x=>x.id===z.dataset.koh);if(h)hofForm(h,null,wieder)}));
+    el.querySelectorAll("[data-kohok]").forEach(b=>b.addEventListener("click",async()=>{const h=S.h.find(x=>x.id===b.dataset.kohok);if(!h)return;b.disabled=true;const e2=h.status!=="erledigt";
+      try{await S.db.doc("hofarbeiten/"+h.id).update({status:e2?"erledigt":"offen",erledigtAm:e2?iso(new Date()):""});h.status=e2?"erledigt":"offen";h.erledigtAm=e2?iso(new Date()):"";toast(e2?`„${h.titel}“ erledigt.`:`„${h.titel}“ ist wieder offen.`);wieder()}catch(_){toast("Konnte nicht gespeichert werden.");b.disabled=false}}));
+    if($("#ko_arb"))$("#ko_arb").addEventListener("click",()=>hofForm(null,{ortId:o.id,bereich:/stall|sau|mast|ferkel/.test(oKey(o))?"Stall":oKey(o)==="werkstatt"?"Werkstatt":""},wieder));
     $("#ko_x").addEventListener("click",()=>{el.innerHTML=""});
     if(!S.canWrite)return;$("#ko_edit").addEventListener("click",()=>ortForm(o));
     const d=$("#ko_del");arm&&d.addEventListener("click",()=>arm(d,"Ort wirklich löschen?",async()=>{try{await S.db.doc("orte/"+o.id).delete();S.o=(S.o||[]).filter(x=>x.id!==o.id);toast("Ort gelöscht.");neuLaden()}catch(_){toast("Konnte nicht gelöscht werden.")}}))};
@@ -796,6 +809,7 @@ async function karte(mid,setzen){
   for(const o of (S.o||[])){if(!o.lat)continue;
     const mk=K.marker({lat:+o.lat,lng:+o.lng},{html:oHtml(o),w:36,h:44,unten:true,click:setzen?null:()=>{if(zeichne)return;if(auswahl)return;ortInfo(o)}});mk.oid=o.id;
     ORTE.push(mk);if(!setzen&&kAus().includes("orte"))mk.remove()}
+  if(!setzen)window.__orteNeu=()=>ORTE.forEach(mk=>{const o=(S.o||[]).find(x=>x.id===mk.oid);if(o&&mk.html)mk.html(oHtml(o))});
   if(!setzen&&$("#k_ortneu"))$("#k_ortneu").addEventListener("click",()=>{if(!zeichne)ortForm(null)});
   /* Aufträge: Felder markieren, damit jemand weiß, wo er hin soll */
   const auftragSpeichern=async(ids,a)=>{const b=S.db.batch();
@@ -930,7 +944,7 @@ async function karte(mid,setzen){
     const del=$("#k_del");if(del)del.addEventListener("click",()=>arm(del,"Wirklich entfernen?",async()=>{try{await S.db.doc("maschinen/"+mid).update({standort:null});S.open={type:"detail",id:mid};drawDetail()}catch(e){showErr("#kerr",e)}}));
   }else{const hb=$("#k_hof");if(hb)hb.addEventListener("click",async()=>{const c=map.center();try{await S.db.doc("meta/hof").set({lat:+c.lat.toFixed(6),lng:+c.lng.toFixed(6),zoom:map.zoom()});toast("Hof-Ansicht gemerkt.")}catch(_){toast("Konnte nicht gespeichert werden.")}})}
 }
-function render(){renderMasch();renderLager();renderKohl();renderHof();renderWer();kTally()}
+function render(){renderMasch();renderLager();renderKohl();renderHof();renderWer();kTally();if(window.__orteNeu&&document.querySelector("#map .kpin"))try{window.__orteNeu()}catch(_){}}
 /* ── Wer ist angemeldet: Name pro Gerät (gemeinsamer Hof-Login) ── */
 const lsGet=k=>{try{return localStorage.getItem(k)||""}catch(_){return ""}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,v)}catch(_){}};
@@ -975,20 +989,21 @@ function renderHof(){
   const erl=S.h.filter(h=>h.status==="erledigt").sort((a,b)=>String(b.erledigtAm||"").localeCompare(String(a.erledigtAm||"")));
   const li=h=>{const done=h.status==="erledigt",d=hTage(h.bis);
     const st=done?"ok":h.prio==="dringend"||(d!==null&&d<0)?"bad":h.prio==="normal"?"warn":"none";
-    const info=[h.bereich,h.wer,done?(h.erledigtAm?"erledigt "+fmtD(h.erledigtAm):"erledigt"):h.bis?"bis "+fmtD(h.bis):""].filter(Boolean).map(esc).join(" · ");
+    const ort=h.ortId&&(S.o||[]).find(o=>o.id===h.ortId);const info=[ort?"📍 "+ort.name:"",h.bereich,h.wer,done?(h.erledigtAm?"erledigt "+fmtD(h.erledigtAm):"erledigt"):h.bis?"bis "+fmtD(h.bis):""].filter(Boolean).map(esc).join(" · ");
     const pill=done?"":h.prio==="dringend"?`<span class="pill bad">dringend</span>`:d!==null?`<span class="pill ${lvl(d)}">${rel(d)}</span>`:`<span></span>`;
     return `<li data-hopen="${esc(h.id)}" tabindex="0"><span class="stripe s-${st}"></span><span class="what"><b${done?' style="text-decoration:line-through;opacity:.7"':""}>${esc(h.titel)}</b><small>${info||"&nbsp;"}</small></span>${pill}<button class="hok" data-hok="${esc(h.id)}" ${S.canWrite?"":"disabled"} aria-label="${done?"Wieder offen":"Erledigt"}">${done?"↺":"✓"}</button></li>`};
   $("#hlist").innerHTML=!S.hReady?`<div class="empty">Hofarbeiten werden geladen…</div>`:
     (offen.length?`<ul class="due hof">${offen.sort(sortOf).map(li).join("")}</ul>`:`<div class="empty">Nichts offen. Über <b>+ Arbeit</b> trägst du ein, was am Hof zu tun ist – zum Beispiel „Dach Maschinenhalle reparieren“ oder „Futterbahn ausbessern“.</div>`)
     +(HALLE&&erl.length?`<h3 class="hsub">Erledigt</h3><ul class="due hof">${erl.map(li).join("")}</ul>`:"");
 }
-function hofForm(h){
-  h=h||{};S.open={type:"hform",id:h.id||null};
+function hofForm(h,vor,nachher){
+  h=h||{...(vor||{})};S.open={type:"hform",id:h.id||null};
   const v=k=>esc(h[k]??"");
   openSheet(`<div class="sheet-head"><h2>${h.id?"Arbeit bearbeiten":"Neue Hofarbeit"}</h2><button class="ghost" data-act="close">Abbrechen</button></div>
   <form id="hf"><div class="fields">
    <label class="f full"><span class="label">Was ist zu tun? *</span><input id="h_titel" required maxlength="120" value="${v("titel")}" placeholder="z. B. Dach Maschinenhalle reparieren"></label>
    <label class="f"><span class="label">Bereich</span><input id="h_bereich" list="h_berl" value="${v("bereich")}" placeholder="z. B. Stall"><datalist id="h_berl">${HBER.map(b=>`<option value="${esc(b)}">`).join("")}</datalist></label>
+   <label class="f"><span class="label">Ort auf der Karte</span><select id="h_ort"><option value="">– kein Ort –</option>${[...(S.o||[])].sort((a,b)=>String(a.name).localeCompare(String(b.name),"de")).map(o=>`<option value="${esc(o.id)}" ${o.id===h.ortId?"selected":""}>${esc(o.name)}</option>`).join("")}</select></label>
    <label class="f"><span class="label">Wichtigkeit</span><select id="h_prio">${HPRIO.map(([k,n])=>`<option value="${k}" ${k===(h.prio||"normal")?"selected":""}>${n}</option>`).join("")}</select></label>
    <label class="f"><span class="label">Bis wann (optional)</span><input id="h_bis" type="date" value="${v("bis")}"></label>
    <label class="f"><span class="label">Wer (optional)</span><input id="h_wer" value="${v("wer")}" placeholder="z. B. Leopold"></label>
@@ -996,9 +1011,9 @@ function hofForm(h){
   </div><p class="err" id="hferr" hidden></p><div class="row">${h.id?`<button type="button" class="danger" data-hdel="${esc(h.id)}" style="margin-right:auto">Löschen</button>`:""}<button class="primary" type="submit">Speichern</button></div></form>`);
   $("#hf").addEventListener("submit",async ev=>{
     ev.preventDefault();
-    const body={titel:$("#h_titel").value.trim(),bereich:$("#h_bereich").value.trim(),prio:$("#h_prio").value,bis:$("#h_bis").value,wer:$("#h_wer").value.trim(),notiz:$("#h_notiz").value.trim()};
+    const body={titel:$("#h_titel").value.trim(),bereich:$("#h_bereich").value.trim(),ortId:$("#h_ort").value,prio:$("#h_prio").value,bis:$("#h_bis").value,wer:$("#h_wer").value.trim(),notiz:$("#h_notiz").value.trim()};
     if(!body.titel)return;const btn=ev.submitter;btn.disabled=true;
-    try{if(h.id)await S.db.doc("hofarbeiten/"+h.id).update(body);else await S.db.collection("hofarbeiten").add({...body,status:"offen",erledigtAm:"",angelegt:iso(new Date())});closeSheet()}
+    try{if(h.id)await S.db.doc("hofarbeiten/"+h.id).update(body);else await S.db.collection("hofarbeiten").add({...body,status:"offen",erledigtAm:"",angelegt:iso(new Date())});closeSheet(!!nachher);if(nachher)setTimeout(nachher,250)}
     catch(e){showErr("#hferr",e);btn.disabled=false}
   });
 }
