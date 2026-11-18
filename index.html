@@ -264,7 +264,9 @@ body.kvoll-an{overflow:hidden}
 .kpn{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:1px;white-space:nowrap;background:#fff;color:#222;border-radius:4px;padding:1px 6px;font:700 11px/1.5 system-ui,sans-serif;box-shadow:0 1px 3px rgba(0,0,0,.45);pointer-events:none}.kweit .kpn{display:none}
 .kpin em{position:absolute;top:-3px;right:-5px;z-index:2;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:#f6c400;color:#222;border:1.5px solid #fff;font:800 10.5px/14px system-ui,sans-serif;text-align:center;font-style:normal;box-shadow:0 1px 2px rgba(0,0,0,.5)}.kpin em.dr{background:#e53935;color:#fff}
 .kohk{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}.kohl{margin:6px 0 8px;max-height:34vh;overflow:auto}.koh{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 0;border-top:1px solid var(--line);cursor:pointer}.koh b{display:block}.koh small{display:block;color:var(--muted)}.koh.erl b{text-decoration:line-through;opacity:.65}.koh button{flex:none;width:36px;height:36px;padding:0;border-radius:10px}
-.koic{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:4px;margin:4px 0 8px;max-height:150px;overflow:auto}.koic button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 2px;border-radius:10px;border:1px solid var(--line);background:var(--surface)}.koic small{font-size:9.5px;line-height:1.1;color:var(--muted);text-align:center}.koic button.on{border:2px solid var(--accent,#2f6b2a);background:#e7f1e4}
+.kpin.hz{width:28px;height:28px}.kpin.hz b{width:24px;height:24px;margin:0;border-radius:50%;transform:none;border-width:2px}.kpin.hz b i{transform:none}.kpin.hz .kpn{font-size:10px;padding:0 4px}.kweit .kpin.hz{transform:scale(.8)}
+.koi.rund{border-radius:50%!important}.kot{grid-column:1/-1;text-align:left!important;font-size:11px;font-weight:700;color:var(--muted);margin-top:2px}
+.koic{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:4px;margin:4px 0 8px;max-height:180px;overflow:auto}.koic button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 2px;border-radius:10px;border:1px solid var(--line);background:var(--surface)}.koic small{font-size:9.5px;line-height:1.1;color:var(--muted);text-align:center}.koic button.on{border:2px solid var(--accent,#2f6b2a);background:#e7f1e4}
 .kdot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:middle;box-shadow:0 0 0 1px rgba(0,0,0,.35)}.kleg{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:.85rem;margin:6px 0}.kleg small{color:var(--muted)}.knutz{display:grid;gap:6px;margin:8px 0}.knutz button{text-align:left}
 .berseg{display:flex;max-width:420px;margin:0 auto 14px}.berseg[hidden]{display:none}.berseg button{flex:1}
 .headbtns{display:flex;gap:6px;flex-wrap:nowrap;justify-content:flex-end;flex:0 0 auto}.headbtns button{padding:8px 10px;font-size:.9rem}.sheet-head>:first-child{min-width:0}.sheet-head:has(.headbtns) h2{font-size:1.3rem;line-height:1.2}
@@ -581,6 +583,15 @@ function googleLib(){if(GBAD)return Promise.reject();if(window.google&&google.ma
     window.__gmOk=()=>{clearTimeout(t);res()};
     const sc=document.createElement("script");sc.src=`https://maps.googleapis.com/maps/api/js?key=${GKEY}&v=weekly&language=de&region=DE&callback=__gmOk`;sc.async=true;
     sc.onerror=()=>{clearTimeout(t);googleLib.log.push("Google: nicht erreichbar");GP=null;rej()};document.head.appendChild(sc)});return GP}
+/* Lange auf die Karte drücken (Finger oder Maus) */
+let KHALT=0;
+function kHalten(el,toLL,cb){let t=null,x0=0,y0=0,n=0;const stop=()=>{clearTimeout(t);t=null};
+  el.addEventListener("contextmenu",e=>e.preventDefault());
+  el.addEventListener("pointerdown",e=>{n++;stop();if(n>1||e.button>0||e.target.closest(".kpin,.kmk,.kecke,button,a,.leaflet-control,.gmnoprint,.gm-control-active"))return;
+    x0=e.clientX;y0=e.clientY;t=setTimeout(()=>{t=null;const r=el.getBoundingClientRect();const ll=toLL(x0-r.left,y0-r.top);if(ll){KHALT=Date.now();cb(ll)}},600)},true);
+  el.addEventListener("pointermove",e=>{if(t&&Math.hypot(e.clientX-x0,e.clientY-y0)>10)stop()},true);
+  ["pointerup","pointercancel","pointerleave"].forEach(v=>el.addEventListener(v,()=>{n=Math.max(0,n-1);stop()},true))}
+const kNachHalt=()=>Date.now()-KHALT<900;
 function kGoogle(el){
   const g=google.maps,map=new g.Map(el,{mapTypeId:"hybrid",tilt:0,disableDefaultUI:true,zoomControl:true,mapTypeControl:true,
     mapTypeControlOptions:{mapTypeIds:["hybrid","roadmap"],style:g.MapTypeControlStyle.HORIZONTAL_BAR,position:g.ControlPosition.TOP_RIGHT},gestureHandling:"greedy",clickableIcons:false,maxZoom:21});
@@ -596,11 +607,12 @@ function kGoogle(el){
       return {an:()=>{if(map.overlayMapTypes.getArray().indexOf(t)<0)map.overlayMapTypes.push(t)},aus:()=>{const i=map.overlayMapTypes.getArray().indexOf(t);if(i>=0)map.overlayMapTypes.removeAt(i)}}},
     line:(pts,o)=>{const l=new g.Polyline({path:pts,map,strokeColor:o.farbe,strokeWeight:o.dick||3,clickable:false,zIndex:5});return {remove:()=>l.setMap(null),pfad:q=>l.setPath(q)}},
     poly:(pts,o)=>{const p=new g.Polygon({paths:pts,map,strokeColor:o.rand||o.farbe,strokeWeight:o.dick||2,fillColor:o.farbe,fillOpacity:o.fuell??.22,clickable:!!o.click,zIndex:0});
-      if(o.click)p.addListener("click",e=>o.click(e.latLng.toJSON()));
+      if(o.click)p.addListener("click",e=>{if(!kNachHalt())o.click(e.latLng.toJSON())});
       return {remove:()=>p.setMap(null),add:()=>p.setMap(map),pfad:q=>p.setPath(q),stil:o=>p.setOptions({strokeColor:o.rand||o.farbe,fillColor:o.farbe,fillOpacity:o.fuell??.22,strokeWeight:o.dick||2}),
         edit:(an,cb)=>{p.setEditable(an);if(p.__ls){p.__ls.forEach(l=>l.remove());p.__ls=null}
           if(an){const path=p.getPath(),f=()=>cb(path.getArray().map(x=>x.toJSON()));p.__ls=["set_at","insert_at","remove_at"].map(e=>path.addListener(e,f))}}}},
-    onClick:f=>map.addListener("click",e=>f(e.latLng.toJSON())),view:(ll,z)=>{map.setCenter(ll);map.setZoom(z)},
+    onClick:f=>map.addListener("click",e=>{if(!kNachHalt())f(e.latLng.toJSON())}),
+    onHold:f=>{const po=new g.OverlayView();po.onAdd=()=>{};po.draw=()=>{};po.onRemove=()=>{};po.setMap(map);kHalten(el,(x,y)=>{const pr=po.getProjection();return pr?pr.fromContainerPixelToLatLng(new g.Point(x,y)).toJSON():null},f)},view:(ll,z)=>{map.setCenter(ll);map.setZoom(z)},
     fit:pts=>{const b=new g.LatLngBounds();pts.forEach(p=>b.extend(p));map.fitBounds(b,40);g.event.addListenerOnce(map,"idle",()=>{if(map.getZoom()>19)map.setZoom(19)})},
     center:()=>map.getCenter().toJSON(),zoom:()=>map.getZoom(),onZoom:f=>map.addListener("zoom_changed",()=>f(map.getZoom())),resize:()=>{const c=map.getCenter();g.event.trigger(map,"resize");map.setCenter(c)}}}
 function kLeaflet(el){
@@ -614,7 +626,7 @@ function kLeaflet(el){
       return {an:()=>{if(!map.hasLayer(t))t.addTo(map)},aus:()=>t.remove()}},
     line:(pts,o)=>{const l=L.polyline(pts,{color:o.farbe,weight:o.dick||3,interactive:false}).addTo(map);return {remove:()=>l.remove(),pfad:q=>l.setLatLngs(q)}},
     poly:(pts,o)=>{const p=L.polygon(pts,{color:o.rand||o.farbe,weight:o.dick||2,fillColor:o.farbe,fillOpacity:o.fuell??.22,interactive:!!o.click}).addTo(map);
-      if(o.click)p.on("click",e=>{L.DomEvent.stopPropagation(e);o.click(e.latlng)});
+      if(o.click)p.on("click",e=>{L.DomEvent.stopPropagation(e);if(!kNachHalt())o.click(e.latlng)});
       return {remove:()=>p.remove(),add:()=>p.addTo(map),pfad:q=>p.setLatLngs(q),stil:o=>p.setStyle({color:o.rand||o.farbe,fillColor:o.farbe,fillOpacity:o.fuell??.22,weight:o.dick||2}),
         edit:(an,cb)=>{(p.__h||[]).forEach(m=>m.remove());p.__h=[];if(!an)return;
           const zeichne=()=>{(p.__h||[]).forEach(m=>m.remove());p.__h=[];const pts=p.getLatLngs()[0];
@@ -625,7 +637,7 @@ function kLeaflet(el){
               m.on("dragstart",()=>{const q=p.getLatLngs()[0];q.splice(i+1,0,m.getLatLng());p.setLatLngs(q);m.__i=i+1});
               m.on("drag",e=>{const q=p.getLatLngs()[0];q[m.__i]=e.target.getLatLng();p.setLatLngs(q)});m.on("dragend",()=>{cb(p.getLatLngs()[0].map(x=>({lat:x.lat,lng:x.lng})));zeichne()});p.__h.push(m)})};
           zeichne()}}},
-    onClick:f=>map.on("click",e=>f(e.latlng)),view:(ll,z)=>map.setView(ll,z),fit:pts=>map.fitBounds(pts.map(p=>[p.lat,p.lng]),{padding:[30,30],maxZoom:19}),
+    onClick:f=>map.on("click",e=>{if(!kNachHalt())f(e.latlng)}),onHold:f=>kHalten(el,(x,y)=>map.containerPointToLatLng([x,y]),f),view:(ll,z)=>map.setView(ll,z),fit:pts=>map.fitBounds(pts.map(p=>[p.lat,p.lng]),{padding:[30,30],maxZoom:19}),
     center:()=>map.getCenter(),zoom:()=>map.getZoom(),onZoom:f=>map.on("zoomend",()=>f(map.getZoom())),resize:()=>map.invalidateSize()}}
 /* Felder: Fläche aus den Eckpunkten (Kugelformel), Mittelpunkt für die Beschriftung */
 function flaecheHa(pts){if(!pts||pts.length<3)return 0;const R=6378137,r=Math.PI/180;let a=0;
@@ -697,11 +709,18 @@ const OICO={
  trafo:{n:"Strom / PV",c:"#f9a825",s:c=>`<path d="M13.5 2 5 13.5h6L9.5 22 19 9.5h-6.2z"/>`},
  wald:{n:"Wald",c:"#2e7d32",s:c=>`<path d="M12 2 6.5 9.5h2.5L5 15h3.5L4.5 19.5h15L15.5 15H19l-4-5.5h2.5z"/><rect x="10.8" y="19" width="2.4" height="3"/>`},
  wasser:{n:"Wasser / Brunnen",c:"#1976d2",s:c=>`<path d="M12 2.5c3.5 4.6 5.6 8 5.6 10.7a5.6 5.6 0 0 1-11.2 0c0-2.7 2.1-6.1 5.6-10.7z"/>`},
- sonst:{n:"Sonstiges",c:"#d32f2f",s:c=>`<circle cx="12" cy="12" r="5"/>`}
+ sonst:{n:"Sonstiges",c:"#d32f2f",s:c=>`<circle cx="12" cy="12" r="5"/>`},
+ stein:{n:"Stein",c:"#6d6d6d",hz:1,s:c=>`<path d="M2.5 18.5 5 11l4.5-4 5.5 1 4 4.5 2.5 6z"/><path d="M9.5 7 11 12.5 5 11M11 12.5l4-4.5M11 12.5l2.5 6M11 12.5l8 0" fill="none" stroke="${c}" stroke-width=".9"/>`},
+ baum:{n:"Baum",c:"#2e7d32",hz:1,s:c=>`<circle cx="12" cy="8" r="5.5"/><circle cx="7.5" cy="11.5" r="4"/><circle cx="16.5" cy="11.5" r="4"/><rect x="10.8" y="12" width="2.4" height="9.5" rx=".6"/>`},
+ schacht:{n:"Schacht / Drainage",c:"#37474f",hz:1,s:c=>`<circle cx="12" cy="12" r="8.5"/><path d="M5.5 9.5h13M4.5 12h15M5.5 14.5h13M9.5 4.5v15M14.5 4.5v15" stroke="${c}" stroke-width="1.1"/>`},
+ strommast:{n:"Strommast",c:"#8d6e00",hz:1,s:c=>`<path d="M11 3h2l3.5 18h-2.2L12 9.5 9.7 21H7.5z"/><path d="M5 6.5h14M6.5 10h11" stroke="#fff" stroke-width="1.6"/><path d="M9.6 14.5 14.4 18M14.4 14.5 9.6 18" stroke="#fff" stroke-width="1"/>`},
+ nass:{n:"Nasse Stelle",c:"#0277bd",hz:1,s:c=>`<path d="M3 9c2-1.6 3.5-1.6 4.5 0s2.5 1.6 4.5 0 3.5-1.6 4.5 0 2.5 1.6 4.5 0M3 13.5c2-1.6 3.5-1.6 4.5 0s2.5 1.6 4.5 0 3.5-1.6 4.5 0 2.5 1.6 4.5 0M3 18c2-1.6 3.5-1.6 4.5 0s2.5 1.6 4.5 0 3.5-1.6 4.5 0 2.5 1.6 4.5 0" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/>`},
+ achtung:{n:"Achtung",c:"#e65100",hz:1,s:c=>`<path fill-rule="evenodd" d="M12 2.5 22.5 20.5h-21zM11 9h2v6h-2zM11 16.5h2v2h-2z"/>`}
 };
 const OEMO={"🏠":"hof","🐖":"mast","🐷":"sauen","🏚️":"halle","🌾":"getreide","⛽":"tank","🔧":"werkstatt","🌲":"wald","📍":"sonst","🚜":"halle"};
 const oKey=o=>OICO[o.icon]?o.icon:OEMO[o.icon]||"sonst";
-const oRaten=n=>{n=(n||"").toLowerCase();return /sau|abferkel|deck|warte/.test(n)?"sauen":/ferkel|aufzucht/.test(n)?"ferkel":/mast|schwein|stall/.test(n)?"mast":/gülle|guelle|pott|jauche/.test(n)?"guelle":/fahrsilo|silage|mais/.test(n)?"fahrsilo":/silo/.test(n)?"silo":/werkst/.test(n)?"werkstatt":/scheun/.test(n)?"scheune":/halle|garage|unterstand/.test(n)?"halle":/getreide|korn|lager/.test(n)?"getreide":/futter|mühle|muehle|misch/.test(n)?"futter":/tank|diesel/.test(n)?"tank":/strom|pv|solar|trafo/.test(n)?"trafo":/wald|holz/.test(n)?"wald":/wasser|brunnen/.test(n)?"wasser":/hof|haus|wohn/.test(n)?"hof":null};
+const oRaten=n=>{n=(n||"").toLowerCase();return /strommast|leitungsmast|hochspannung|freileitung/.test(n)?"strommast":/sau|abferkel|deck|warte/.test(n)?"sauen":/ferkel|aufzucht/.test(n)?"ferkel":/mast|schwein|stall/.test(n)?"mast":/gülle|guelle|pott|jauche/.test(n)?"guelle":/fahrsilo|silage|mais/.test(n)?"fahrsilo":/silo/.test(n)?"silo":/werkst/.test(n)?"werkstatt":/scheun/.test(n)?"scheune":/halle|garage|unterstand/.test(n)?"halle":/getreide|korn|lager/.test(n)?"getreide":/futter|mühle|muehle|misch/.test(n)?"futter":/tank|diesel/.test(n)?"tank":/strom|pv|solar|trafo/.test(n)?"trafo":/stein|fels|findling/.test(n)?"stein":/baum|eiche|buche|linde|strauch/.test(n)?"baum":/schacht|drain|dränage|rohr/.test(n)?"schacht":/nass|sumpf|quelle|loch|senke/.test(n)?"nass":/achtung|gefahr|vorsicht|hindernis/.test(n)?"achtung":/wald|holz/.test(n)?"wald":/wasser|brunnen/.test(n)?"wasser":/hof|haus|wohn/.test(n)?"hof":null};
+const oHz=o=>!!(OICO[oKey(o)]||{}).hz;const oGr=o=>oHz(o)?{w:28,h:28,unten:false}:{w:36,h:44,unten:true};
 const oSvg=(k,px)=>{const v=OICO[k]||OICO.sonst;return `<svg viewBox="0 0 24 24" width="${px}" height="${px}" fill="#fff">${v.s(v.c)}</svg>`};
 const kAktiv=()=>S.open?S.open.type==="karte":VIEW==="karte";
 let KVOLL=false,KST=null; /* Vollbild und Ausschnitt bleiben beim Neuzeichnen erhalten */
@@ -721,7 +740,7 @@ async function karte(mid,setzen){
   const st=m&&m.standort&&m.standort.lat?m.standort:null;
   const kh=`<div class="sheet-head"><div><span class="label">${m?esc(m.name):"Hof"}</span><h2>${setzen?"Standort setzen":"Karte"}</h2></div><button class="ghost" data-act="${m?"back":"close"}">${m?"Zurück":"Schließen"}</button></div>`;
   const kb=`  ${setzen?`<p class="note" style="margin:0">Tippe auf die Karte, wo <b>${esc(m.name)}</b> steht – oder stell dich daneben und nimm <b>📍 Mein Standort</b>.</p>`:""}
-  ${setzen?"":`<div class="kfilter zu" id="kfilter"><button type="button" class="kfbtn" id="kfbtn"><i>👁</i>Anzeige</button>${[...KGRP,{id:"oldtimer",name:"Oldtimer"},{id:"felder",name:"Felder"},{id:"orte",name:"Orte"}].map(g=>`<button type="button" class="chip${kAus().includes(g.id)?"":" on"}" data-kg="${g.id}">${g.name}</button>`).join("")}<button type="button" class="chip${lsGet("mp_boden")==="1"?" on":""}" id="k_boden">Bodenzahl</button></div>`}
+  ${setzen?"":`<div class="kfilter zu" id="kfilter"><button type="button" class="kfbtn" id="kfbtn"><i>👁</i>Anzeige</button>${[...KGRP,{id:"oldtimer",name:"Oldtimer"},{id:"felder",name:"Felder"},{id:"orte",name:"Orte"},{id:"hindernisse",name:"Hindernisse"}].map(g=>`<button type="button" class="chip${kAus().includes(g.id)?"":" on"}" data-kg="${g.id}">${g.name}</button>`).join("")}<button type="button" class="chip${lsGet("mp_boden")==="1"?" on":""}" id="k_boden">Bodenzahl</button></div>`}
   <div class="kwrap${tab&&KVOLL?" voll":""}" id="kwrap"><div id="map" class="map"><div class="empty">Karte wird geladen…</div></div><div class="kctl">${setzen?"":`<button type="button" id="k_mess"><i>📏</i>Messen</button>`}${setzen||!S.canWrite?"":`<button type="button" id="k_ausw"><i>☑</i>Auswählen</button><button type="button" id="k_feldneu"><i>✏️</i>Einzeichnen</button><button type="button" id="k_ortneu"><i>📍</i>Ort</button><label id="k_imp"><i>📥</i>Import<input type="file" id="k_impf" accept=".zip,.geojson,.json" hidden></label>`}<button type="button" id="kvoll" aria-label="Vollbild">${tab&&KVOLL?"<i>✕</i><span>Schließen</span>":"<i>⛶</i><span>Vollbild</span>"}</button></div>${setzen?"":`<div id="kfeldv"></div>`}</div>
   ${setzen?`<div class="fields"><label class="f full"><span class="label">Wo genau (optional)</span><input id="k_ort" maxlength="80" value="${esc(st?st.ort||"":"")}" placeholder="z. B. Maschinenhalle hinten links"></label></div>
   <p class="err" id="kerr" hidden></p><div class="row"><button type="button" id="k_gps">📍 Mein Standort</button>${st?`<button type="button" class="danger" id="k_del">Entfernen</button>`:""}<button type="button" class="primary" id="k_save" ${st?"":"disabled"}>Speichern</button></div>`
@@ -755,7 +774,7 @@ async function karte(mid,setzen){
   if(!setzen)$("#kfbtn").addEventListener("click",()=>$("#kfilter").classList.toggle("zu"));
   if(!setzen)$("#kfilter").addEventListener("click",e=>{const b=e.target.closest("[data-kg]");if(!b)return;const g=b.dataset.kg;let aus=kAus();
     aus=aus.includes(g)?aus.filter(x=>x!==g):[...aus,g];lsSet("mp_kaus",JSON.stringify(aus));b.classList.toggle("on",!aus.includes(g));
-    if(g==="orte")ORTE.forEach(mk=>aus.includes(g)?mk.remove():mk.add());
+    if(g==="orte"||g==="hindernisse")ORTE.filter(mk=>mk.hz===(g==="hindernisse")).forEach(mk=>aus.includes(g)?mk.remove():mk.add());
     if(g==="felder")felder.forEach(([p,lb])=>aus.includes(g)?(p.remove(),lb.remove()):(p.add(),lb.add()));
     Object.values(grp).flat().forEach(mk=>(aus.includes(mk.g)||(mk.ot&&aus.includes("oldtimer")))?mk.remove():mk.add())});
   /* Felder zeichnen */
@@ -770,7 +789,7 @@ async function karte(mid,setzen){
   /* Orte: Stecknadeln für Hof, Ställe, Hallen … */
   const ORTE=[];
   const oOffen=o=>(S.h||[]).filter(h=>h.ortId===o.id&&h.status!=="erledigt");
-  const oHtml=o=>{const k=oKey(o),n=o.id?oOffen(o):[];return `<div class="kpin">${n.length?`<em class="${n.some(h=>h.prio==="dringend"||(h.bis&&hTage(h.bis)<0))?"dr":""}">${n.length}</em>`:""}<span class="kpn">${esc(o.name)}</span><b style="background:${OICO[k].c}"><i>${oSvg(k,20)}</i></b></div>`};
+  const oHtml=o=>{const k=oKey(o),n=o.id?oOffen(o):[];const hz=OICO[k].hz;return `<div class="kpin${hz?" hz":""}">${n.length?`<em class="${n.some(h=>h.prio==="dringend"||(h.bis&&hTage(h.bis)<0))?"dr":""}">${n.length}</em>`:""}<span class="kpn">${esc(o.name)}</span><b style="background:${OICO[k].c}"><i>${oSvg(k,hz?16:20)}</i></b></div>`};
   const ortInfo=o=>{const el=kPanel();if(!el)return;
     const pinNeu=()=>{const mk=ORTE.find(m=>m.oid===o.id);if(mk)mk.html(oHtml(o))};
     const hs=(S.h||[]).filter(h=>h.ortId===o.id).sort((a,b)=>(a.status==="erledigt")-(b.status==="erledigt")||({dringend:0,normal:1,irgendwann:2}[a.prio]??1)-({dringend:0,normal:1,irgendwann:2}[b.prio]??1));
@@ -788,28 +807,29 @@ async function karte(mid,setzen){
     $("#ko_x").addEventListener("click",()=>{el.innerHTML=""});
     if(!S.canWrite)return;$("#ko_edit").addEventListener("click",()=>ortForm(o));
     const d=$("#ko_del");arm&&d.addEventListener("click",()=>arm(d,"Ort wirklich löschen?",async()=>{try{await S.db.doc("orte/"+o.id).delete();S.o=(S.o||[]).filter(x=>x.id!==o.id);toast("Ort gelöscht.");neuLaden()}catch(_){toast("Konnte nicht gelöscht werden.")}}))};
-    const ortForm=o=>{if(auswahl)return;const el=kPanel();o=o||{};let ic=o.id?oKey(o):"sonst",icFest=!!o.id;
-    let pos=o.lat?{lat:+o.lat,lng:+o.lng}:K.center();pos={lat:+pos.lat,lng:+pos.lng};
+    const ortForm=(o,an)=>{if(auswahl)return;const el=kPanel();o=o||{};let ic=o.id?oKey(o):"sonst",icFest=!!o.id;
+    let pos=o.lat?{lat:+o.lat,lng:+o.lng}:an||K.center();pos={lat:+pos.lat,lng:+pos.lng};
     const altMk=o.id&&ORTE.find(m=>m.oid===o.id);if(altMk)altMk.remove();
-    const pin=K.marker(pos,{html:oHtml({name:o.name||"Neuer Ort",icon:ic}),w:36,h:44,unten:true});
+    let pin=K.marker(pos,{html:oHtml({name:o.name||"Neuer Ort",icon:ic}),...oGr({icon:ic})}),pinHz=oHz({icon:ic});
     zeichne={add:ll=>{pos={lat:+(+ll.lat).toFixed(7),lng:+(+ll.lng).toFixed(7)};pin.move(pos)}};
     el.innerHTML=`<div class="kfinfo" style="display:block"><b>${o.id?"Ort bearbeiten":"Neuer Ort"}</b><small> · Tippe auf die Karte, um die Stecknadel zu versetzen.</small><div class="fields" style="margin-top:8px">
-      <label class="f"><span class="label">Name *</span><input id="ko_name" maxlength="50" value="${esc(o.name||"")}" list="ko_l" placeholder="z. B. Maststall"><datalist id="ko_l">${["Hof","Maststall","Sauenstall","Ferkelaufzucht","Halle","Maschinenhalle","Scheune","Getreidelager","Güllebehälter","Fahrsilo","Werkstatt","Tankstelle"].map(x=>`<option value="${x}">`).join("")}</datalist></label>
+      <label class="f"><span class="label">Name</span><input id="ko_name" maxlength="50" value="${esc(o.name||"")}" list="ko_l" placeholder="z. B. Maststall oder Stein"><datalist id="ko_l">${["Hof","Maststall","Sauenstall","Ferkelaufzucht","Halle","Maschinenhalle","Scheune","Getreidelager","Güllebehälter","Fahrsilo","Werkstatt","Tankstelle","Stein","Baum","Drainageschacht","Strommast","Nasse Stelle"].map(x=>`<option value="${x}">`).join("")}</datalist></label>
       <label class="f"><span class="label">Notiz (optional)</span><input id="ko_notiz" maxlength="120" value="${esc(o.notiz||"")}"></label></div>
-      <div class="koic">${Object.entries(OICO).map(([k,v])=>`<button type="button" data-oi="${k}" class="${k===ic?"on":""}" title="${esc(v.n)}"><span class="koi" style="background:${v.c}">${oSvg(k,18)}</span><small>${esc(v.n)}</small></button>`).join("")}</div>
+      <div class="koic">${[[0,"Gebäude & Orte"],[1,"Hindernisse auf dem Feld"]].map(([h,t])=>`<small class="kot">${t}</small>`+Object.entries(OICO).filter(([,v])=>!!v.hz===!!h).map(([k,v])=>`<button type="button" data-oi="${k}" class="${k===ic?"on":""}" title="${esc(v.n)}"><span class="koi${v.hz?" rund":""}" style="background:${v.c}">${oSvg(k,18)}</span><small>${esc(v.n)}</small></button>`).join("")).join("")}</div>
       <div class="row"><button type="button" class="ghost" id="ko_abbr">Abbrechen</button><button type="button" class="primary" id="ko_save">Speichern</button></div></div>`;
-    const vor=()=>pin.html(oHtml({name:$("#ko_name").value.trim()||"Neuer Ort",icon:ic}));
-    $("#ko_name").addEventListener("input",()=>{if(!icFest){const r=oRaten($("#ko_name").value);if(r&&r!==ic){ic=r;el.querySelectorAll("[data-oi]").forEach(x=>x.classList.toggle("on",x.dataset.oi===ic))}}vor()});if(!o.id)$("#ko_name").focus();
+    const vor=()=>{const q={name:$("#ko_name").value.trim()||OICO[ic].n,icon:ic};if(oHz(q)!==pinHz){pin.remove();pin=K.marker(pos,{html:oHtml(q),...oGr(q)});pinHz=oHz(q)}else pin.html(oHtml(q))};
+    $("#ko_name").addEventListener("input",()=>{if(!icFest){const r=oRaten($("#ko_name").value);if(r&&r!==ic){ic=r;el.querySelectorAll("[data-oi]").forEach(x=>x.classList.toggle("on",x.dataset.oi===ic))}}vor()});if(!o.id&&!an)$("#ko_name").focus();vor();
     el.querySelectorAll("[data-oi]").forEach(b=>b.addEventListener("click",()=>{ic=b.dataset.oi;icFest=true;el.querySelectorAll("[data-oi]").forEach(x=>x.classList.toggle("on",x===b));vor()}));
     $("#ko_abbr").addEventListener("click",()=>{zeichne=null;neuLaden()});
-    $("#ko_save").addEventListener("click",async ev=>{const name=$("#ko_name").value.trim();if(!name){$("#ko_name").focus();return}ev.target.disabled=true;
+    $("#ko_save").addEventListener("click",async ev=>{const name=$("#ko_name").value.trim()||(ic!=="sonst"?OICO[ic].n:"");if(!name){$("#ko_name").focus();return}ev.target.disabled=true;
       const d={name,icon:ic,notiz:$("#ko_notiz").value.trim(),lat:+(+pos.lat).toFixed(7),lng:+(+pos.lng).toFixed(7)};
       try{if(o.id){await S.db.doc("orte/"+o.id).update(d);Object.assign(o,d)}else{const r=await S.db.collection("orte").add({...d,angelegt:iso(new Date())});if(!(S.o||[]).some(x=>x.id===r.id))S.o=[...(S.o||[]),{id:r.id,...d}]}
         zeichne=null;toast("Ort gespeichert.");neuLaden()}catch(_){toast("Konnte nicht gespeichert werden.");ev.target.disabled=false}})};
   for(const o of (S.o||[])){if(!o.lat)continue;
-    const mk=K.marker({lat:+o.lat,lng:+o.lng},{html:oHtml(o),w:36,h:44,unten:true,click:setzen?null:()=>{if(zeichne)return;if(auswahl)return;ortInfo(o)}});mk.oid=o.id;
-    ORTE.push(mk);if(!setzen&&kAus().includes("orte"))mk.remove()}
+    const mk=K.marker({lat:+o.lat,lng:+o.lng},{html:oHtml(o),...oGr(o),click:setzen?null:()=>{if(zeichne)return;if(auswahl)return;ortInfo(o)}});mk.oid=o.id;mk.hz=oHz(o);
+    ORTE.push(mk);if(!setzen&&kAus().includes(mk.hz?"hindernisse":"orte"))mk.remove()}
   if(!setzen)window.__orteNeu=()=>ORTE.forEach(mk=>{const o=(S.o||[]).find(x=>x.id===mk.oid);if(o&&mk.html)mk.html(oHtml(o))});
+  if(!setzen&&S.canWrite&&K.onHold)K.onHold(ll=>{if(zeichne||auswahl)return;try{navigator.vibrate&&navigator.vibrate(30)}catch(_){}ortForm(null,{lat:+(+ll.lat).toFixed(7),lng:+(+ll.lng).toFixed(7)})});
   if(!setzen&&$("#k_ortneu"))$("#k_ortneu").addEventListener("click",()=>{if(!zeichne)ortForm(null)});
   /* Aufträge: Felder markieren, damit jemand weiß, wo er hin soll */
   const auftragSpeichern=async(ids,a)=>{const b=S.db.batch();
