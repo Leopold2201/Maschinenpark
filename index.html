@@ -248,7 +248,7 @@ img{max-width:100%}[hidden]{display:none!important}
 .kweit .kfl:not(.kfa){display:none}
 .kbtns{display:flex;flex-wrap:wrap;gap:6px}
 .kwrap{position:relative}.kvollbtn{position:absolute;bottom:28px;left:10px;z-index:5;width:44px;height:44px;padding:0;border:0;background:none;color:#fff;font-size:28px;line-height:44px;text-shadow:0 0 4px #000,0 0 2px #000;cursor:pointer}
-.kwrap.voll{position:fixed;inset:0;z-index:18;background:#000}.kwrap.voll .map{height:100%;border-radius:0;border:0}
+.kwrap.voll{position:fixed;inset:0;z-index:18;background:#000}.kwrap.voll .map{height:100%;border-radius:0;border:0;position:relative;z-index:0}
 
 #kfeldv:empty{display:none}.kwrap.voll #kfeldv{position:absolute;left:10px;right:10px;bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:5}.kwrap.voll #kfeldv .kfinfo{margin:0;box-shadow:0 2px 8px rgba(0,0,0,.4)}
 body.kvoll-an{overflow:hidden}
@@ -260,6 +260,9 @@ body.kvoll-an{overflow:hidden}
 .kctl>button:disabled{opacity:.45}
 .kwrap.voll .kfilter{position:absolute;top:calc(58px + env(safe-area-inset-top,0px));right:8px;z-index:5;margin:0;flex-direction:column;align-items:flex-end;gap:5px}.kfbtn{display:none}.kwrap.voll .kfbtn{display:flex;align-items:center;gap:5px;background:none;border:0;padding:4px 2px;color:#fff;font:700 13px/1 system-ui,sans-serif;text-shadow:0 0 4px #000,0 0 2px #000,0 0 1px #000;cursor:pointer}.kfbtn i{font-style:normal;font-size:18px;filter:drop-shadow(0 0 2px #000)}.kwrap.voll .kfilter.zu .chip{display:none}.kwrap.voll .kfilter .chip{padding:4px 10px;font-size:.8rem;background:rgba(0,0,0,.45);border-color:rgba(255,255,255,.55);color:#fff;font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.4)}.kwrap.voll .kfilter .chip.on{background:var(--accent,#2f6b2a);border-color:#fff}
 .kwrap.voll .kctl{bottom:calc(30px + env(safe-area-inset-bottom,0px))}.kwrap.voll:has(#kfeldv:not(:empty)) .kctl{bottom:calc(160px + env(safe-area-inset-bottom,0px))}
+.kpin{position:relative;width:34px;height:42px;display:flex;justify-content:center;cursor:pointer}.kpin b{display:flex;align-items:center;justify-content:center;width:30px;height:30px;margin-top:2px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:#d32f2f;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.6)}.kpin b i{transform:rotate(45deg);font-style:normal;font-size:15px;line-height:1}
+.kpn{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:1px;white-space:nowrap;background:#fff;color:#222;border-radius:4px;padding:1px 6px;font:700 11px/1.5 system-ui,sans-serif;box-shadow:0 1px 3px rgba(0,0,0,.45);pointer-events:none}.kweit .kpn{display:none}
+.koic{display:flex;flex-wrap:wrap;gap:4px;margin:4px 0 8px}.koic button{font-size:20px;width:40px;height:40px;padding:0;border-radius:10px;border:1px solid var(--line);background:var(--surface)}.koic button.on{border:2px solid var(--accent,#2f6b2a);background:#e7f1e4}
 .kdot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:middle;box-shadow:0 0 0 1px rgba(0,0,0,.35)}.kleg{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:.85rem;margin:6px 0}.kleg small{color:var(--muted)}.knutz{display:grid;gap:6px;margin:8px 0}.knutz button{text-align:left}
 .berseg{display:flex;max-width:420px;margin:0 auto 14px}.berseg[hidden]{display:none}.berseg button{flex:1}
 .headbtns{display:flex;gap:6px;flex-wrap:nowrap;justify-content:flex-end;flex:0 0 auto}.headbtns button{padding:8px 10px;font-size:.9rem}.sheet-head>:first-child{min-width:0}.sheet-head:has(.headbtns) h2{font-size:1.3rem;line-height:1.2}
@@ -692,8 +695,8 @@ async function karte(mid,setzen){
   const st=m&&m.standort&&m.standort.lat?m.standort:null;
   const kh=`<div class="sheet-head"><div><span class="label">${m?esc(m.name):"Hof"}</span><h2>${setzen?"Standort setzen":"Karte"}</h2></div><button class="ghost" data-act="${m?"back":"close"}">${m?"Zurück":"Schließen"}</button></div>`;
   const kb=`  ${setzen?`<p class="note" style="margin:0">Tippe auf die Karte, wo <b>${esc(m.name)}</b> steht – oder stell dich daneben und nimm <b>📍 Mein Standort</b>.</p>`:""}
-  ${setzen?"":`<div class="kfilter zu" id="kfilter"><button type="button" class="kfbtn" id="kfbtn"><i>👁</i>Anzeige</button>${[...KGRP,{id:"oldtimer",name:"Oldtimer"},{id:"felder",name:"Felder"}].map(g=>`<button type="button" class="chip${kAus().includes(g.id)?"":" on"}" data-kg="${g.id}">${g.name}</button>`).join("")}<button type="button" class="chip${lsGet("mp_boden")==="1"?" on":""}" id="k_boden">Bodenzahl</button></div>`}
-  <div class="kwrap${tab&&KVOLL?" voll":""}" id="kwrap"><div id="map" class="map"><div class="empty">Karte wird geladen…</div></div><div class="kctl">${setzen?"":`<button type="button" id="k_mess"><i>📏</i>Messen</button>`}${setzen||!S.canWrite?"":`<button type="button" id="k_ausw"><i>☑</i>Auswählen</button><button type="button" id="k_feldneu"><i>✏️</i>Einzeichnen</button><label id="k_imp"><i>📥</i>Import<input type="file" id="k_impf" accept=".zip,.geojson,.json" hidden></label>`}<button type="button" id="kvoll" aria-label="Vollbild">${tab&&KVOLL?"<i>✕</i><span>Schließen</span>":"<i>⛶</i><span>Vollbild</span>"}</button></div>${setzen?"":`<div id="kfeldv"></div>`}</div>
+  ${setzen?"":`<div class="kfilter zu" id="kfilter"><button type="button" class="kfbtn" id="kfbtn"><i>👁</i>Anzeige</button>${[...KGRP,{id:"oldtimer",name:"Oldtimer"},{id:"felder",name:"Felder"},{id:"orte",name:"Orte"}].map(g=>`<button type="button" class="chip${kAus().includes(g.id)?"":" on"}" data-kg="${g.id}">${g.name}</button>`).join("")}<button type="button" class="chip${lsGet("mp_boden")==="1"?" on":""}" id="k_boden">Bodenzahl</button></div>`}
+  <div class="kwrap${tab&&KVOLL?" voll":""}" id="kwrap"><div id="map" class="map"><div class="empty">Karte wird geladen…</div></div><div class="kctl">${setzen?"":`<button type="button" id="k_mess"><i>📏</i>Messen</button>`}${setzen||!S.canWrite?"":`<button type="button" id="k_ausw"><i>☑</i>Auswählen</button><button type="button" id="k_feldneu"><i>✏️</i>Einzeichnen</button><button type="button" id="k_ortneu"><i>📍</i>Ort</button><label id="k_imp"><i>📥</i>Import<input type="file" id="k_impf" accept=".zip,.geojson,.json" hidden></label>`}<button type="button" id="kvoll" aria-label="Vollbild">${tab&&KVOLL?"<i>✕</i><span>Schließen</span>":"<i>⛶</i><span>Vollbild</span>"}</button></div>${setzen?"":`<div id="kfeldv"></div>`}</div>
   ${setzen?`<div class="fields"><label class="f full"><span class="label">Wo genau (optional)</span><input id="k_ort" maxlength="80" value="${esc(st?st.ort||"":"")}" placeholder="z. B. Maschinenhalle hinten links"></label></div>
   <p class="err" id="kerr" hidden></p><div class="row"><button type="button" id="k_gps">📍 Mein Standort</button>${st?`<button type="button" class="danger" id="k_del">Entfernen</button>`:""}<button type="button" class="primary" id="k_save" ${st?"":"disabled"}>Speichern</button></div>`
   :`<div id="kfeld"></div><div id="k_bleg"></div><div id="k_leg" class="kleg"></div><div id="k_auftr"></div><div class="row" style="justify-content:space-between"><small class="note" style="margin:0">${S.m.filter(x=>x.standort&&x.standort.lat).length} Maschinen · ${(S.f||[]).length} ${(S.f||[]).length===1?"Feld":"Felder"}${(S.f||[]).length?` (${fmtHa((S.f||[]).reduce((a,f)=>a+flaecheHa(f.punkte),0))})`:""} · Antippen öffnet</small>${S.canWrite?`<button type="button" class="linkbtn" id="k_hof">Ansicht als Hof merken</button>`:""}</div>`}`;
@@ -726,6 +729,7 @@ async function karte(mid,setzen){
   if(!setzen)$("#kfbtn").addEventListener("click",()=>$("#kfilter").classList.toggle("zu"));
   if(!setzen)$("#kfilter").addEventListener("click",e=>{const b=e.target.closest("[data-kg]");if(!b)return;const g=b.dataset.kg;let aus=kAus();
     aus=aus.includes(g)?aus.filter(x=>x!==g):[...aus,g];lsSet("mp_kaus",JSON.stringify(aus));b.classList.toggle("on",!aus.includes(g));
+    if(g==="orte")ORTE.forEach(mk=>aus.includes(g)?mk.remove():mk.add());
     if(g==="felder")felder.forEach(([p,lb])=>aus.includes(g)?(p.remove(),lb.remove()):(p.add(),lb.add()));
     Object.values(grp).flat().forEach(mk=>(aus.includes(mk.g)||(mk.ot&&aus.includes("oldtimer")))?mk.remove():mk.add())});
   /* Felder zeichnen */
@@ -737,6 +741,39 @@ async function karte(mid,setzen){
     const p=K.poly(f.punkte,{...fStil(f),click:ll=>{if(zeichne)zeichne.add(ll);else if(setzen)setzeRef&&setzeRef(ll);else if(auswahl)auswahl.tog(f);else{feldInfo(f);if(bodenAn)bsWert(ll).then(w=>{const el=kPanel(),b=el&&el.querySelector(".kfinfo>div");if(b&&w)b.insertAdjacentHTML("beforeend",`<small>Acker-/Grünlandzahl hier: ${esc(bsText(w))}</small>`)})}}});
     const lb=K.marker(mitte(f.punkte),{html:fLabel(f),w:1,h:1});FO[f.id]={p,lb};
     felder.push([p,lb]);if(!setzen&&kAus().includes("felder")){p.remove();lb.remove()}}
+  /* Orte: Stecknadeln für Hof, Ställe, Hallen … */
+  const ORTE=[];
+  const oHtml=o=>`<div class="kpin"><span class="kpn">${esc(o.name)}</span><b><i>${esc(o.icon||"📍")}</i></b></div>`;
+  const ortInfo=o=>{const el=kPanel();if(!el)return;
+    el.innerHTML=`<div class="kfinfo"><div><b>${esc(o.icon||"📍")} ${esc(o.name)}</b>${o.notiz?`<small>${esc(o.notiz)}</small>`:""}</div>
+      <span class="kbtns"><a class="btn" href="https://www.google.com/maps/dir/?api=1&destination=${(+o.lat).toFixed(6)},${(+o.lng).toFixed(6)}" target="_blank" rel="noopener">🧭 Hinfahren</a>
+      ${S.canWrite?`<button type="button" id="ko_edit">Bearbeiten</button><button type="button" class="danger" id="ko_del">Löschen</button>`:""}<button type="button" class="ghost" id="ko_x">✕</button></span></div>`;
+    $("#ko_x").addEventListener("click",()=>{el.innerHTML=""});
+    if(!S.canWrite)return;$("#ko_edit").addEventListener("click",()=>ortForm(o));
+    const d=$("#ko_del");arm&&d.addEventListener("click",()=>arm(d,"Ort wirklich löschen?",async()=>{try{await S.db.doc("orte/"+o.id).delete();S.o=(S.o||[]).filter(x=>x.id!==o.id);toast("Ort gelöscht.");neuLaden()}catch(_){toast("Konnte nicht gelöscht werden.")}}))};
+  const OICON=["🏠","🐖","🐷","🏚️","🌾","🚜","⛽","🔧","🌲","📍"];
+  const ortForm=o=>{if(auswahl)return;const el=kPanel();o=o||{};let ic=o.icon||"📍";
+    let pos=o.lat?{lat:+o.lat,lng:+o.lng}:K.center();pos={lat:+pos.lat,lng:+pos.lng};
+    const altMk=o.id&&ORTE.find(m=>m.oid===o.id);if(altMk)altMk.remove();
+    const pin=K.marker(pos,{html:oHtml({name:o.name||"Neuer Ort",icon:ic}),w:34,h:42,unten:true});
+    zeichne={add:ll=>{pos={lat:+(+ll.lat).toFixed(7),lng:+(+ll.lng).toFixed(7)};pin.move(pos)}};
+    el.innerHTML=`<div class="kfinfo" style="display:block"><b>${o.id?"Ort bearbeiten":"Neuer Ort"}</b><small> · Tippe auf die Karte, um die Stecknadel zu versetzen.</small><div class="fields" style="margin-top:8px">
+      <label class="f"><span class="label">Name *</span><input id="ko_name" maxlength="50" value="${esc(o.name||"")}" list="ko_l" placeholder="z. B. Maststall"><datalist id="ko_l">${["Hof","Maststall","Sauenstall","Ferkelaufzucht","Halle","Maschinenhalle","Scheune","Getreidelager","Güllebehälter","Fahrsilo","Werkstatt","Tankstelle"].map(x=>`<option value="${x}">`).join("")}</datalist></label>
+      <label class="f"><span class="label">Notiz (optional)</span><input id="ko_notiz" maxlength="120" value="${esc(o.notiz||"")}"></label></div>
+      <div class="koic">${OICON.map(x=>`<button type="button" data-oi="${x}" class="${x===ic?"on":""}">${x}</button>`).join("")}</div>
+      <div class="row"><button type="button" class="ghost" id="ko_abbr">Abbrechen</button><button type="button" class="primary" id="ko_save">Speichern</button></div></div>`;
+    const vor=()=>pin.html(oHtml({name:$("#ko_name").value.trim()||"Neuer Ort",icon:ic}));
+    $("#ko_name").addEventListener("input",vor);if(!o.id)$("#ko_name").focus();
+    el.querySelectorAll("[data-oi]").forEach(b=>b.addEventListener("click",()=>{ic=b.dataset.oi;el.querySelectorAll("[data-oi]").forEach(x=>x.classList.toggle("on",x===b));vor()}));
+    $("#ko_abbr").addEventListener("click",()=>{zeichne=null;neuLaden()});
+    $("#ko_save").addEventListener("click",async ev=>{const name=$("#ko_name").value.trim();if(!name){$("#ko_name").focus();return}ev.target.disabled=true;
+      const d={name,icon:ic,notiz:$("#ko_notiz").value.trim(),lat:+(+pos.lat).toFixed(7),lng:+(+pos.lng).toFixed(7)};
+      try{if(o.id){await S.db.doc("orte/"+o.id).update(d);Object.assign(o,d)}else{const r=await S.db.collection("orte").add({...d,angelegt:iso(new Date())});if(!(S.o||[]).some(x=>x.id===r.id))S.o=[...(S.o||[]),{id:r.id,...d}]}
+        zeichne=null;toast("Ort gespeichert.");neuLaden()}catch(_){toast("Konnte nicht gespeichert werden.");ev.target.disabled=false}})};
+  for(const o of (S.o||[])){if(!o.lat)continue;
+    const mk=K.marker({lat:+o.lat,lng:+o.lng},{html:oHtml(o),w:34,h:42,unten:true,click:setzen?null:()=>{if(zeichne)return;if(auswahl)return;ortInfo(o)}});mk.oid=o.id;
+    ORTE.push(mk);if(!setzen&&kAus().includes("orte"))mk.remove()}
+  if(!setzen&&$("#k_ortneu"))$("#k_ortneu").addEventListener("click",()=>{if(!zeichne)ortForm(null)});
   /* Aufträge: Felder markieren, damit jemand weiß, wo er hin soll */
   const auftragSpeichern=async(ids,a)=>{const b=S.db.batch();
     for(const id of ids)b.update(S.db.doc("felder/"+id),{auftrag:a?a:firebase.firestore.FieldValue.delete()});await b.commit();
@@ -1413,6 +1450,7 @@ if(!configured){
     unsub.push(S.db.collection("maschinen").onSnapshot(s=>{S.m=s.docs.map(d=>({id:d.id,...d.data()}));if(f1){f1=0;done()}render()},fail));
     let f3=1;unsub.push(S.db.collection("lager").onSnapshot(s=>{S.l=s.docs.map(d=>({id:d.id,...d.data()}));if(f3){f3=0;done()}render()},fail));
     unsub.push(S.db.collection("felder").onSnapshot(s=>{S.f=s.docs.map(d=>({id:d.id,...d.data()}))},()=>{}));
+    unsub.push(S.db.collection("orte").onSnapshot(s=>{S.o=s.docs.map(d=>({id:d.id,...d.data()}))},()=>{}));
     unsub.push(S.db.collection("hofarbeiten").onSnapshot(s=>{S.h=s.docs.map(d=>({id:d.id,...d.data()}));S.hReady=true;render()},()=>{S.hReady=true;render()}));
     unsub.push(S.db.collection("kohlBestellungen").onSnapshot(s=>{S.k=s.docs.map(d=>({id:d.id,...d.data()}));S.kReady=true;render()},()=>{S.kReady=true;render()}));
     unsub.push(S.db.collection("eintraege").onSnapshot(s=>{S.e=s.docs.map(d=>({id:d.id,...d.data()}));if(f2){f2=0;done()}render()},fail));
