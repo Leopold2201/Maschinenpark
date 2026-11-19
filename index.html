@@ -426,7 +426,7 @@ const teilHint=n=>/motoröl/i.test(n)?"Ölfilter, z. B. 03L 115 562":/diesel|kra
 const mengeHint=n=>/abschmier/i.test(n)?"z. B. Fett, Sorte":/kühl|frostschutz/i.test(n)?"z. B. 20 l · G12":/öl/i.test(n)?"z. B. 4,3 l · 5W-30":"falls nötig";
 /* Abschmieren: kein Intervall, nur „zuletzt gemacht“ */
 const istAbschmieren=p=>/abschmier/i.test(p.name||"");
-const ohneMenge=p=>istAbschmieren(p)||/diesel|kraftstoff/i.test(p.name||"");
+const ohneMenge=p=>istAbschmieren(p)||istKuehl(p)||/diesel|kraftstoff/i.test(p.name||"");
 const istKuehl=p=>/kühl|kuehl|frostschutz/i.test(p.name||"");
 const fmtFrost=v=>v===""||v==null?"":`${String(v).replace("-","−")} °C`;
 const nurZuletzt=p=>istAbschmieren(p)||istKuehl(p)||p.modus==="zuletzt";
@@ -1302,7 +1302,7 @@ function machineForm(m){
   $("#m_kategorie").addEventListener("change",e=>{if(!m.id&&!wTouched)$("#wrows").innerHTML=stdFuer(e.target.value).map(wRow).join("")});
   $("#wadd").addEventListener("click",()=>{$("#wrows").insertAdjacentHTML("beforeend",wRow({id:uid(),name:"",intervall:"",naechste:""}));$("#wrows").lastElementChild.querySelector(".w_name").focus()});
   $("#wrows").addEventListener("click",e=>{if(e.target.closest(".wdel"))e.target.closest(".wrow").remove()});
-  $("#wrows").addEventListener("input",e=>{if(!e.target.matches(".w_name"))return;const r=e.target.closest(".wrow"),t=ghTyp(e.target.value);r.querySelector(".wow").hidden=!istOel({name:e.target.value});r.querySelector(".wgem").hidden=!t;r.querySelector(".wnip").hidden=!istAbschmieren({name:e.target.value});r.querySelector(".wfrost").hidden=!istKuehl({name:e.target.value});if(t)r.querySelector(".wgemn").textContent=ghPartner(t);ghAnz(r)});
+  $("#wrows").addEventListener("input",e=>{if(!e.target.matches(".w_name"))return;const r=e.target.closest(".wrow"),t=ghTyp(e.target.value);r.querySelector(".wow").hidden=!istOel({name:e.target.value});r.querySelector(".wgem").hidden=!t;r.querySelector(".wnip").hidden=!istAbschmieren({name:e.target.value});r.querySelector(".wfrost").hidden=!istKuehl({name:e.target.value});r.querySelector(".wmenge").hidden=ohneMenge({name:e.target.value});if(t)r.querySelector(".wgemn").textContent=ghPartner(t);ghAnz(r)});
   /* Gemeinsames Öl: Häkchen „gemeinsam“ und „Öl gewechselt“ gelten für Getriebe- und Hydrauliköl zusammen */
   /* Hydraulik-Zeile bei gemeinsamem Öl: Füllmenge/Sorte und „Öl gewechselt“ ausblenden – nur noch Filter */
   const ghAnz=r=>{const nf=ghTyp(r.querySelector(".w_name").value)==="h"&&r.querySelector(".w_gem").checked;r.querySelector(".wmenge").hidden=nf||ohneMenge({name:r.querySelector(".w_name").value});r.querySelector(".woel").hidden=nf};
