@@ -239,7 +239,7 @@ img{max-width:100%}[hidden]{display:none!important}
 .import{display:grid;gap:10px;justify-items:start}
 .esub{display:flex;flex-wrap:wrap;gap:4px 16px;margin:-2px 0 8px 30px;padding:6px 10px;border-left:3px solid var(--line,#ccd5c6)}.esub .check{font-size:.93em}.esub small{flex-basis:100%;opacity:.75}
 .due.hof li{grid-template-columns:6px 1fr auto auto}.due.hof .what b{white-space:normal}.hok{min-width:44px;padding:6px 10px;font-size:1.1rem}.hsub{margin:18px 0 8px;font-size:1rem;color:var(--muted)}
-.map{height:min(62vh,560px);border-radius:12px;overflow:hidden;border:1px solid var(--line);background:var(--sunk)}.map .empty{margin:20px}.ktip{font-weight:700;font-size:12px;padding:2px 6px;cursor:pointer;pointer-events:auto}.kneu{font-size:28px;line-height:30px;text-align:center;background:none;border:0}.standort{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px 14px;padding:12px 14px;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}.standort b{display:block}.standort small{color:var(--muted)}
+.map{height:min(62vh,560px);border-radius:12px;overflow:hidden;position:relative;z-index:0;border:1px solid var(--line);background:var(--sunk)}.map .empty{margin:20px}.ktip{font-weight:700;font-size:12px;padding:2px 6px;cursor:pointer;pointer-events:auto}.kneu{font-size:28px;line-height:30px;text-align:center;background:none;border:0}.standort{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px 14px;padding:12px 14px;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}.standort b{display:block}.standort small{color:var(--muted)}
 .kmk{background:none;border:0}.kfz svg{width:48px;height:36px;filter:drop-shadow(0 1px 2px rgba(0,0,0,.6))}.kfoto{width:44px;height:44px;border-radius:50%;background-size:cover;background-position:center;border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.6)}.kakt .kfoto{border-color:#f6c46d}.kfoto.klein{width:56px;height:56px;border-width:2px}
 .kfrei{object-fit:contain;filter:drop-shadow(0 0 1.5px #fff) drop-shadow(0 2px 3px rgba(0,0,0,.7))}
 .kfilter{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px}.kfilter .chip{border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:999px;padding:6px 12px;font-size:.85rem}.kfilter .chip.on{background:var(--accent,#2f6b2a);border-color:var(--accent,#2f6b2a);color:#fff}
@@ -376,9 +376,9 @@ const gruppeOf=m=>(GRUPPEN.find(g=>g.kats.includes(katOf(m)))||GRUPPEN[3]).id;
 const KATS=GRUPPEN.flatMap(g=>g.kats);
 const katOptions=sel=>GRUPPEN.map(g=>`<optgroup label="${g.name}">${g.kats.map(k=>`<option ${k===sel?"selected":""}>${k}</option>`).join("")}</optgroup>`).join("");
 /* Standard-Wartung je Gruppe */
-const STD_JE={traktoren:[["Motoröl",12],["Kraftstofffilter",12],["Getriebeöl",24],["Hydrauliköl",24],["Abschmieren",""]],
-  autos:[["Motoröl",12],["Kraftstofffilter",24]],
-  selbstfahrer:[["Motoröl",12],["Kraftstofffilter",12],["Getriebeöl",24],["Hydrauliköl",24],["Abschmieren",""]],
+const STD_JE={traktoren:[["Motoröl",12],["Kraftstofffilter",12],["Getriebeöl",24],["Hydrauliköl",24],["Abschmieren",""],["Kühlerfrostschutz",""]],
+  autos:[["Motoröl",12],["Kraftstofffilter",24],["Kühlerfrostschutz",""]],
+  selbstfahrer:[["Motoröl",12],["Kraftstofffilter",12],["Getriebeöl",24],["Hydrauliköl",24],["Abschmieren",""],["Kühlerfrostschutz",""]],
   geraete:[["Abschmieren",""]]};
 const stdFuer=k=>(STD_JE[(GRUPPEN.find(g=>g.kats.includes(k))||GRUPPEN[3]).id]).map(([n,i])=>({id:uid(),name:n,intervall:i,naechste:""}));
 let DUE="tuev"; /* startet immer mit TÜV */
@@ -423,11 +423,13 @@ const tuevJahre=k=>(ALT[k]||k)==="Pflanzenschutz"?3:2;
 const plusJ=(ym,j)=>ym?`${+ym.slice(0,4)+j}${ym.slice(4,7)}`:"";
 const letzter=m=>m.letzterTuev||(m.tuevBis?`${+m.tuevBis.slice(0,4)-tuevJahre(m.kategorie)}${m.tuevBis.slice(4,7)}`:"");
 const teilHint=n=>/motoröl/i.test(n)?"Ölfilter, z. B. 03L 115 562":/diesel|kraftstoff/i.test(n)?"Kraftstofffilter-Einsatz":/hydraulik/i.test(n)?"Hydraulikfilter":/getriebe/i.test(n)?"Getriebeölfilter, falls vorhanden":/luft/i.test(n)?"Luftfilter":"Filter oder Teilenummer";
-const mengeHint=n=>/abschmier/i.test(n)?"z. B. Fett, Sorte":/öl/i.test(n)?"z. B. 4,3 l · 5W-30":"falls nötig";
+const mengeHint=n=>/abschmier/i.test(n)?"z. B. Fett, Sorte":/kühl|frostschutz/i.test(n)?"z. B. 20 l · G12":/öl/i.test(n)?"z. B. 4,3 l · 5W-30":"falls nötig";
 /* Abschmieren: kein Intervall, nur „zuletzt gemacht“ */
 const istAbschmieren=p=>/abschmier/i.test(p.name||"");
 const ohneMenge=p=>istAbschmieren(p)||/diesel|kraftstoff/i.test(p.name||"");
-const nurZuletzt=p=>istAbschmieren(p)||p.modus==="zuletzt";
+const istKuehl=p=>/kühl|kuehl|frostschutz/i.test(p.name||"");
+const fmtFrost=v=>v===""||v==null?"":`${String(v).replace("-","−")} °C`;
+const nurZuletzt=p=>istAbschmieren(p)||istKuehl(p)||p.modus==="zuletzt";
 /* Getriebe- bzw. Hydrauliköl (für „gemeinsames Öl“); kombinierte Namen wie „Getriebe-/Hydrauliköl“ zählen nicht */
 const ghTyp=n=>{n=String(n||"");if(!/öl/i.test(n))return "";const g=/getriebe/i.test(n),h=/hydraulik/i.test(n);return g&&!h?"g":h&&!g?"h":""};
 const nurFilter=p=>!!p.gemeinsam&&ghTyp(p.name)==="h"; /* Hydraulik bei gemeinsamem Öl: nur noch Filter */
@@ -1149,8 +1151,8 @@ function drawDetail(){
   ${hatTuev(m)?"":"<!--"}<div class="panel tuev"><div><span class="label">TÜV / HU</span><b>${m.tuevBis?`Plakette bis ${fmtM(m.tuevBis)}`:"nicht eingetragen"}</b>${m.tuevBis?`<small class="note">Letzter TÜV ${fmtM(letzter(m))}</small>`:""}</div>${m.abgemeldet?`<span class="pill none">abgemeldet</span>`:`<span class="pill ${lvl(tv)}">${m.tuevBis?rel(tv):"–"}</span>`}</div>${hatTuev(m)?"":"-->"}
   <div><div class="sechead" style="margin-bottom:6px"><h2 style="font-size:1.15rem">Wartung</h2></div>
   ${ps.length?`<ul class="wlist">${ps.map(p=>{
-    const extra=`${p.teil?`<small class="teil">Filter: <b>${esc(p.teil)}</b></small>`:""}${p.gemeinsam&&ghTyp(p.name)?`<small class="teil">${nurFilter(p)?"Öl: gemeinsam mit Getriebeöl":"Gemeinsames Öl mit Hydrauliköl"}</small>`:""}${nurFilter(p)?(p.filterMit?`<small class="teil">Gewechselt: <b>Filter</b></small>`:""):istOel(p)&&(p.oelMit||p.filterMit)?`<small class="teil">Gewechselt: <b>${p.oelMit&&p.filterMit?"Öl + Filter":p.oelMit?"nur Öl":"nur Filter"}</b></small>`:""}${p.menge&&!ohneMenge(p)&&!nurFilter(p)?`<small class="teil">Füllmenge: <b>${esc(p.menge)}</b></small>`:""}${(()=>{const a=lagerZu(p.teil);return a?`<small class="teil">Im Lager: <b>${fmtN(a.menge)} ${esc(a.einheit||"Stk")}</b>${knapp(a)?" · nachbestellen":""}</small>`:""})()}${istAbschmieren(p)?"":`<button type="button" class="lager${p.lager?" ja":""}" data-lager="${esc(p.id)}" ${S.canWrite?"":"disabled"} aria-pressed="${!!p.lager}">${p.lager?"✓ Auf Lager":"Nicht auf Lager"}</button>`}`;
-    if(nurZuletzt(p))return `<li><span class="stripe s-none"></span><span class="wn"><b>${nurFilter(p)?"Hydraulikfilter":esc(p.name)}</b><small>zuletzt gemacht</small>${istAbschmieren(p)&&p.nippel!==""&&p.nippel!=null?`<small class="teil">Schmiernippel: <b>${esc(p.nippel)}</b></small>`:""}${extra}</span><span class="wd">${p.zuletzt?fmtMY(p.zuletzt):"–"}</span><span class="pill none">${p.zuletzt?seitM(p.zuletzt):"noch nicht eingetragen"}</span></li>`;
+    const extra=`${p.teil?`<small class="teil">Filter: <b>${esc(p.teil)}</b></small>`:""}${p.gemeinsam&&ghTyp(p.name)?`<small class="teil">${nurFilter(p)?"Öl: gemeinsam mit Getriebeöl":"Gemeinsames Öl mit Hydrauliköl"}</small>`:""}${nurFilter(p)?(p.filterMit?`<small class="teil">Gewechselt: <b>Filter</b></small>`:""):istOel(p)&&(p.oelMit||p.filterMit)?`<small class="teil">Gewechselt: <b>${p.oelMit&&p.filterMit?"Öl + Filter":p.oelMit?"nur Öl":"nur Filter"}</b></small>`:""}${p.menge&&!ohneMenge(p)&&!nurFilter(p)?`<small class="teil">Füllmenge: <b>${esc(p.menge)}</b></small>`:""}${(()=>{const a=lagerZu(p.teil);return a?`<small class="teil">Im Lager: <b>${fmtN(a.menge)} ${esc(a.einheit||"Stk")}</b>${knapp(a)?" · nachbestellen":""}</small>`:""})()}${istAbschmieren(p)||istKuehl(p)?"":`<button type="button" class="lager${p.lager?" ja":""}" data-lager="${esc(p.id)}" ${S.canWrite?"":"disabled"} aria-pressed="${!!p.lager}">${p.lager?"✓ Auf Lager":"Nicht auf Lager"}</button>`}`;
+    if(nurZuletzt(p))return `<li><span class="stripe s-none"></span><span class="wn"><b>${nurFilter(p)?"Hydraulikfilter":esc(p.name)}</b><small>zuletzt gemacht</small>${istAbschmieren(p)&&p.nippel!==""&&p.nippel!=null?`<small class="teil">Schmiernippel: <b>${esc(p.nippel)}</b></small>`:""}${istKuehl(p)?`<small class="teil">Frostschutz bis: <b>${p.frost!==""&&p.frost!=null?esc(fmtFrost(p.frost)):"noch nicht gemessen"}</b></small>`:""}${extra}</span><span class="wd">${p.zuletzt?fmtMY(p.zuletzt):"–"}</span><span class="pill none">${p.zuletzt?seitM(p.zuletzt):"noch nicht eingetragen"}</span></li>`;
     const d=p.naechste?dueW(p.naechste):null;
     return `<li><span class="stripe s-${lvl(d)}"></span><span class="wn"><b>${nurFilter(p)?"Hydraulikfilter":esc(p.name)}</b><small>${esc(iv(p.intervall))||"kein Intervall"}${p.zuletzt?` · zuletzt ${p.zuletzt.length>7?fmtD(p.zuletzt):fmtMY(p.zuletzt)}`:""}</small>${extra}</span><span class="wd">${p.naechste?fmtMY(p.naechste):"–"}</span><span class="pill ${lvl(d)}">${p.naechste?rel(d):"kein Termin"}</span></li>`}).join("")}</ul>`:`<div class="empty">Keine Wartungspunkte. Über <b>Bearbeiten</b> kannst du Motoröl, Getriebeöl, Abschmieren und weitere anlegen.</div>`}</div>
   <dl class="facts">${fact("Erstzulassung",ez(m.erstzulassung))}${fact("Hersteller",m.hersteller)}${fact("Modell",m.modell)}${fact("Baujahr",m.baujahr)}${fact("Kennzeichen",m.kennzeichen)}${fact("Fahrgestell-Nr.",m.fin)}${fact("Notizen",m.notiz)}</dl>
@@ -1252,7 +1254,7 @@ function drawReps(){
   S.open={type:"reps",id:m.id};
 }
 
-function wRow(p){const fix=istAbschmieren(p),z=nurZuletzt(p);return `<div class="wrow" data-wid="${esc(p.id)}">
+function wRow(p){const fix=istAbschmieren(p)||istKuehl(p),z=nurZuletzt(p);return `<div class="wrow" data-wid="${esc(p.id)}">
   <label class="f wname"><span class="label">Wartungspunkt</span><input class="w_name" value="${esc(p.name)}" placeholder="z. B. Achsöl vorne"></label>
   ${fix?`<span class="wfix">nur „zuletzt gemacht“</span><input type="hidden" class="w_modus" value="zuletzt">`:
   `<label class="f wmodus"><span class="label">Erfassen als</span><select class="w_modus"><option value="intervall" ${z?"":"selected"}>Intervall</option><option value="zuletzt" ${z?"selected":""}>Nur zuletzt gemacht</option></select></label>`}
@@ -1262,7 +1264,8 @@ function wRow(p){const fix=istAbschmieren(p),z=nurZuletzt(p);return `<div class=
   <input type="hidden" class="w_zul" value="${esc(p.zuletzt||"")}">
   <label class="f wteil" ${fix?"hidden":""}><span class="label">Filter / Teile-Nr.</span><input class="w_teil" value="${esc(p.teil||"")}" placeholder="${esc(teilHint(p.name))}"></label>
   <label class="f wmenge" ${ohneMenge(p)?"hidden":""}><span class="label">Füllmenge / Sorte</span><input class="w_menge" value="${esc(p.menge||"")}" placeholder="${esc(mengeHint(p.name))}"></label>
-  <label class="f wnip" ${fix?"":"hidden"}><span class="label">Anzahl Schmiernippel</span><input class="w_nip" type="number" min="0" max="999" inputmode="numeric" value="${esc(p.nippel??"")}" placeholder="z. B. 12"></label>
+  <label class="f wfrost" ${istKuehl(p)?"":"hidden"}><span class="label">Frostschutz bis (°C)</span><input class="w_frost" type="number" min="-60" max="0" step="1" inputmode="numeric" value="${esc(p.frost??"")}" placeholder="z. B. -25"></label>
+  <label class="f wnip" ${istAbschmieren(p)?"":"hidden"}><span class="label">Anzahl Schmiernippel</span><input class="w_nip" type="number" min="0" max="999" inputmode="numeric" value="${esc(p.nippel??"")}" placeholder="z. B. 12"></label>
   <label class="f wlager check" ${fix?"hidden":""}><input type="checkbox" class="w_lager" ${p.lager?"checked":""} style="width:auto"><span>Auf Lager</span></label>
   <div class="f wow" ${istOel(p)?"":"hidden"}><label class="check wgem" ${ghTyp(p.name)?"":"hidden"} style="flex-basis:100%"><input type="checkbox" class="w_gem" ${p.gemeinsam?"checked":""} style="width:auto"><span>Gemeinsames Öl mit <span class="wgemn">${ghPartner(ghTyp(p.name))}</span></span></label><label class="check woel"><input type="checkbox" class="w_oel" ${p.oelMit?"checked":""} style="width:auto"><span>Öl gewechselt</span></label><label class="check"><input type="checkbox" class="w_fil" ${p.filterMit?"checked":""} style="width:auto"><span>Filter gewechselt</span></label></div>
   <button type="button" class="linkbtn wdel" aria-label="Wartungspunkt entfernen">Entfernen</button></div>`}
@@ -1299,7 +1302,7 @@ function machineForm(m){
   $("#m_kategorie").addEventListener("change",e=>{if(!m.id&&!wTouched)$("#wrows").innerHTML=stdFuer(e.target.value).map(wRow).join("")});
   $("#wadd").addEventListener("click",()=>{$("#wrows").insertAdjacentHTML("beforeend",wRow({id:uid(),name:"",intervall:"",naechste:""}));$("#wrows").lastElementChild.querySelector(".w_name").focus()});
   $("#wrows").addEventListener("click",e=>{if(e.target.closest(".wdel"))e.target.closest(".wrow").remove()});
-  $("#wrows").addEventListener("input",e=>{if(!e.target.matches(".w_name"))return;const r=e.target.closest(".wrow"),t=ghTyp(e.target.value);r.querySelector(".wow").hidden=!istOel({name:e.target.value});r.querySelector(".wgem").hidden=!t;r.querySelector(".wnip").hidden=!istAbschmieren({name:e.target.value});if(t)r.querySelector(".wgemn").textContent=ghPartner(t);ghAnz(r)});
+  $("#wrows").addEventListener("input",e=>{if(!e.target.matches(".w_name"))return;const r=e.target.closest(".wrow"),t=ghTyp(e.target.value);r.querySelector(".wow").hidden=!istOel({name:e.target.value});r.querySelector(".wgem").hidden=!t;r.querySelector(".wnip").hidden=!istAbschmieren({name:e.target.value});r.querySelector(".wfrost").hidden=!istKuehl({name:e.target.value});if(t)r.querySelector(".wgemn").textContent=ghPartner(t);ghAnz(r)});
   /* Gemeinsames Öl: Häkchen „gemeinsam“ und „Öl gewechselt“ gelten für Getriebe- und Hydrauliköl zusammen */
   /* Hydraulik-Zeile bei gemeinsamem Öl: Füllmenge/Sorte und „Öl gewechselt“ ausblenden – nur noch Filter */
   const ghAnz=r=>{const nf=ghTyp(r.querySelector(".w_name").value)==="h"&&r.querySelector(".w_gem").checked;r.querySelector(".wmenge").hidden=nf||ohneMenge({name:r.querySelector(".w_name").value});r.querySelector(".woel").hidden=nf};
@@ -1320,12 +1323,13 @@ function machineForm(m){
     ev.preventDefault();
     const body={};["name","kategorie","hersteller","modell","baujahr","erstzulassung","kennzeichen","fin","letzterTuev","notiz"].forEach(k=>body[k]=$("#m_"+k).value.trim());body.tuevBis=plusJ(body.letzterTuev,tuevJahre(body.kategorie));body.abgemeldet=$("#m_abgemeldet").checked;body.oldtimer=$("#m_oldtimer").checked;body.tuevPflicht=$("#m_tuevPflicht").checked;if(!body.tuevPflicht){body.letzterTuev="";body.tuevBis=""}
     if(!body.name)return;
-    body.wartung=[...document.querySelectorAll(".wrow")].map(r=>({id:r.dataset.wid,name:r.querySelector(".w_name").value.trim(),...(()=>{const zz=r.querySelector(".w_modus").value==="zuletzt"||istAbschmieren({name:r.querySelector(".w_name").value});
+    body.wartung=[...document.querySelectorAll(".wrow")].map(r=>({id:r.dataset.wid,name:r.querySelector(".w_name").value.trim(),...(()=>{const zz=r.querySelector(".w_modus").value==="zuletzt"||istAbschmieren({name:r.querySelector(".w_name").value})||istKuehl({name:r.querySelector(".w_name").value});
       return zz?{modus:"zuletzt",intervall:"",naechste:"",zuletzt:r.querySelector(".w_last").value}
               :{modus:"intervall",intervall:r.querySelector(".w_iv").value.trim(),naechste:r.querySelector(".w_next").value,zuletzt:r.querySelector(".w_zul").value}})(),lager:r.querySelector(".w_lager").checked,teil:r.querySelector(".w_teil").value.trim(),menge:r.querySelector(".w_menge").value.trim()})).filter(p=>p.name);
     /* Felder behalten, die das Formular nicht zeigt (z. B. Filter zuletzt), und Öl/Filter-Häkchen anwenden */
     const alt=Object.fromEntries(punkte(m).map(p=>[p.id,p]));
     body.wartung=body.wartung.map(p=>{const r=document.querySelector(`.wrow[data-wid="${p.id}"]`);let np={...(alt[p.id]||{}),...p};
+      if(r&&!r.querySelector(".wfrost").hidden){const n=r.querySelector(".w_frost").value.trim();np.frost=n===""?"":-Math.abs(parseInt(n,10)||0)}
       if(r&&!r.querySelector(".wnip").hidden){const n=r.querySelector(".w_nip").value.trim();np.nippel=n===""?"":Math.max(0,parseInt(n,10)||0)}
       if(r&&!r.querySelector(".wow").hidden){np.oelMit=r.querySelector(".w_oel").checked;np.filterMit=r.querySelector(".w_fil").checked;np.gemeinsam=!r.querySelector(".wgem").hidden&&r.querySelector(".w_gem").checked}
       return np});
@@ -1347,7 +1351,7 @@ function entryForm(mid,preset,from){
    <label class="f"><span class="label">Art</span><select id="e_art">${ARTEN.filter(a=>a!=="TÜV / HU"||hatTuev(m)).map(a=>`<option>${a}</option>`).join("")}</select></label>
    <label class="f"><span class="label">Monat</span><input id="e_datum" type="month" required value="${iso(new Date()).slice(0,7)}"></label>
    <fieldset class="f full checks" id="e_wbox"><legend class="label">Was wurde gemacht?</legend>
-     ${ps.length?ps.map(p=>`<label class="check"><input type="checkbox" value="${esc(p.id)}" class="e_p"><span>${esc(p.name)}${nurZuletzt(p)?` <small class="nb">· wird als „zuletzt gemacht“ gespeichert</small>`:p.intervall?` <small data-iv="${esc(p.intervall)}">· nächster Termin dann ${fmtMY(addYM(iso(new Date()),p.intervall))}</small>`:""}</span></label>`).join(""):`<span class="note">Diese Maschine hat noch keine Wartungspunkte.</span>`}
+     ${ps.length?ps.map(p=>`<label class="check"><input type="checkbox" value="${esc(p.id)}" class="e_p"><span>${esc(p.name)}${nurZuletzt(p)?` <small class="nb">· wird als „zuletzt gemacht“ gespeichert</small>`:p.intervall?` <small data-iv="${esc(p.intervall)}">· nächster Termin dann ${fmtMY(addYM(iso(new Date()),p.intervall))}</small>`:""}</span></label>${istKuehl(p)?`<label class="f efrost" data-fr="${esc(p.id)}" hidden style="margin:2px 0 8px 28px"><span class="label">Gemessen: Frostschutz bis (°C)</span><input type="number" class="e_frost" min="-60" max="0" step="1" inputmode="numeric" placeholder="z. B. -25" value="${esc(p.frost??"")}"></label>`:""}`).join(""):`<span class="note">Diese Maschine hat noch keine Wartungspunkte.</span>`}
    </fieldset>
    <p class="f full note" id="e_tbox" hidden>Die neue Plakette gilt automatisch ${tuevJahre(m.kategorie)} Jahre, also bis <b id="e_tuev"></b>.</p>
    <label class="f full"><span class="label" id="e_tlabel">Bemerkung</span><input id="e_text" placeholder="z. B. 15W-40, 18 l · Werkstatt Müller"></label>
@@ -1359,7 +1363,8 @@ function entryForm(mid,preset,from){
     if($("#e_datum").value)$("#e_tuev").textContent=fmtM(plusJ($("#e_datum").value.slice(0,7),tuevJahre(m.kategorie)));
     const dt=$("#e_datum").value;document.querySelectorAll("#e_wbox small[data-iv]").forEach(s=>{if(dt)s.textContent=`· nächster Termin dann ${fmtMY(addYM(dt,s.dataset.iv))}`})};
   $("#e_art").addEventListener("change",sync);$("#e_datum").addEventListener("change",sync);sync();
-  document.querySelectorAll(".e_p").forEach(c=>c.addEventListener("change",()=>{const b=document.querySelector(`.esub[data-sub="${c.value}"]`);if(b)b.hidden=!c.checked}));
+  document.querySelectorAll(".e_p").forEach(c=>c.addEventListener("change",()=>{const b=document.querySelector(`.esub[data-sub="${c.value}"]`);if(b)b.hidden=!c.checked;const f=document.querySelector(`.efrost[data-fr="${c.value}"]`);if(f){f.hidden=!c.checked;if(c.checked)f.querySelector("input").focus()}}));
+  const frostOf=id=>{const f=document.querySelector(`.efrost[data-fr="${id}"] input`);if(!f||f.value.trim()==="")return null;return -Math.abs(parseInt(f.value,10)||0)};
   const subOf=id=>{const b=document.querySelector(`.esub[data-sub="${id}"]`);return b?{oel:b.querySelector(".e_oel").checked,fil:b.querySelector(".e_fil").checked}:null};
   $("#ef").addEventListener("submit",async ev=>{
     ev.preventDefault();
@@ -1369,10 +1374,11 @@ function entryForm(mid,preset,from){
     if(sel.some(id=>{const x=subOf(id);return x&&!x.oel&&!x.fil})){showErr("#eferr",{code:"oelfil"});return}
     const btn=ev.submitter;btn.disabled=true;btn.textContent="Speichert…";
     try{
-      await S.db.collection("eintraege").add({maschineId:mid,art,datum,punkte:ps.filter(p=>sel.includes(p.id)).map(p=>{const x=subOf(p.id);return !x||(x.oel&&x.fil)?p.name:x.oel?`${p.name} (nur Öl)`:`${p.name} (nur Filter)`}),text:$("#e_text").value.trim()});
+      await S.db.collection("eintraege").add({maschineId:mid,art,datum,punkte:ps.filter(p=>sel.includes(p.id)).map(p=>{const x=subOf(p.id),fr=frostOf(p.id);if(fr!=null)return `${p.name} (bis ${fmtFrost(fr)})`;return !x||(x.oel&&x.fil)?p.name:x.oel?`${p.name} (nur Öl)`:`${p.name} (nur Filter)`}),text:$("#e_text").value.trim()});
       const upd={};
       if(sel.length){upd.wartung=ps.map(p=>{if(!sel.includes(p.id))return {...p};const x=subOf(p.id)||{oel:true,fil:false};const f=x.fil?{filterZuletzt:datum}:{};
         if(!x.oel)return {...p,...f}; /* nur Filter: Öl-Termin bleibt */
+        const fr=frostOf(p.id);if(fr!=null)f.frost=fr;
         return nurZuletzt(p)?{...p,...f,zuletzt:ym(datum),naechste:"",intervall:""}:{...p,...f,zuletzt:datum,...(p.intervall?{naechste:addYM(datum,p.intervall)}:{})}});if(!Array.isArray(m.wartung)){upd.naechsteWartung="";upd.intervall=""}}
       if(art==="TÜV / HU"&&datum){upd.letzterTuev=datum.slice(0,7);upd.tuevBis=plusJ(upd.letzterTuev,tuevJahre(m.kategorie))}
       if(Object.keys(upd).length)await S.db.doc("maschinen/"+mid).update(upd);
@@ -1800,6 +1806,14 @@ async function migrate(){
         const auto=S.m.find(x=>x.id==="jd-6155r");
         if(auto&&!(auto.standort&&auto.standort.lat)&&!(auto.wartung||[]).length&&!S.e.some(e=>e.maschineId===auto.id))await S.db.doc("maschinen/jd-6155r").delete()}
       await ref.set({kbild_traktor3:true,kbild_traktor3b:true},{merge:true});
+    }
+    if(!done.kuehler){ /* Kühlerfrostschutz bei allen Maschinen mit Motor (nicht beim gezogenen Drescher) */
+      const b3=S.db.batch();let n=0;
+      for(const m of S.m){const g=gruppeOf(m);if(!["traktoren","autos","selbstfahrer"].includes(g))continue;
+        if(/gezogen/i.test(m.name||"")||m.id==="md-360")continue;
+        const ps=punkte(m).map(p=>({...p}));if(ps.some(istKuehl))continue;
+        b3.update(S.db.doc("maschinen/"+m.id),{...(Array.isArray(m.wartung)?{}:{naechsteWartung:"",intervall:""}),wartung:[...ps,{id:uid(),name:"Kühlerfrostschutz",modus:"zuletzt",intervall:"",naechste:"",zuletzt:"",frost:"",lager:false,teil:"",menge:""}]});n++}
+      b3.set(ref,{kuehler:true},{merge:true});await b3.commit();
     }
     if(done.dieselfilter)return;
     const b=S.db.batch();let n=0;
