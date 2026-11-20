@@ -1137,7 +1137,8 @@ function openSheet(html){if(!$("#layer").innerHTML)hPush("sh");
     new MutationObserver(()=>{sv.disabled=sub.disabled}).observe(sub,{attributes:true,attributeFilter:["disabled"]})}
   $("#scrim").addEventListener("click",e=>{if(e.target.id==="scrim")closeSheet()});
 }
-function closeSheet(still){if($("#layer").innerHTML)hBack("sh");if(!KVOLL||VIEW!=="karte")document.body.classList.remove("kvoll-an");$("#layer").innerHTML="";S.open=null;if(!still&&VIEW==="karte"&&!document.querySelector("#vKarte #map"))setTimeout(()=>{if(VIEW==="karte"&&!S.open)karte(null,false)},0)}
+function closeSheet(still){if(still!=="erzwingen"&&S.open&&S.open.type==="name"&&!meinName()){if(HPOP)hPush("sh");const f=$("#n_name");if(f){f.focus();$("#nferr").hidden=false;$("#nferr").textContent="Bitte zuerst deinen vollen Namen eintragen."}return}
+  if($("#layer").innerHTML)hBack("sh");if(!KVOLL||VIEW!=="karte")document.body.classList.remove("kvoll-an");$("#layer").innerHTML="";S.open=null;if(!still&&VIEW==="karte"&&!document.querySelector("#vKarte #map"))setTimeout(()=>{if(VIEW==="karte"&&!S.open)karte(null,false)},0)}
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&S.open)closeSheet()});
 
 function drawDetail(){
@@ -1504,7 +1505,7 @@ if(!configured){
   auth.onAuthStateChanged(user=>{
     unsub.forEach(f=>f());unsub=[];
     $("#login").hidden=!!user;$("#app").hidden=!user;
-    if(!user){S.m=[];S.e=[];S.l=[];S.ready=false;closeSheet();try{$("#l_name").value=meinName()}catch(_){};return}
+    if(!user){S.m=[];S.e=[];S.l=[];S.ready=false;closeSheet("erzwingen");try{$("#l_name").value=meinName()}catch(_){};return}
     if(meinName())meldeAn();else nameFragen();
     unsub.push(S.db.collection("angemeldet").onSnapshot(s=>{S.a=s.docs.map(d=>({id:d.id,...d.data()}));renderWer()},()=>{}));
     S.ready=false;render();
