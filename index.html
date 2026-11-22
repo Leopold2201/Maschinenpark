@@ -89,6 +89,7 @@ button:disabled{opacity:.5;cursor:default}
 .kbest.erl{opacity:.55}
 .kbest .kn{font-weight:600}
 .kbest .kp{color:var(--muted);font-size:.9rem}
+.kbest .ks{grid-column:1/-1;font-size:.8rem}
 .kbest .kb{grid-column:1/-1;font-size:.9rem;font-style:italic}
 .kbest .ka{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
 .kbest .ka a,.kbest .ka button{font-size:.85rem;padding:6px 10px;text-decoration:none}
@@ -1071,9 +1072,9 @@ function renderKohl(){
         const tel=String(b.telefon||"").replace(/[^\d+]/g,"");const erl=b.status==="abgeholt";
         const zeit=b.erstellt&&b.erstellt.toDate?b.erstellt.toDate().toLocaleString("de-DE",{day:"numeric",month:"numeric",hour:"2-digit",minute:"2-digit"}):"";
         return `<div class="kbest${erl?" erl":""}"><span class="kn">${b.uhrzeit?`<span class="pill none" style="margin-right:6px">${esc(b.uhrzeit)} Uhr</span>`:""}${esc(b.name)}</span><span>${fmtN(b.summe)} €</span>
-        <span class="kp">${esc(kListe(b))}</span><span class="kp">${zeit?"bestellt "+esc(zeit):""}${b.eingetragenVon?" · eingetragen von "+esc(b.eingetragenVon):""}</span>
+        <span class="kp" style="grid-column:1/-1">${esc(kListe(b))}</span>${zeit||b.eingetragenVon?`<span class="kp ks">${[zeit?"bestellt "+esc(zeit):"",b.eingetragenVon?"eingetragen von "+esc(b.eingetragenVon):""].filter(Boolean).join(" · ")}</span>`:""}
         ${b.bemerkung?`<span class="kb">„${esc(b.bemerkung)}“</span>`:""}
-        <div class="ka"><a class="btn" href="tel:${esc(tel)}">📞 ${esc(b.telefon)}</a>
+        <div class="ka">${tel?`<a class="btn" href="tel:${esc(tel)}">📞 ${esc(b.telefon)}</a>`:""}
         <button data-kstatus="${esc(b.id)}">${erl?"Doch nicht abgeholt":"✓ Abgeholt"}</button>
         <button class="danger" data-kdel="${esc(b.id)}">Löschen</button></div></div>`}).join("")}).join(""));
 }
@@ -1820,6 +1821,13 @@ async function migrate(){
     if(!done.kohl_findling){ /* telefonisch: Findling, Mo 23.11. 18 Uhr */
       if(iso(today())<="2026-11-23")await S.db.collection("kohlBestellungen").add({name:"Findling",telefon:"",bemerkung:"",abholung:"2026-11-23",uhrzeit:"18:00",posten:{weisskohl:3,rotkohl:2,rosenkohl:3},stueck:8,summe:12,status:"offen",erstellt:firebase.firestore.FieldValue.serverTimestamp(),eingetragenVon:"Leopold"});
       await ref.set({kohl_findling:true},{merge:true});
+    }
+    if(!done.kohl_findling_doppelt){ /* doppelt angelegte Bestellung wieder entfernen */
+      for(let i=0;i<80&&!S.kReady;i++)await new Promise(r=>setTimeout(r,100));
+      if(S.kReady){
+      const dd=S.k.filter(b=>b.name==="Findling"&&b.eingetragenVon==="Leopold"&&b.abholung==="2026-11-23").sort((a,b)=>a.id<b.id?-1:1);
+      for(const b of dd.slice(1))await S.db.doc("kohlBestellungen/"+b.id).delete();
+      await ref.set({kohl_findling_doppelt:true},{merge:true});}
     }
     if(done.dieselfilter)return;
     const b=S.db.batch();let n=0;
