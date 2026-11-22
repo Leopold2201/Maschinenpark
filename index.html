@@ -266,6 +266,7 @@ body.kvoll-an{overflow:hidden}
 .kohk{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}.kohl{margin:6px 0 8px;max-height:34vh;overflow:auto}.koh{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 0;border-top:1px solid var(--line);cursor:pointer}.koh b{display:block}.koh small{display:block;color:var(--muted)}.koh.erl b{text-decoration:line-through;opacity:.65}.koh button{flex:none;width:36px;height:36px;padding:0;border-radius:10px}
 .kpin.hz{width:28px;height:28px}.kpin.hz b{width:24px;height:24px;margin:0;border-radius:50%;transform:none;border-width:2px}.kpin.hz b i{transform:none}.kpin.hz .kpn{font-size:10px;padding:0 4px}.kweit .kpin.hz{transform:scale(.8)}
 .koi.rund{border-radius:50%!important}.kot{grid-column:1/-1;text-align:left!important;font-size:11px;font-weight:700;color:var(--muted);margin-top:2px}
+.fneg{display:flex;align-items:center;gap:6px}.fneg b{font-size:1.25rem}.fneg input{width:5.5em;text-align:right}.fneg i{font-style:normal;color:var(--muted)}
 .koic{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:4px;margin:4px 0 8px;max-height:180px;overflow:auto}.koic button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 2px;border-radius:10px;border:1px solid var(--line);background:var(--surface)}.koic small{font-size:9.5px;line-height:1.1;color:var(--muted);text-align:center}.koic button.on{border:2px solid var(--accent,#2f6b2a);background:#e7f1e4}
 .kdot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:middle;box-shadow:0 0 0 1px rgba(0,0,0,.35)}.kleg{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:.85rem;margin:6px 0}.kleg small{color:var(--muted)}.knutz{display:grid;gap:6px;margin:8px 0}.knutz button{text-align:left}
 .berseg{display:flex;max-width:420px;margin:0 auto 14px}.berseg[hidden]{display:none}.berseg button{flex:1}
@@ -1265,7 +1266,7 @@ function wRow(p){const fix=istAbschmieren(p)||istKuehl(p),z=nurZuletzt(p);return
   <input type="hidden" class="w_zul" value="${esc(p.zuletzt||"")}">
   <label class="f wteil" ${fix?"hidden":""}><span class="label">Filter / Teile-Nr.</span><input class="w_teil" value="${esc(p.teil||"")}" placeholder="${esc(teilHint(p.name))}"></label>
   <label class="f wmenge" ${ohneMenge(p)?"hidden":""}><span class="label">Füllmenge / Sorte</span><input class="w_menge" value="${esc(p.menge||"")}" placeholder="${esc(mengeHint(p.name))}"></label>
-  <label class="f wfrost" ${istKuehl(p)?"":"hidden"}><span class="label">Frostschutz bis (°C)</span><input class="w_frost" type="number" min="-60" max="0" step="1" inputmode="numeric" value="${esc(p.frost??"")}" placeholder="z. B. -25"></label>
+  <label class="f wfrost" ${istKuehl(p)?"":"hidden"}><span class="label">Frostschutz bis (°C)</span><span class="fneg"><b>−</b><input class="w_frost" type="text" inputmode="numeric" maxlength="3" value="${p.frost!==""&&p.frost!=null?Math.abs(p.frost):""}" placeholder="25"><i>°C</i></span></label>
   <label class="f wnip" ${istAbschmieren(p)?"":"hidden"}><span class="label">Anzahl Schmiernippel</span><input class="w_nip" type="number" min="0" max="999" inputmode="numeric" value="${esc(p.nippel??"")}" placeholder="z. B. 12"></label>
   <label class="f wlager check" ${fix?"hidden":""}><input type="checkbox" class="w_lager" ${p.lager?"checked":""} style="width:auto"><span>Auf Lager</span></label>
   <div class="f wow" ${istOel(p)?"":"hidden"}><label class="check wgem" ${ghTyp(p.name)?"":"hidden"} style="flex-basis:100%"><input type="checkbox" class="w_gem" ${p.gemeinsam?"checked":""} style="width:auto"><span>Gemeinsames Öl mit <span class="wgemn">${ghPartner(ghTyp(p.name))}</span></span></label><label class="check woel"><input type="checkbox" class="w_oel" ${p.oelMit?"checked":""} style="width:auto"><span>Öl gewechselt</span></label><label class="check"><input type="checkbox" class="w_fil" ${p.filterMit?"checked":""} style="width:auto"><span>Filter gewechselt</span></label></div>
@@ -1330,7 +1331,7 @@ function machineForm(m){
     /* Felder behalten, die das Formular nicht zeigt (z. B. Filter zuletzt), und Öl/Filter-Häkchen anwenden */
     const alt=Object.fromEntries(punkte(m).map(p=>[p.id,p]));
     body.wartung=body.wartung.map(p=>{const r=document.querySelector(`.wrow[data-wid="${p.id}"]`);let np={...(alt[p.id]||{}),...p};
-      if(r&&!r.querySelector(".wfrost").hidden){const n=r.querySelector(".w_frost").value.trim();np.frost=n===""?"":-Math.abs(parseInt(n,10)||0)}
+      if(r&&!r.querySelector(".wfrost").hidden){const n=r.querySelector(".w_frost").value.replace(/\D/g,"");np.frost=n===""?"":-Math.abs(parseInt(n,10)||0)}
       if(r&&!r.querySelector(".wnip").hidden){const n=r.querySelector(".w_nip").value.trim();np.nippel=n===""?"":Math.max(0,parseInt(n,10)||0)}
       if(r&&!r.querySelector(".wow").hidden){np.oelMit=r.querySelector(".w_oel").checked;np.filterMit=r.querySelector(".w_fil").checked;np.gemeinsam=!r.querySelector(".wgem").hidden&&r.querySelector(".w_gem").checked}
       return np});
@@ -1352,7 +1353,7 @@ function entryForm(mid,preset,from){
    <label class="f"><span class="label">Art</span><select id="e_art">${ARTEN.filter(a=>a!=="TÜV / HU"||hatTuev(m)).map(a=>`<option>${a}</option>`).join("")}</select></label>
    <label class="f"><span class="label">Monat</span><input id="e_datum" type="month" required value="${iso(new Date()).slice(0,7)}"></label>
    <fieldset class="f full checks" id="e_wbox"><legend class="label">Was wurde gemacht?</legend>
-     ${ps.length?ps.map(p=>`<label class="check"><input type="checkbox" value="${esc(p.id)}" class="e_p"><span>${esc(p.name)}${nurZuletzt(p)?` <small class="nb">· wird als „zuletzt gemacht“ gespeichert</small>`:p.intervall?` <small data-iv="${esc(p.intervall)}">· nächster Termin dann ${fmtMY(addYM(iso(new Date()),p.intervall))}</small>`:""}</span></label>${istKuehl(p)?`<label class="f efrost" data-fr="${esc(p.id)}" hidden style="margin:2px 0 8px 28px"><span class="label">Gemessen: Frostschutz bis (°C)</span><input type="number" class="e_frost" min="-60" max="0" step="1" inputmode="numeric" placeholder="z. B. -25" value="${esc(p.frost??"")}"></label>`:""}`).join(""):`<span class="note">Diese Maschine hat noch keine Wartungspunkte.</span>`}
+     ${ps.length?ps.map(p=>`<label class="check"><input type="checkbox" value="${esc(p.id)}" class="e_p"><span>${esc(p.name)}${nurZuletzt(p)?` <small class="nb">· wird als „zuletzt gemacht“ gespeichert</small>`:p.intervall?` <small data-iv="${esc(p.intervall)}">· nächster Termin dann ${fmtMY(addYM(iso(new Date()),p.intervall))}</small>`:""}</span></label>${istKuehl(p)?`<label class="f efrost" data-fr="${esc(p.id)}" hidden style="margin:2px 0 8px 28px"><span class="label">Gemessen: Frostschutz bis (°C)</span><span class="fneg"><b>−</b><input type="text" class="e_frost" inputmode="numeric" maxlength="3" placeholder="25" value="${p.frost!==""&&p.frost!=null?Math.abs(p.frost):""}"><i>°C</i></span></label>`:""}`).join(""):`<span class="note">Diese Maschine hat noch keine Wartungspunkte.</span>`}
    </fieldset>
    <p class="f full note" id="e_tbox" hidden>Die neue Plakette gilt automatisch ${tuevJahre(m.kategorie)} Jahre, also bis <b id="e_tuev"></b>.</p>
    <label class="f full"><span class="label" id="e_tlabel">Bemerkung</span><input id="e_text" placeholder="z. B. 15W-40, 18 l · Werkstatt Müller"></label>
@@ -1365,7 +1366,7 @@ function entryForm(mid,preset,from){
     const dt=$("#e_datum").value;document.querySelectorAll("#e_wbox small[data-iv]").forEach(s=>{if(dt)s.textContent=`· nächster Termin dann ${fmtMY(addYM(dt,s.dataset.iv))}`})};
   $("#e_art").addEventListener("change",sync);$("#e_datum").addEventListener("change",sync);sync();
   document.querySelectorAll(".e_p").forEach(c=>c.addEventListener("change",()=>{const b=document.querySelector(`.esub[data-sub="${c.value}"]`);if(b)b.hidden=!c.checked;const f=document.querySelector(`.efrost[data-fr="${c.value}"]`);if(f){f.hidden=!c.checked;if(c.checked)f.querySelector("input").focus()}}));
-  const frostOf=id=>{const f=document.querySelector(`.efrost[data-fr="${id}"] input`);if(!f||f.value.trim()==="")return null;return -Math.abs(parseInt(f.value,10)||0)};
+  const frostOf=id=>{const f=document.querySelector(`.efrost[data-fr="${id}"] input`);const n=f?f.value.replace(/\D/g,""):"";if(n==="")return null;return -Math.abs(parseInt(n,10))};
   const subOf=id=>{const b=document.querySelector(`.esub[data-sub="${id}"]`);return b?{oel:b.querySelector(".e_oel").checked,fil:b.querySelector(".e_fil").checked}:null};
   $("#ef").addEventListener("submit",async ev=>{
     ev.preventDefault();
