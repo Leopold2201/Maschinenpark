@@ -1071,7 +1071,7 @@ function renderKohl(){
         const tel=String(b.telefon||"").replace(/[^\d+]/g,"");const erl=b.status==="abgeholt";
         const zeit=b.erstellt&&b.erstellt.toDate?b.erstellt.toDate().toLocaleString("de-DE",{day:"numeric",month:"numeric",hour:"2-digit",minute:"2-digit"}):"";
         return `<div class="kbest${erl?" erl":""}"><span class="kn">${b.uhrzeit?`<span class="pill none" style="margin-right:6px">${esc(b.uhrzeit)} Uhr</span>`:""}${esc(b.name)}</span><span>${fmtN(b.summe)} €</span>
-        <span class="kp">${esc(kListe(b))}</span><span class="kp">${zeit?"bestellt "+esc(zeit):""}</span>
+        <span class="kp">${esc(kListe(b))}</span><span class="kp">${zeit?"bestellt "+esc(zeit):""}${b.eingetragenVon?" · eingetragen von "+esc(b.eingetragenVon):""}</span>
         ${b.bemerkung?`<span class="kb">„${esc(b.bemerkung)}“</span>`:""}
         <div class="ka"><a class="btn" href="tel:${esc(tel)}">📞 ${esc(b.telefon)}</a>
         <button data-kstatus="${esc(b.id)}">${erl?"Doch nicht abgeholt":"✓ Abgeholt"}</button>
@@ -1816,6 +1816,10 @@ async function migrate(){
         const ps=punkte(m).map(p=>({...p}));if(ps.some(istKuehl))continue;
         b3.update(S.db.doc("maschinen/"+m.id),{...(Array.isArray(m.wartung)?{}:{naechsteWartung:"",intervall:""}),wartung:[...ps,{id:uid(),name:"Kühlerfrostschutz",modus:"zuletzt",intervall:"",naechste:"",zuletzt:"",frost:"",lager:false,teil:"",menge:""}]});n++}
       b3.set(ref,{kuehler:true},{merge:true});await b3.commit();
+    }
+    if(!done.kohl_findling){ /* telefonisch: Findling, Mo 23.11. 18 Uhr */
+      if(iso(today())<="2026-11-23")await S.db.collection("kohlBestellungen").add({name:"Findling",telefon:"",bemerkung:"",abholung:"2026-11-23",uhrzeit:"18:00",posten:{weisskohl:3,rotkohl:2,rosenkohl:3},stueck:8,summe:12,status:"offen",erstellt:firebase.firestore.FieldValue.serverTimestamp(),eingetragenVon:"Leopold"});
+      await ref.set({kohl_findling:true},{merge:true});
     }
     if(done.dieselfilter)return;
     const b=S.db.batch();let n=0;
