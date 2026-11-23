@@ -25,6 +25,9 @@ service cloud.firestore {
     function admin() { return aktiv() && ich().get('admin', false) == true; }
     function voll() { return hofLogin() || admin(); }
     function liest(b) { return voll() || (aktiv() && ich().get('rechte', {}).get(b, 'aus') in ['lesen', 'schreiben']); }
+    // Felder: "aus" | "auftrag" (nur Felder mit Auftrag für einen selbst) | "lesen" | "schreiben"
+    function feldRecht() { return ich().get('rechte', {}).get('felder', 'auftrag'); }
+    function meinAuftrag(daten) { return daten.get('auftrag', {}).get('uid', '') == request.auth.uid; }
     function schreibt(b) { return voll() || (aktiv() && ich().get('rechte', {}).get(b, 'aus') == 'schreiben'); }
 
     // Maschinen, Wartung/Reparaturen, Unterlagen
@@ -36,7 +39,16 @@ service cloud.firestore {
     // Hofarbeiten
     match /hofarbeiten/{id} { allow read: if liest('hof'); allow write: if schreibt('hof'); }
     // Karte: Felder und Orte
-    match /felder/{id}      { allow read: if liest('karte'); allow write: if schreibt('karte'); }
+    match /felder/{id} {
+      allow read: if voll() || (aktiv() && liest('karte')
+        && (feldRecht() in ['lesen', 'schreiben'] || (feldRecht() == 'auftrag' && meinAuftrag(resource.data))));
+      allow create, delete: if voll() || (aktiv() && liest('karte') && feldRecht() == 'schreiben');
+      // Mitarbeiter mit Auftrag darf ihn nur als erledigt markieren (Auftrag entfernen).
+      allow update: if voll() || (aktiv() && liest('karte') && feldRecht() == 'schreiben')
+        || (aktiv() && meinAuftrag(resource.data)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['auftrag'])
+            && !('auftrag' in request.resource.data));
+    }
     match /orte/{id}        { allow read: if liest('karte'); allow write: if schreibt('karte'); }
 
     // Kohl: Kunden dürfen über die Bestellseite nur eine neue Bestellung ABSCHICKEN.
@@ -67,7 +79,7 @@ service cloud.firestore {
 
     // Benutzer
     match /nutzer/{uid} {
-      allow read: if voll() || (angemeldet() && request.auth.uid == uid);
+      allow read: if voll() || (angemeldet() && request.auth.uid == uid) || (aktiv() && feldRecht() == 'schreiben');
       // Neu mit Google angemeldet: legt sich selbst als "wartet" an, ohne Rechte.
       allow create: if voll() || (
         angemeldet() && request.auth.uid == uid

@@ -407,6 +407,9 @@ let VIEW="maschinen",LTAB="alle";
 /* ── Rechte: jeder Bereich kein Zugriff / ansehen / bearbeiten; Admin und alter Hof-Login dürfen alles ── */
 const BEREICHE=[["maschinen","Maschinen"],["karte","Karte"],["lager","Lager"],["hof","Hof"],["kohl","Kohl"]];
 let ICH={hof:false,admin:false,status:"",rechte:{},uid:"",name:""},HOFAUS=false;
+const feldRecht=()=>ICH.hof||ICH.admin?"schreiben":((ICH.rechte||{}).felder||"auftrag");
+const darfFelder=w=>w?feldRecht()==="schreiben":feldRecht()!=="aus";
+const darfBoden=()=>ICH.hof||ICH.admin||(ICH.rechte||{}).boden==="lesen";
 const darf=(b,w)=>{if(ICH.hof||ICH.admin)return true;const r=(ICH.rechte||{})[b]||"aus";return w?r==="schreiben":r!=="aus"};
 delete S.canWrite;
 Object.defineProperty(S,"canWrite",{get(){const t=S.open&&S.open.type;const b=["detail","eform","mform","reps"].includes(t)?"maschinen":t==="lform"?"lager":t==="hform"?"hof":VIEW;return darf(b,true)}});
@@ -765,8 +768,8 @@ async function karte(mid,setzen){
   const st=m&&m.standort&&m.standort.lat?m.standort:null;
   const kh=`<div class="sheet-head"><div><span class="label">${m?esc(m.name):"Hof"}</span><h2>${setzen?"Standort setzen":"Karte"}</h2></div><button class="ghost" data-act="${m?"back":"close"}">${m?"Zurück":"Schließen"}</button></div>`;
   const kb=`  ${setzen?`<p class="note" style="margin:0">Tippe auf die Karte, wo <b>${esc(m.name)}</b> steht – oder stell dich daneben und nimm <b>📍 Mein Standort</b>.</p>`:""}
-  ${setzen?"":`<div class="kfilter zu" id="kfilter"><button type="button" class="kfbtn" id="kfbtn"><i>👁</i>Anzeige</button>${[...KGRP,{id:"oldtimer",name:"Oldtimer"},{id:"felder",name:"Felder"},{id:"orte",name:"Orte"},{id:"hindernisse",name:"Hindernisse"}].map(g=>`<button type="button" class="chip${kAus().includes(g.id)?"":" on"}" data-kg="${g.id}">${g.name}</button>`).join("")}<button type="button" class="chip${lsGet("mp_boden")==="1"?" on":""}" id="k_boden">Bodenzahl</button></div>`}
-  <div class="kwrap${tab&&KVOLL?" voll":""}" id="kwrap"><div id="map" class="map"><div class="empty">Karte wird geladen…</div></div><div class="kctl">${setzen?"":`<button type="button" id="k_mess"><i>📏</i>Messen</button>`}${setzen||!S.canWrite?"":`<button type="button" id="k_ausw"><i>☑</i>Auswählen</button><button type="button" id="k_feldneu"><i>✏️</i>Einzeichnen</button><button type="button" id="k_ortneu"><i>📍</i>Ort</button><label id="k_imp"><i>📥</i>Import<input type="file" id="k_impf" accept=".zip,.geojson,.json" hidden></label>`}<button type="button" id="kvoll" aria-label="Vollbild">${tab&&KVOLL?"<i>✕</i><span>Schließen</span>":"<i>⛶</i><span>Vollbild</span>"}</button></div>${setzen?"":`<div id="kfeldv"></div>`}</div>
+  ${setzen?"":`<div class="kfilter zu" id="kfilter"><button type="button" class="kfbtn" id="kfbtn"><i>👁</i>Anzeige</button>${[...(darf("maschinen")?[...KGRP,{id:"oldtimer",name:"Oldtimer"}]:[]),...(darfFelder()?[{id:"felder",name:"Felder"}]:[]),{id:"orte",name:"Orte"},{id:"hindernisse",name:"Hindernisse"}].map(g=>`<button type="button" class="chip${kAus().includes(g.id)?"":" on"}" data-kg="${g.id}">${g.name}</button>`).join("")}${darfBoden()?`<button type="button" class="chip${lsGet("mp_boden")==="1"?" on":""}" id="k_boden">Bodenzahl</button>`:""}</div>`}
+  <div class="kwrap${tab&&KVOLL?" voll":""}" id="kwrap"><div id="map" class="map"><div class="empty">Karte wird geladen…</div></div><div class="kctl">${setzen?"":`<button type="button" id="k_mess"><i>📏</i>Messen</button>`}${setzen||!darfFelder(true)?"":`<button type="button" id="k_ausw"><i>☑</i>Auswählen</button><button type="button" id="k_feldneu"><i>✏️</i>Einzeichnen</button>`}${setzen||!S.canWrite?"":`<button type="button" id="k_ortneu"><i>📍</i>Ort</button>`}${setzen||!darfFelder(true)?"":`<label id="k_imp"><i>📥</i>Import<input type="file" id="k_impf" accept=".zip,.geojson,.json" hidden></label>`}<button type="button" id="kvoll" aria-label="Vollbild">${tab&&KVOLL?"<i>✕</i><span>Schließen</span>":"<i>⛶</i><span>Vollbild</span>"}</button></div>${setzen?"":`<div id="kfeldv"></div>`}</div>
   ${setzen?`<div class="fields"><label class="f full"><span class="label">Wo genau (optional)</span><input id="k_ort" maxlength="80" value="${esc(st?st.ort||"":"")}" placeholder="z. B. Maschinenhalle hinten links"></label></div>
   <p class="err" id="kerr" hidden></p><div class="row"><button type="button" id="k_gps">📍 Mein Standort</button>${st?`<button type="button" class="danger" id="k_del">Entfernen</button>`:""}<button type="button" class="primary" id="k_save" ${st?"":"disabled"}>Speichern</button></div>`
   :`<div id="kfeld"></div><div id="k_bleg"></div><div id="k_leg" class="kleg"></div><div id="k_auftr"></div><div class="row" style="justify-content:space-between"><small class="note" style="margin:0">${S.m.filter(x=>x.standort&&x.standort.lat).length} Maschinen · ${(S.f||[]).length} ${(S.f||[]).length===1?"Feld":"Felder"}${(S.f||[]).length?` (${fmtHa((S.f||[]).reduce((a,f)=>a+flaecheHa(f.punkte),0))})`:""} · Antippen öffnet</small>${S.canWrite?`<button type="button" class="linkbtn" id="k_hof">Ansicht als Hof merken</button>`:""}</div>`}`;
@@ -780,6 +783,7 @@ async function karte(mid,setzen){
   if(!$("#map")||!kAktiv())return;
   const K=G?kGoogle($("#map")):kLeaflet($("#map"));
   const neuLaden=()=>{try{KST={c:K.center(),z:K.zoom()}}catch(_){}karte(null,false)};
+  if(!setzen)window.__kNeu=()=>{if(!zeichne&&!auswahl)neuLaden()};
   /* Vollbild: Karte füllt den ganzen Bildschirm; Zeichnen-Leiste wandert mit */
   const voll=an=>{const w=$("#kwrap");if(!w)return;if(tab)KVOLL=an;if(an)hPush("kv");else hBack("kv");w.classList.toggle("voll",an);document.body.classList.toggle("kvoll-an",an);$("#kvoll").innerHTML=an?"<i>✕</i><span>Schließen</span>":"<i>⛶</i><span>Vollbild</span>";
     const kf=$("#kfilter");if(kf){if(an)w.append(kf);else w.before(kf)}
@@ -863,11 +867,14 @@ async function karte(mid,setzen){
   const auftragForm=ids=>{const el=kPanel(),fs=(S.f||[]).filter(f=>ids.includes(f.id)),ha=fs.reduce((q,f)=>q+flaecheHa(f.punkte),0);
     el.innerHTML=`<div class="kfinfo" style="display:block"><b>⚑ Auftrag für ${fs.length===1?esc(fs[0].name):fs.length+" Felder"}</b><small> · ${fmtHa(ha)}</small><div class="fields" style="margin-top:8px">
       <label class="f"><span class="label">Was ist zu tun? *</span><input id="ka_was" maxlength="60" list="ka_l" placeholder="z. B. Grubbern"><datalist id="ka_l">${["Pflügen","Grubbern","Scheibenegge","Säen","Düngen","Gülle fahren","Spritzen","Mähen","Wenden","Schwaden","Pressen","Dreschen","Mulchen","Walzen","Steine sammeln"].map(x=>`<option value="${x}">`).join("")}</datalist></label>
-      <label class="f"><span class="label">Wer (optional)</span><input id="ka_wer" maxlength="40" placeholder="z. B. Leopold"></label></div>
+      <label class="f"><span class="label">Wer soll es machen?</span><select id="ka_uid"><option value="">– niemand Bestimmtes –</option>${(S.u||[]).filter(u=>u.status==="aktiv").sort((x,y)=>String(x.name).localeCompare(String(y.name),"de")).map(u=>`<option value="${esc(u.id)}">${esc(u.name||u.email)}</option>`).join("")}<option value="_text">Jemand anderes (Name eintippen)</option></select></label>
+      <label class="f" id="ka_werl" hidden><span class="label">Name</span><input id="ka_wer" maxlength="40" placeholder="z. B. Lohnunternehmer"></label></div>
+      <p class="note" style="margin:0 0 8px">Wer ausgewählt ist, sieht diese Felder auf seiner Karte – auch wenn er sonst keine Felder sehen darf.</p>
       <div class="row"><button type="button" class="ghost" id="ka_abbr">Abbrechen</button><button type="button" class="primary" id="ka_ok">Markieren</button></div></div>`;
+    $("#ka_uid").addEventListener("change",e=>{$("#ka_werl").hidden=e.target.value!=="_text"});
     $("#ka_was").focus();$("#ka_abbr").addEventListener("click",()=>{auswahlEnde();el.innerHTML=""});
     $("#ka_ok").addEventListener("click",async ev=>{const was=$("#ka_was").value.trim();if(!was){$("#ka_was").focus();return}ev.target.disabled=true;
-      try{await auftragSpeichern(ids,{was,wer:$("#ka_wer").value.trim(),seit:iso(new Date()),von:meinName()});auswahlEnde();el.innerHTML="";toast(`${fs.length===1?"Feld":fs.length+" Felder"} markiert: ${was}`);auftragZahl()}
+      try{await auftragSpeichern(ids,(()=>{const v=$("#ka_uid").value,u=(S.u||[]).find(x=>x.id===v);return {was,wer:u?(u.name||u.email||""):v==="_text"?$("#ka_wer").value.trim():"",uid:u?u.id:"",seit:iso(new Date()),von:meinName()}})());auswahlEnde();el.innerHTML="";toast(`${fs.length===1?"Feld":fs.length+" Felder"} markiert: ${was}`);auftragZahl()}
       catch(_){toast("Konnte nicht gespeichert werden.");ev.target.disabled=false}})};
   const auswahlEnde=()=>{if(!auswahl)return;const ids=[...auswahl];auswahl=null;ids.forEach(id=>{const f=(S.f||[]).find(x=>x.id===id);if(f)fNeu(f)});const b=$("#k_ausw");if(b)b.disabled=false};
   const auswahlStart=()=>{if(zeichne)return;const set=new Set();auswahl=set;
@@ -905,8 +912,8 @@ async function karte(mid,setzen){
     el.innerHTML=`<div class="kfinfo"><div><b>${esc(f.name)}</b><small><span class="kdot" style="background:${nutzFarbe(f)}"></span>${esc(nutzName(f))}${f.tausch?` · <b style="display:inline">⇄ Tauschfläche</b>${f.tauschMit?" mit "+esc(f.tauschMit):""}`:""} · ${fmtHa(flaecheHa(f.punkte))}${f.kultur?" · "+esc(f.kultur):""}${f.notiz?" · "+esc(f.notiz):""}</small>
       ${a?`<div class="kfa-box">⚑ <b style="display:inline">${esc(a.was)}</b>${a.wer?" · "+esc(a.wer):""}<small> · seit ${esc(fmtD(a.seit))}${a.von?" von "+esc(a.von):""}</small></div>`:""}</div>
       <span class="kbtns"><a class="btn" href="https://www.google.com/maps/dir/?api=1&destination=${c.lat.toFixed(6)},${c.lng.toFixed(6)}" target="_blank" rel="noopener">🧭 Hinfahren</a>
-      ${S.canWrite?`${a?`<button type="button" class="primary" id="kf_erl">✓ Erledigt</button>`:`<button type="button" class="primary" id="kf_auf">⚑ Auftrag</button>`}<button type="button" id="kf_form">⬠ Größe ändern</button><button type="button" id="kf_edit">Bearbeiten</button><button type="button" class="danger" id="kf_del">Löschen</button>`:""}</span></div>`;
-    if(!S.canWrite)return;
+      ${darfFelder(true)?`${a?`<button type="button" class="primary" id="kf_erl">✓ Erledigt</button>`:`<button type="button" class="primary" id="kf_auf">⚑ Auftrag</button>`}<button type="button" id="kf_form">⬠ Größe ändern</button><button type="button" id="kf_edit">Bearbeiten</button><button type="button" class="danger" id="kf_del">Löschen</button>`:a&&a.uid&&a.uid===ICH.uid?`<button type="button" class="primary" id="kf_erl">✓ Erledigt</button>`:""}</span></div>`;
+    if(!darfFelder(true)){if($("#kf_erl"))$("#kf_erl").addEventListener("click",async()=>{try{await auftragSpeichern([f.id],null);toast(`„${f.name}“ erledigt.`);el.innerHTML="";auftragZahl()}catch(_){toast("Konnte nicht gespeichert werden.")}});return}
     if($("#kf_auf"))$("#kf_auf").addEventListener("click",()=>auftragForm([f.id]));
     if($("#kf_erl"))$("#kf_erl").addEventListener("click",async()=>{try{await auftragSpeichern([f.id],null);toast(`„${f.name}“ erledigt.`);feldInfo(f);auftragZahl()}catch(_){toast("Konnte nicht gespeichert werden.")}});
     $("#kf_edit").addEventListener("click",()=>feldForm(f));
@@ -1025,7 +1032,9 @@ function nutzerListe(){const el=$("#nliste");if(!el)return;
   const RT=[["aus","kein Zugriff"],["lesen","ansehen"],["schreiben","bearbeiten"]];
   el.innerHTML=(L.length?L.map(u=>{const ich=u.id===ICH.uid;
     return `<div class="nu ${esc(u.status||"")}" data-u="${esc(u.id)}"><div><b>${esc(u.name||"?")}</b>${ich?" (du)":""} ${u.admin?`<span class="pill ok">Admin</span>`:""}${u.status==="wartet"?`<span class="pill warn">wartet auf Freigabe</span>`:u.status==="gesperrt"?`<span class="pill none">gesperrt</span>`:""}<small>${esc(u.email||"")}</small></div>
-    ${u.admin?`<p class="note" style="margin:6px 0 0">Admins dürfen alles und verteilen die Rechte.</p>`:`<div class="nur">${BEREICHE.map(([b,n])=>{const r=(u.rechte||{})[b]||"aus";return `<label>${n}<select data-ur="${b}">${RT.map(([v,t])=>`<option value="${v}" ${v===r?"selected":""}>${t}</option>`).join("")}</select></label>`}).join("")}</div>`}
+    ${u.admin?`<p class="note" style="margin:6px 0 0">Admins dürfen alles und verteilen die Rechte.</p>`:`<div class="nur">${BEREICHE.map(([b,n])=>{const r=(u.rechte||{})[b]||"aus";return `<label>${n}<select data-ur="${b}">${RT.map(([v,t])=>`<option value="${v}" ${v===r?"selected":""}>${t}</option>`).join("")}</select></label>`}).join("")}
+      <label>Felder auf der Karte<select data-ur="felder">${[["aus","keine"],["auftrag","nur mit Auftrag für ihn"],["lesen","alle ansehen"],["schreiben","alle bearbeiten"]].map(([v,t])=>`<option value="${v}" ${v===((u.rechte||{}).felder||"auftrag")?"selected":""}>${t}</option>`).join("")}</select></label>
+      <label>Bodenpunkte<select data-ur="boden">${[["aus","nicht zeigen"],["lesen","zeigen"]].map(([v,t])=>`<option value="${v}" ${v===((u.rechte||{}).boden||"aus")?"selected":""}>${t}</option>`).join("")}</select></label></div>`}
     <div class="row" style="justify-content:flex-start;margin:10px 0 0;flex-wrap:wrap;gap:6px">
       ${u.status!=="aktiv"?`<button class="primary" data-ua="frei">Freigeben</button>`:ich?"":`<button data-ua="sperren">Sperren</button>`}
       ${ich?"":`<button data-ua="admin">${u.admin?"Admin entfernen":"Zum Admin machen"}</button><button class="danger" data-ua="del">Löschen</button>`}</div></div>`}).join("")
@@ -1042,7 +1051,7 @@ document.addEventListener("click",async e=>{
   const ref=S.db.doc("nutzer/"+id),a=b.dataset.ua;
   if((a==="del"||a==="admin"&&!u.admin)&&!b.dataset.sicher){b.dataset.sicher=1;b.textContent="Sicher? Nochmal tippen";return}
   try{
-    if(a==="frei")await ref.update({status:"aktiv",rechte:Object.keys(u.rechte||{}).length?u.rechte:Object.fromEntries(BEREICHE.map(([k])=>[k,"lesen"]))});
+    if(a==="frei")await ref.update({status:"aktiv",rechte:Object.keys(u.rechte||{}).length?u.rechte:{...Object.fromEntries(BEREICHE.map(([k])=>[k,"lesen"])),felder:"auftrag",boden:"aus"}});
     if(a==="sperren")await ref.update({status:"gesperrt"});
     if(a==="admin")await ref.update({admin:!u.admin});
     if(a==="del")await ref.delete();
@@ -1587,13 +1596,14 @@ if(!configured){
     }else{S.m=[];S.e=[]}
     if(darf("lager"))unsub.push(S.db.collection("lager").onSnapshot(s=>{S.l=s.docs.map(d=>({id:d.id,...d.data()}));if(f3){f3=0;done()}render()},fail));else S.l=[];
     if(darf("karte")){
-      unsub.push(S.db.collection("felder").onSnapshot(s=>{S.f=s.docs.map(d=>({id:d.id,...d.data()}))},()=>{}));
+      const fr=feldRecht(),fq=fr==="auftrag"?S.db.collection("felder").where("auftrag.uid","==",ICH.uid):fr==="aus"?null:S.db.collection("felder");
+      let ff=1;if(fq)unsub.push(fq.onSnapshot(s=>{S.f=s.docs.map(d=>({id:d.id,...d.data()}));const erst=ff;ff=0;if((fr==="auftrag"||erst)&&VIEW==="karte"&&!S.open&&!document.querySelector(".kfinfo")&&window.__kNeu)window.__kNeu()},()=>{}));else S.f=[];
       unsub.push(S.db.collection("orte").onSnapshot(s=>{S.o=s.docs.map(d=>({id:d.id,...d.data()}))},()=>{}));
     }else{S.f=[];S.o=[]}
     if(darf("hof"))unsub.push(S.db.collection("hofarbeiten").onSnapshot(s=>{S.h=s.docs.map(d=>({id:d.id,...d.data()}));S.hReady=true;render()},()=>{S.hReady=true;render()}));else{S.h=[];S.hReady=true}
     if(darf("kohl"))unsub.push(S.db.collection("kohlBestellungen").onSnapshot(s=>{S.k=s.docs.map(d=>({id:d.id,...d.data()}));S.kReady=true;render()},()=>{S.kReady=true;render()}));else{S.k=[];S.kReady=true}
-    if(ICH.admin||ICH.hof)unsub.push(S.db.collection("nutzer").onSnapshot(s=>{S.u=s.docs.map(d=>({id:d.id,...d.data()}));nutzerListe();nutzerHinweis()},()=>{}));
-    render();
+    if(ICH.admin||ICH.hof||darfFelder(true))unsub.push(S.db.collection("nutzer").onSnapshot(s=>{S.u=s.docs.map(d=>({id:d.id,...d.data()}));nutzerListe();nutzerHinweis()},()=>{}));
+    render();if(VIEW==="karte")karte(null,false);
     initPush(false);
   }
   auth.onAuthStateChanged(user=>{
