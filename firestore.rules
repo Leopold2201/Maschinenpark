@@ -37,7 +37,14 @@ service cloud.firestore {
     // Lager
     match /lager/{id}       { allow read: if liest('lager'); allow write: if schreibt('lager'); }
     // Hofarbeiten
-    match /hofarbeiten/{id} { allow read: if liest('hof'); allow write: if schreibt('hof'); }
+    // Hofarbeiten und Aufträge (auch an Maschinen). Wer einen Auftrag zugeteilt bekommt,
+    // sieht ihn auch ohne Hof-Recht und darf ihn abhaken.
+    match /hofarbeiten/{id} {
+      allow read: if liest('hof') || (aktiv() && resource.data.get('uid', '') == request.auth.uid);
+      allow create, delete: if schreibt('hof');
+      allow update: if schreibt('hof') || (aktiv() && resource.data.get('uid', '') == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'erledigtAm']));
+    }
     // Karte: Felder und Orte
     match /felder/{id} {
       allow read: if voll() || (aktiv() && liest('karte')
@@ -79,7 +86,7 @@ service cloud.firestore {
 
     // Benutzer
     match /nutzer/{uid} {
-      allow read: if voll() || (angemeldet() && request.auth.uid == uid) || (aktiv() && feldRecht() == 'schreiben');
+      allow read: if voll() || (angemeldet() && request.auth.uid == uid) || (aktiv() && (feldRecht() == 'schreiben' || schreibt('hof')));
       // Neu mit Google angemeldet: legt sich selbst als "wartet" an, ohne Rechte.
       allow create: if voll() || (
         angemeldet() && request.auth.uid == uid
