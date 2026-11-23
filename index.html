@@ -234,7 +234,8 @@ img{max-width:100%}[hidden]{display:none!important}
 .foot{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between;border-top:1px solid var(--line);padding-top:16px}
 .foot #conn{flex:1 1 100%;margin:0}
 .login{min-height:70vh;display:grid;place-items:center;padding-block:32px}
-.login form{width:100%;max-width:360px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px;display:grid;gap:14px}
+.lgbox{width:100%;max-width:360px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px;display:grid;gap:14px}.login form{display:grid;gap:14px;margin-top:12px}.gbtn{padding:13px;font-size:1.05rem}.hofz summary{cursor:pointer;color:var(--muted);font-size:.9rem}
+.nu{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px;background:var(--surface)}.nu.wartet{border-color:var(--warn);border-width:2px}.nu.gesperrt{opacity:.6}.nu small{display:block;color:var(--muted)}.nur{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;margin-top:8px}.nur label{display:grid;gap:2px;font-size:.8rem;color:var(--muted)}.nur select{font-size:.9rem;padding:6px}
 .login h2{font-size:1.6rem}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--band);color:var(--band-ink);padding:12px 16px;border-radius:10px;z-index:40;max-width:min(92vw,520px);box-shadow:0 6px 24px rgb(0 0 0 / .25)}
 .import{display:grid;gap:10px;justify-items:start}
@@ -289,15 +290,26 @@ body.kvoll-an{overflow:hidden}
 </div></header>
 
 <section class="login wrap" id="login" hidden>
-  <form id="lf">
-    <div><span class="label">Hof-Zugang</span><h2>Anmelden</h2></div>
-    <label class="f"><span class="label">Dein Name</span><input id="l_name" autocomplete="name" required maxlength="60" placeholder="Vor- und Nachname"></label>
+  <div class="lgbox">
+    <div><span class="label">Maschinenpark</span><h2>Anmelden</h2></div>
+    <button type="button" class="primary gbtn" id="gLogin">Mit Google anmelden</button>
+    <p class="err" id="gerr" hidden></p>
+    <p class="note" style="margin:0">Jeder meldet sich mit seinem eigenen Google-Konto an. Beim ersten Mal muss ein Admin dich freigeben. Du bleibst auf diesem Gerät angemeldet.</p>
+    <details class="hofz"><summary>Mit gemeinsamem Hof-Zugang</summary>
+    <form id="lf">
+        <label class="f"><span class="label">Dein Name</span><input id="l_name" autocomplete="name" required maxlength="60" placeholder="Vor- und Nachname"></label>
     <label class="f"><span class="label">E-Mail</span><input id="l_mail" type="email" autocomplete="username" required></label>
     <label class="f"><span class="label">Passwort</span><input id="l_pw" type="password" autocomplete="current-password" required></label>
     <p class="err" id="lerr" hidden></p>
     <button class="primary" type="submit">Anmelden</button>
-    <p class="note" style="margin:0">Ein gemeinsamer Login für die ganze Familie. Du bleibst auf diesem Gerät angemeldet.</p>
+    <p class="note" style="margin:0">Der alte gemeinsame Login. Wird abgeschaltet, sobald alle mit Google angemeldet sind.</p>
   </form>
+    </details>
+  </div>
+</section>
+<section class="login wrap" id="warte" hidden>
+  <div class="lgbox"><div><span class="label">Maschinenpark</span><h2 id="warteH">Warte auf Freigabe</h2></div><p id="warteTxt" style="margin:0"></p>
+  <button type="button" class="ghost" id="warteAus">Abmelden</button></div>
 </section>
 <main id="app" hidden><div class="wrap">
   <nav class="viewnav" role="tablist" aria-label="Bereich"><button role="tab" data-view="maschinen" class="on" aria-selected="true">Maschinen</button><button role="tab" data-view="karte" aria-selected="false">Karte</button><button role="tab" data-view="lager" aria-selected="false">Lager</button><button role="tab" data-view="hof" aria-selected="false">Hof</button><button role="tab" data-view="kohl" aria-selected="false">Kohl</button></nav>
@@ -351,7 +363,7 @@ body.kvoll-an{overflow:hidden}
     <div id="klist"></div>
     <p class="klink">Bestellseite für Kunden: <a id="kUrl" target="_blank" rel="noopener"></a> <button class="ghost" id="kCopy">Link kopieren</button></p>
   </section>
-  <div class="foot"><p class="note" id="conn">Verbinde…</p><button id="pushBtn" hidden>Benachrichtigungen einschalten</button><button class="linkbtn" id="logout">Abmelden</button></div>
+  <div class="foot"><p class="note" id="conn">Verbinde…</p><button id="pushBtn" hidden>Benachrichtigungen einschalten</button><button class="linkbtn" id="nutzerBtn" hidden>👥 Benutzer &amp; Rechte</button><button class="linkbtn" id="logout">Abmelden</button></div>
   <p class="signatur" id="ichName"></p>
   <p class="note wer" id="wer"></p>
 </div></main>
@@ -392,6 +404,15 @@ const S={m:[],e:[],l:[],k:[],h:[],a:[],f:[],hReady:false,kReady:false,ready:fals
 const LKATS=["Öle & Fette","Filter","Kugellager","Ersatzteile","Sonstiges"];
 const EINHEITEN=["Stk","l","kg","Kanister","Eimer","Packung"];
 let VIEW="maschinen",LTAB="alle";
+/* ── Rechte: jeder Bereich kein Zugriff / ansehen / bearbeiten; Admin und alter Hof-Login dürfen alles ── */
+const BEREICHE=[["maschinen","Maschinen"],["karte","Karte"],["lager","Lager"],["hof","Hof"],["kohl","Kohl"]];
+let ICH={hof:false,admin:false,status:"",rechte:{},uid:"",name:""},HOFAUS=false;
+const darf=(b,w)=>{if(ICH.hof||ICH.admin)return true;const r=(ICH.rechte||{})[b]||"aus";return w?r==="schreiben":r!=="aus"};
+delete S.canWrite;
+Object.defineProperty(S,"canWrite",{get(){const t=S.open&&S.open.type;const b=["detail","eform","mform","reps"].includes(t)?"maschinen":t==="lform"?"lager":t==="hform"?"hof":VIEW;return darf(b,true)}});
+function navRechte(){document.querySelectorAll(".viewnav [data-view]").forEach(b=>b.hidden=!darf(b.dataset.view));
+  if(!darf(VIEW)){const f=BEREICHE.find(([b])=>darf(b));VIEW=f?f[0]:"maschinen"}
+  const nb=$("#nutzerBtn");if(nb)nb.hidden=!(ICH.admin||ICH.hof)}
 /* Unterlagen-Sammlung (Betriebsanleitungen, Ersatzteillisten …) – Stand OTW-Webseite „Die Sammlung“ */
 const DOKU=[["Bautz",{"Betriebsanleitungen":["Schlepper AS 120"],"Ersatzteillisten":["Schlepper AS 120"]}],["LANZ", {"Betriebsanleitungen": ["Bulldog - Fibel", "Bulli D 1306 (02 / 1956)", "Bulldog D 1706 / 2206 (01 / 1952)", "Bulldog D 2016", "Bulldog D 2416", "Bulldog D 2816 (08 / 1956)", "Bulldog D 4016"], "Zusammenbau- und Betriebsanleitungen": ["Rollenlager Grasmäher LHR Nr. 35 / 40 / 45 (1934)", "Bauern-Schlepperbinder Nr. 50 links- und rechtsschneidend (1935)", "Ölbad-Schlepperbinder Nr. 60, 70, 80 links- und rechtsschneidend (05 / 1952)"], "Zusammenbau, Betriebsanleitungen und Ersatzteillisten": ["Bulldog - Anbaumähwerk 16, 17 und 22 PS (03 / 1954)", "Bulldog - Anbaumähwerk D 5506, D 1706, D 1906, D 2206, D 2216 (06 / 1955)", "Alldog D 1806 Kupplungsunabhängige Industrie-Hydraulik (07 / 1959)", "Gespannbinder LDB (05 / 1952)", "Heurechen LR 28 / 34 / 36 / 38 (05 / 1956)"], "Betriebsanleitungen und Ersatzteillisten": ["Gespannbinder LGB", "Zapfwellenbinder LSB", "Grasmäher Nr. 40", "Kartoffel - Anbauschleuderroder SR 1", "Kartoffel - Vorratsroder VR 1 L", "Kartoffel - Vorratsroder VR 1 Nachtrag zur BAL + ETL (12 / 1957)", "Kartoffel - Anhängeschleuderroder LK 20 / 30", "Miststreuer Ladus 3", "Rech - Wender NR 800", "Kombi - Lader SL 160", "Alldog - Industriehydraulik", "Alldog Maschinen- u. Geräteberater für den LANZ-Verkäufer"], "Ersatzteillisten": ["Bulldog D 2806 / D 3606 (12 / 1953)", "Bulldog D 1616 / 2016", "Bulldog D 4016", "Mähdrescher MD 18 S", "Mähdrescher MD 180 (05 / 1954)", "Mähdrescher MD 195 (10 / 1957)", "Mähdrescher MD 250 S", "Mähdrescher MD 250 S (Nachtrag zur ETL)", "Mähdrescher MD 260 S (10 / 1957)", "Kartoffelvorratsroder VR 1 (Vorläufige) (08 / 1954)", "Alldog - Geräteträger (Kopie)"], "Werkstatthandbücher": ["Werkstatthandbuch für Halb- und Volldiesel", "Reparaturanleitung für Glühkopf-Bulldogs"], "Preislisten": ["Netto-Preisliste Verschleißteile für Erntemaschinen (01 / 1953)", "Preisliste für Ersatzteile Erntemaschinen, Buch mit 451 Seiten (01 / 1953)"]}], ["John Deere-Lanz", {"Betriebsanleitungen": ["Schlepper T 100", "Schlepper T 200 2x", "Schlepper T 300 2x", "Schlepper T 500", "Schlepper T 700", "Schlepper 710", "Kundendienst-Scheckheft mit Übergabeschein T 300 / 500", "Kundendienst-Scheckheft mit Übergabeschein 310 / 510 / 710", "Anbaumähwerk 45 für 310 / 510 / 710 Schlepper 2x", "Frontlader 58 für T 300 / 500 Schlepper 2x", "Frontlader Typ 30 für 310 / 510 + Typ 40 für 710 Schlepper", "Mähdrescher MD 150 S", "Mähdrescher MD 18 S", "Mähdrescher MD 250 S", "Hochdruckhydraulik MD 18 S", "Heu / Kombilader SL 160", "Niederdruckpresse F 81", "Hochdruckpresse 214 B", "Schlegelfeldhäcksler FL 110 / 140", "Schlegelfeldhäcksler FL 140", "Kreisel-Heuwender AH 200", "Miststreuer Ladus 3", "Volldrehpflüge RB / RM", "Volldrehpflüge RM 100 RB 300 / 500 / 570 / 700 4x", "Volldrehpflüge RT 700 / 900", "Beetpflüge SB 530 / ST 570 / SF 900 / SF 990 schwere Ausführung", "Beetpflüge SB 530 / ST 570 / SF 900", "Beetpflüge SB / ST"], "Ersatzteillisten": ["Schlepper T 100", "Schlepper T 300", "Schlepper T 500", "Schlepper T 700", "Schlegelfeldhäcksler FL 140", "Mähdrescher MD 18 S", "Niederdruckpresse F 80"], "Betriebsanleitungen & Ersatzteillisten in einem Heft": ["Heukönig HK 205 D / 205 DA / 305 D / 305 DA", "Trommelzettwender ZW 70", "Heu - Vielfachgerät NR 800", "Hochdruck-Hydraulik MD 18 S für Verstellung von Schneidwerk und Haspel"], "Werkstatthandbücher": ["Schlepper T 300 / 500", "Schlepper 310 / 510 / 710"]}], ["John Deere", {"Betriebsanleitungen": ["Schlepper 1020","Schlepper 2020", "Schlepper 3010 / 3020", "Schlepper 3020", "Schlepper 3020 zweisprachig englisch / deutsch", "Schlepper 1830 / 2030 / 2130", "Schlepper 2030 2x", "Schlepper 3130 2x", "Schlepper 4230 HFWD", "Schlepper 1640 / 2040 / 2040 S / ab Fg.-Nr. 430 000", "Schlepper 2140 ab Fg.-Nr. 450 000", "Schlepper 3640", "Schlepper 4040 / 4240", "Schlepper 4240 S", "Schlepper 4450 / 4650 / 4850", "Zusatzsteuergeräte 1020 bis 3130 2x", "Hydrostatischer Frontantrieb HFWD 1020 bis 3130", "Frontlader 56 / 57", "Frontlader 58 / 59", "Anbaumähwerk 52 / 53", "Anbaumähwerk 55H / 55HW", "Trommelfeldhäcksler FH 25 2x", "Trommelfeldhäcksler 30", "Trommelfeldhäcksler 34", "Trommelfeldhäcksler 3800", "Mähdrescher 360", "Mähdrescher 330", "Mähdrescher 330 / 430", "Mähdrescher 430", "Mähdrescher 95", "Mähdrescher 930 / 940", "Mähdrescher 925 / 935 / 945", "Mähdrescher 965 / 965H / 975", "Maisdrusch-Ausrüstung für MD 930 / 970", "Montageanleitung für Korntank MD 965 / 975", "Zusatzausrüstungen für MD 360 bis 730", "Übergabeanleitung MD 330 / 430 / 530 / 630", "Niederdruckpresse C 410", "Hochdruckpresse 224", "Hochdruckpresse 346", "Ballenschleuder 30 3x", "Heckmähwerk 54", "Drillmaschine AB 100 / 200 / 300", "Drillmaschine AB 110 / 210 / 310"], "Ersatzteillisten": ["Schlepper 1120", "Schlepper 4040 S / 4240 S", "Schlepper 4560 / 4760 / 4960 USA", "Maishäcksler FH 25", "Feldhäcksler 3200 / 3400", "Niederdruckpresse F 80", "Hochdruckpresse CB 300 / 219 / 221", "Hochdruckpresse 214 / 224", "Hochdruckpressen 332 / 336 / 342 / 346 / 456 / 466", "Mähdrescher 360 / 330 / 430 / 530 / 630"], "Produkt-Informationen (für JD-Verkäufer)": ["Schlepper der 20er Serie", "Schlepper der 30er Serie", "Schlepper der 55er Serie", "Mähdrescher 330 bis 730", "Mähdrescher 925 bis 975", "Feldhäcksler", "Pressen", "PRO & CONTRA Wettbewerbsvergleiche Schlepper 20er / 30er Serie"], "Werkstatthandbücher": ["Schlepper T 300 / 500", "Schlepper 310 / 510 / 710", "Schlepper 1020 / 1120 / 2020", "Schlepper 2030", "Schlepper 3010 / 3020", "Schlepper 4230 (englisch)", "Schlepper 4240 S", "Hochdruckpressen 332 / 336 / 342 / 346 / 456 / 466"]}]];
 const DOKU_N=DOKU.reduce((a,[,h])=>a+Object.values(h).reduce((b,l)=>b+l.length,0),0);
@@ -798,10 +819,10 @@ async function karte(mid,setzen){
     const pinNeu=()=>{const mk=ORTE.find(m=>m.oid===o.id);if(mk)mk.html(oHtml(o))};
     const hs=(S.h||[]).filter(h=>h.ortId===o.id).sort((a,b)=>(a.status==="erledigt")-(b.status==="erledigt")||({dringend:0,normal:1,irgendwann:2}[a.prio]??1)-({dringend:0,normal:1,irgendwann:2}[b.prio]??1));
     const offen=hs.filter(h=>h.status!=="erledigt"),erl=hs.filter(h=>h.status==="erledigt").slice(0,3);
-    const zeile=h=>{const done=h.status==="erledigt",d=hTage(h.bis);return `<div class="koh${done?" erl":""}" data-koh="${esc(h.id)}"><span><b>${h.prio==="dringend"&&!done?"❗ ":""}${esc(h.titel)}</b><small>${esc([h.stelle??h.bereich,h.wer,done?(h.erledigtAm?"erledigt "+fmtD(h.erledigtAm):"erledigt"):h.bis?(d<0?"überfällig seit ":"bis ")+fmtD(h.bis):""].filter(Boolean).join(" · "))}</small></span>${S.canWrite?`<button type="button" data-kohok="${esc(h.id)}" aria-label="${done?"Wieder offen":"Erledigt"}">${done?"↺":"✓"}</button>`:""}</div>`};
+    const zeile=h=>{const done=h.status==="erledigt",d=hTage(h.bis);return `<div class="koh${done?" erl":""}" data-koh="${esc(h.id)}"><span><b>${h.prio==="dringend"&&!done?"❗ ":""}${esc(h.titel)}</b><small>${esc([h.stelle??h.bereich,h.wer,done?(h.erledigtAm?"erledigt "+fmtD(h.erledigtAm):"erledigt"):h.bis?(d<0?"überfällig seit ":"bis ")+fmtD(h.bis):""].filter(Boolean).join(" · "))}</small></span>${darf("hof",true)?`<button type="button" data-kohok="${esc(h.id)}" aria-label="${done?"Wieder offen":"Erledigt"}">${done?"↺":"✓"}</button>`:""}</div>`};
     el.innerHTML=`<div class="kfinfo" style="display:block"><div class="kohk"><div><b><span class="koi" style="background:${OICO[oKey(o)].c}">${oSvg(oKey(o),15)}</span> ${esc(o.name)}</b>${o.notiz?`<small>${esc(o.notiz)}</small>`:""}</div><button type="button" class="ghost" id="ko_x">✕</button></div>
       <div class="kohl">${offen.length?offen.map(zeile).join(""):`<small class="note">Keine offenen Arbeiten hier.</small>`}${erl.length?`<small class="note" style="display:block;margin-top:6px">Zuletzt erledigt</small>${erl.map(zeile).join("")}`:""}</div>
-      <span class="kbtns">${S.canWrite?`<button type="button" class="primary" id="ko_arb">+ Arbeit</button>`:""}<a class="btn" href="https://www.google.com/maps/dir/?api=1&destination=${(+o.lat).toFixed(6)},${(+o.lng).toFixed(6)}" target="_blank" rel="noopener">🧭 Hinfahren</a>
+      <span class="kbtns">${darf("hof",true)?`<button type="button" class="primary" id="ko_arb">+ Arbeit</button>`:""}<a class="btn" href="https://www.google.com/maps/dir/?api=1&destination=${(+o.lat).toFixed(6)},${(+o.lng).toFixed(6)}" target="_blank" rel="noopener">🧭 Hinfahren</a>
       ${S.canWrite?`<button type="button" id="ko_edit">Bearbeiten</button><button type="button" class="danger" id="ko_del">Löschen</button>`:""}</span></div>`;
     const wieder=()=>{pinNeu();ortInfo(o)};
     el.querySelectorAll("[data-koh]").forEach(z=>z.addEventListener("click",e=>{if(e.target.closest("[data-kohok]"))return;const h=S.h.find(x=>x.id===z.dataset.koh);if(h)hofForm(h,null,wieder)}));
@@ -984,7 +1005,7 @@ function nameFragen(){
   <div class="row"><button class="primary" type="submit">Speichern</button></div></form>`);
   $("#nf").addEventListener("submit",ev=>{ev.preventDefault();const nm=$("#n_name").value.trim().replace(/\s+/g," ");
     if(nm.length<3){$("#nferr").hidden=false;$("#nferr").textContent="Bitte deinen vollen Namen eintragen.";return}
-    lsSet("mp_name",nm);closeSheet();meldeAn()});
+    lsSet("mp_name",nm);if(!ICH.hof&&ICH.uid)S.db.doc("nutzer/"+ICH.uid).update({name:nm}).catch(()=>{});closeSheet();meldeAn()});
 }
 function renderWer(){
   const ich=meinName(),el=$("#ichName");if(!el)return;
@@ -994,6 +1015,38 @@ function renderWer(){
   $("#wer").innerHTML=liste.length?`<b>Angemeldet:</b> ${liste.map(a=>`${esc(a.name||"?")} <small>(${esc(a.geraet||"")}${a.id===me?", dieses Gerät":", zuletzt "+esc(tag(a.zuletzt))})</small>`).join(" · ")}`:"";
 }
 document.addEventListener("click",e=>{if(e.target.closest("#nameAendern"))nameFragen()});
+/* ── Benutzer & Rechte (nur Admin bzw. alter Hof-Login) ── */
+function nutzerHinweis(){const nb=$("#nutzerBtn");if(!nb)return;const w=(S.u||[]).filter(u=>u.status==="wartet").length;nb.textContent=w?`👥 Benutzer & Rechte (${w} wartet)`:"👥 Benutzer & Rechte"}
+function nutzerSheet(){S.open={type:"nutzer"};
+  openSheet(`<div class="sheet-head"><h2>Benutzer &amp; Rechte</h2><button class="ghost" data-act="close">Fertig</button></div>
+  <p class="note" style="margin-top:0">Jeder meldet sich mit seinem Google-Konto an und erscheint dann hier. Pro Bereich: <b>kein Zugriff</b>, <b>ansehen</b> oder <b>bearbeiten</b>.</p><div id="nliste"></div>`);nutzerListe()}
+function nutzerListe(){const el=$("#nliste");if(!el)return;
+  const L=(S.u||[]).slice().sort((a,b)=>(a.status==="wartet"?0:1)-(b.status==="wartet"?0:1)||(b.admin?1:0)-(a.admin?1:0)||String(a.name||"").localeCompare(String(b.name||""),"de"));
+  const RT=[["aus","kein Zugriff"],["lesen","ansehen"],["schreiben","bearbeiten"]];
+  el.innerHTML=(L.length?L.map(u=>{const ich=u.id===ICH.uid;
+    return `<div class="nu ${esc(u.status||"")}" data-u="${esc(u.id)}"><div><b>${esc(u.name||"?")}</b>${ich?" (du)":""} ${u.admin?`<span class="pill ok">Admin</span>`:""}${u.status==="wartet"?`<span class="pill warn">wartet auf Freigabe</span>`:u.status==="gesperrt"?`<span class="pill none">gesperrt</span>`:""}<small>${esc(u.email||"")}</small></div>
+    ${u.admin?`<p class="note" style="margin:6px 0 0">Admins dürfen alles und verteilen die Rechte.</p>`:`<div class="nur">${BEREICHE.map(([b,n])=>{const r=(u.rechte||{})[b]||"aus";return `<label>${n}<select data-ur="${b}">${RT.map(([v,t])=>`<option value="${v}" ${v===r?"selected":""}>${t}</option>`).join("")}</select></label>`}).join("")}</div>`}
+    <div class="row" style="justify-content:flex-start;margin:10px 0 0;flex-wrap:wrap;gap:6px">
+      ${u.status!=="aktiv"?`<button class="primary" data-ua="frei">Freigeben</button>`:ich?"":`<button data-ua="sperren">Sperren</button>`}
+      ${ich?"":`<button data-ua="admin">${u.admin?"Admin entfernen":"Zum Admin machen"}</button><button class="danger" data-ua="del">Löschen</button>`}</div></div>`}).join("")
+    :`<p class="note">Noch hat sich niemand mit Google angemeldet.</p>`)
+  +(ICH.admin?`<div class="nu"><b>Gemeinsamer Hof-Login</b><p class="note" style="margin:4px 0 8px">${HOFAUS?"Ist abgeschaltet – es geht nur noch mit persönlicher Google-Anmeldung.":"Ist noch aktiv. Wer ihn kennt, darf alles. Abschalten, sobald alle mit Google angemeldet sind."}</p><button data-hofl="${HOFAUS?"an":"aus"}" class="${HOFAUS?"":"danger"}">${HOFAUS?"Wieder einschalten":"Hof-Login abschalten"}</button></div>`:"")}
+document.addEventListener("click",e=>{if(e.target.closest("#nutzerBtn"))nutzerSheet()});
+document.addEventListener("change",async e=>{const s=e.target.closest("[data-ur]");if(!s)return;const id=s.closest("[data-u]").dataset.u;
+  try{await S.db.doc("nutzer/"+id).update({["rechte."+s.dataset.ur]:s.value});toast("Gespeichert.")}catch(_){toast("Konnte nicht gespeichert werden.")}});
+document.addEventListener("click",async e=>{
+  const h=e.target.closest("[data-hofl]");
+  if(h){const aus=h.dataset.hofl==="aus";if(aus&&!h.dataset.sicher){h.dataset.sicher=1;h.textContent="Sicher? Nochmal tippen";return}
+    try{await S.db.doc("meta/zugang").set({hofLoginAus:aus},{merge:true});toast(aus?"Hof-Login abgeschaltet.":"Hof-Login wieder an.")}catch(_){toast("Konnte nicht gespeichert werden.")}return}
+  const b=e.target.closest("[data-ua]");if(!b)return;const id=b.closest("[data-u]").dataset.u;const u=(S.u||[]).find(x=>x.id===id);if(!u)return;
+  const ref=S.db.doc("nutzer/"+id),a=b.dataset.ua;
+  if((a==="del"||a==="admin"&&!u.admin)&&!b.dataset.sicher){b.dataset.sicher=1;b.textContent="Sicher? Nochmal tippen";return}
+  try{
+    if(a==="frei")await ref.update({status:"aktiv",rechte:Object.keys(u.rechte||{}).length?u.rechte:Object.fromEntries(BEREICHE.map(([k])=>[k,"lesen"]))});
+    if(a==="sperren")await ref.update({status:"gesperrt"});
+    if(a==="admin")await ref.update({admin:!u.admin});
+    if(a==="del")await ref.delete();
+    toast("Gespeichert.")}catch(_){toast("Konnte nicht gespeichert werden.")}});
 document.addEventListener("change",async e=>{if(e.target.id!=="kfotoIn"||!e.target.files[0]||!S.open)return;const m=S.m.find(x=>x.id===S.open.id);if(!m)return;
   try{await kartenFoto(m,e.target.files[0]);toast("Foto für die Karte gespeichert.")}catch(_){toast("Foto konnte nicht verarbeitet werden.")}});
 /* ── Hofarbeiten: was am Hof zu tun ist (Dach, Futterbahn, Zäune …) ── */
@@ -1504,24 +1557,64 @@ if(!configured){
   });
   $("#logout").addEventListener("click",async()=>{try{await S.db.doc("angemeldet/"+geraetId()).delete()}catch(_){}auth.signOut()});
 
-  auth.onAuthStateChanged(user=>{
-    unsub.forEach(f=>f());unsub=[];
-    $("#login").hidden=!!user;$("#app").hidden=!user;
-    if(!user){S.m=[];S.e=[];S.l=[];S.ready=false;closeSheet("erzwingen");try{$("#l_name").value=meinName()}catch(_){};return}
-    if(meinName())meldeAn();else nameFragen();
+  /* Google-Anmeldung */
+  $("#gLogin").addEventListener("click",async()=>{const b=$("#gLogin");b.disabled=true;$("#gerr").hidden=true;
+    const pr=new firebase.auth.GoogleAuthProvider();pr.setCustomParameters({prompt:"select_account"});
+    try{await auth.signInWithPopup(pr)}catch(e){const c=e&&e.code||"";
+      if(/popup-blocked|operation-not-supported/.test(c)){try{await auth.signInWithRedirect(pr);return}catch(_){}}
+      if(!/popup-closed|cancelled-popup/.test(c)){$("#gerr").hidden=false;$("#gerr").textContent=c==="auth/unauthorized-domain"?"Google-Anmeldung ist für diese Seite noch nicht freigeschaltet.":c==="auth/operation-not-allowed"?"Google-Anmeldung ist noch nicht eingeschaltet.":"Anmelden hat nicht geklappt. Prüf die Internetverbindung."}}
+    b.disabled=false});
+  auth.getRedirectResult().catch(()=>{});
+  $("#warteAus").addEventListener("click",async()=>{try{await S.db.doc("angemeldet/"+geraetId()).delete()}catch(_){}auth.signOut()});
+  let unsubN=[];
+  const datenStop=()=>{unsub.forEach(f=>f());unsub=[]};
+  const warte=(h,t)=>{datenStop();$("#login").hidden=true;$("#app").hidden=true;$("#warte").hidden=false;$("#warteH").textContent=h;$("#warteTxt").textContent=t};
+  /* Daten laden – nur die Bereiche, die man sehen darf */
+  function start(){
+    datenStop();$("#warte").hidden=true;$("#login").hidden=true;$("#app").hidden=false;
+    navRechte();
+    if(ICH.hof){if(meinName())meldeAn();else nameFragen()}else meldeAn();
     unsub.push(S.db.collection("angemeldet").onSnapshot(s=>{S.a=s.docs.map(d=>({id:d.id,...d.data()}));renderWer()},()=>{}));
     S.ready=false;render();
-    let got=0;const done=()=>{if(++got===3){S.ready=true;$("#conn").textContent="Alle Änderungen werden sofort für die ganze Familie gespeichert.";migrate()}};
+    const need=(darf("maschinen")?2:0)+(darf("lager")?1:0);
+    let got=0;const fertig=()=>{S.ready=true;$("#conn").textContent="Alle Änderungen werden sofort für die ganze Familie gespeichert.";if(ICH.hof||ICH.admin)migrate()};
+    const done=()=>{if(++got===need)fertig()};if(!need)fertig();
     const fail=e=>{$("#conn").textContent=e&&e.code==="permission-denied"?"Dieser Login hat keinen Zugriff auf die Hof-Daten.":"Keine Verbindung. Änderungen werden gespeichert, sobald du wieder online bist."};
-    let f1=1,f2=1;
-    unsub.push(S.db.collection("maschinen").onSnapshot(s=>{S.m=s.docs.map(d=>({id:d.id,...d.data()}));if(f1){f1=0;done()}render()},fail));
-    let f3=1;unsub.push(S.db.collection("lager").onSnapshot(s=>{S.l=s.docs.map(d=>({id:d.id,...d.data()}));if(f3){f3=0;done()}render()},fail));
-    unsub.push(S.db.collection("felder").onSnapshot(s=>{S.f=s.docs.map(d=>({id:d.id,...d.data()}))},()=>{}));
-    unsub.push(S.db.collection("orte").onSnapshot(s=>{S.o=s.docs.map(d=>({id:d.id,...d.data()}))},()=>{}));
-    unsub.push(S.db.collection("hofarbeiten").onSnapshot(s=>{S.h=s.docs.map(d=>({id:d.id,...d.data()}));S.hReady=true;render()},()=>{S.hReady=true;render()}));
-    unsub.push(S.db.collection("kohlBestellungen").onSnapshot(s=>{S.k=s.docs.map(d=>({id:d.id,...d.data()}));S.kReady=true;render()},()=>{S.kReady=true;render()}));
-    unsub.push(S.db.collection("eintraege").onSnapshot(s=>{S.e=s.docs.map(d=>({id:d.id,...d.data()}));if(f2){f2=0;done()}render()},fail));
+    let f1=1,f2=1,f3=1;
+    if(darf("maschinen")){
+      unsub.push(S.db.collection("maschinen").onSnapshot(s=>{S.m=s.docs.map(d=>({id:d.id,...d.data()}));if(f1){f1=0;done()}render()},fail));
+      unsub.push(S.db.collection("eintraege").onSnapshot(s=>{S.e=s.docs.map(d=>({id:d.id,...d.data()}));if(f2){f2=0;done()}render()},fail));
+    }else{S.m=[];S.e=[]}
+    if(darf("lager"))unsub.push(S.db.collection("lager").onSnapshot(s=>{S.l=s.docs.map(d=>({id:d.id,...d.data()}));if(f3){f3=0;done()}render()},fail));else S.l=[];
+    if(darf("karte")){
+      unsub.push(S.db.collection("felder").onSnapshot(s=>{S.f=s.docs.map(d=>({id:d.id,...d.data()}))},()=>{}));
+      unsub.push(S.db.collection("orte").onSnapshot(s=>{S.o=s.docs.map(d=>({id:d.id,...d.data()}))},()=>{}));
+    }else{S.f=[];S.o=[]}
+    if(darf("hof"))unsub.push(S.db.collection("hofarbeiten").onSnapshot(s=>{S.h=s.docs.map(d=>({id:d.id,...d.data()}));S.hReady=true;render()},()=>{S.hReady=true;render()}));else{S.h=[];S.hReady=true}
+    if(darf("kohl"))unsub.push(S.db.collection("kohlBestellungen").onSnapshot(s=>{S.k=s.docs.map(d=>({id:d.id,...d.data()}));S.kReady=true;render()},()=>{S.kReady=true;render()}));else{S.k=[];S.kReady=true}
+    if(ICH.admin||ICH.hof)unsub.push(S.db.collection("nutzer").onSnapshot(s=>{S.u=s.docs.map(d=>({id:d.id,...d.data()}));nutzerListe();nutzerHinweis()},()=>{}));
+    render();
     initPush(false);
+  }
+  auth.onAuthStateChanged(user=>{
+    datenStop();unsubN.forEach(f=>f());unsubN=[];$("#warte").hidden=true;
+    if(!user){ICH={hof:false,admin:false,status:"",rechte:{},uid:"",name:""};$("#login").hidden=false;$("#app").hidden=true;
+      S.m=[];S.e=[];S.l=[];S.ready=false;closeSheet("erzwingen");try{$("#l_name").value=meinName()}catch(_){};return}
+    $("#login").hidden=true;
+    unsubN.push(S.db.doc("meta/zugang").onSnapshot(d=>{HOFAUS=!!(d.exists&&d.data().hofLoginAus);
+      if(ICH.hof&&HOFAUS)warte("Hof-Login abgeschaltet","Der gemeinsame Hof-Login ist abgeschaltet. Bitte melde dich ab und mit deinem Google-Konto wieder an.");nutzerListe()},()=>{}));
+    const google=user.providerData.some(p=>p.providerId==="google.com");
+    if(!google){ICH={hof:true,admin:false,status:"aktiv",rechte:{},uid:user.uid,name:meinName()};start();return}
+    const ref=S.db.doc("nutzer/"+user.uid);let neu=true,stand="";
+    unsubN.push(ref.onSnapshot(async snap=>{
+      if(!snap.exists){if(neu){neu=false;try{await ref.set({name:user.displayName||user.email||"",email:user.email||"",status:"wartet",angelegt:new Date().toISOString()})}
+        catch(e){warte("Kein Zugriff","Anmelden hat nicht geklappt ("+(e.code||"Fehler")+"). Bitte Leopold Bescheid geben.")}}return}
+      const d=snap.data();
+      ICH={hof:false,admin:!!d.admin,status:d.status||"",rechte:d.rechte||{},uid:user.uid,name:d.name||""};
+      if(d.status!=="aktiv"){stand="";warte(d.status==="gesperrt"?"Zugang gesperrt":"Warte auf Freigabe",d.status==="gesperrt"?"Dein Zugang zur App ist gesperrt.":`Hallo ${d.name||""}! Du bist mit ${d.email||"deinem Google-Konto"} angemeldet. Ein Admin muss dich noch freigeben – danach geht die App hier von selbst auf.`);return}
+      if(d.name&&meinName()!==d.name)lsSet("mp_name",d.name);
+      const neuStand=JSON.stringify([ICH.admin,ICH.rechte]);if(neuStand!==stand){stand=neuStand;start()}else{navRechte();render()}
+    },e=>warte("Kein Zugriff","Die App konnte deine Rechte nicht laden ("+(e.code||"Fehler")+"). Sind die neuen Firestore-Regeln eingetragen?")));
   });
 
   /* Einmalig: Dieselfilter als Wartungspunkt bei allen Maschinen mit Motor ergänzen */

@@ -1,17 +1,50 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Nur der gemeinsame Hof-Login darf lesen und schreiben.
-    // E-Mail unten durch eure Hof-E-Mail ersetzen (Anleitung, Schritt 4).
-    match /{document=**} {
-      allow read, write: if request.auth != null
-        && request.auth.token.email == "HOF-EMAIL-HIER-EINTRAGEN";
+    // ─────────────────────────────────────────────────────────────
+    // Wer darf was?
+    //  • Alter gemeinsamer Hof-Login: darf alles, bis ein Admin ihn abschaltet.
+    //    E-Mail unten durch eure Hof-E-Mail ersetzen (wie bisher).
+    //  • Persönliche Google-Anmeldung: Dokument in /nutzer/{uid} mit
+    //    status ("wartet" | "aktiv" | "gesperrt"), admin (true/false) und
+    //    rechte { maschinen, karte, lager, hof, kohl } = "aus" | "lesen" | "schreiben".
+    // ─────────────────────────────────────────────────────────────
+    function angemeldet() { return request.auth != null; }
+    function zugang() { return get(/databases/$(database)/documents/meta/zugang).data; }
+    function hofLogin() {
+      return angemeldet()
+        && request.auth.token.email == "HOF-EMAIL-HIER-EINTRAGEN"
+        && !(exists(/databases/$(database)/documents/meta/zugang) && zugang().get('hofLoginAus', false) == true);
     }
+    function ich() { return get(/databases/$(database)/documents/nutzer/$(request.auth.uid)).data; }
+    function aktiv() {
+      return angemeldet()
+        && exists(/databases/$(database)/documents/nutzer/$(request.auth.uid))
+        && ich().get('status', '') == 'aktiv';
+    }
+    function admin() { return aktiv() && ich().get('admin', false) == true; }
+    function voll() { return hofLogin() || admin(); }
+    function liest(b) { return voll() || (aktiv() && ich().get('rechte', {}).get(b, 'aus') in ['lesen', 'schreiben']); }
+    function schreibt(b) { return voll() || (aktiv() && ich().get('rechte', {}).get(b, 'aus') == 'schreiben'); }
 
-    // Kohl-Vorbestellungen: Jeder darf über kohl.html eine Bestellung ABSCHICKEN,
-    // aber niemand außer dem Hof-Login darf Bestellungen sehen, ändern oder löschen.
+    // Maschinen, Wartung/Reparaturen, Unterlagen
+    match /maschinen/{id}   { allow read: if liest('maschinen'); allow write: if schreibt('maschinen'); }
+    match /eintraege/{id}   { allow read: if liest('maschinen'); allow write: if schreibt('maschinen'); }
+    match /dateien/{id}     { allow read: if liest('maschinen'); allow write: if schreibt('maschinen'); }
+    // Lager
+    match /lager/{id}       { allow read: if liest('lager'); allow write: if schreibt('lager'); }
+    // Hofarbeiten
+    match /hofarbeiten/{id} { allow read: if liest('hof'); allow write: if schreibt('hof'); }
+    // Karte: Felder und Orte
+    match /felder/{id}      { allow read: if liest('karte'); allow write: if schreibt('karte'); }
+    match /orte/{id}        { allow read: if liest('karte'); allow write: if schreibt('karte'); }
+
+    // Kohl: Kunden dürfen über die Bestellseite nur eine neue Bestellung ABSCHICKEN.
     match /kohlBestellungen/{id} {
-      allow create: if request.resource.data.keys().hasOnly(['name','telefon','bemerkung','abholung','uhrzeit','posten','stueck','summe','status','erstellt'])
+      allow read: if liest('kohl');
+      allow update, delete: if schreibt('kohl');
+      allow create: if schreibt('kohl') || (
+        request.resource.data.keys().hasOnly(['name','telefon','bemerkung','abholung','uhrzeit','posten','stueck','summe','status','erstellt'])
         && request.resource.data.name is string && request.resource.data.name.size() >= 2 && request.resource.data.name.size() <= 80
         && request.resource.data.telefon is string && request.resource.data.telefon.size() >= 6 && request.resource.data.telefon.size() <= 30
         && request.resource.data.bemerkung is string && request.resource.data.bemerkung.size() <= 300
@@ -20,7 +53,32 @@ service cloud.firestore {
         && request.resource.data.posten is map
         && request.resource.data.stueck is int && request.resource.data.stueck >= 5 && request.resource.data.stueck <= 200
         && request.resource.data.status == 'offen'
-        && request.resource.data.erstellt == request.time;
+        && request.resource.data.erstellt == request.time);
+    }
+
+    // Wer ist angemeldet (Liste unten in der App) und Push-Geräte
+    match /angemeldet/{id}  { allow read, write: if voll() || aktiv(); }
+    match /geraete/{id}     { allow read: if voll(); allow write: if voll() || aktiv(); }
+
+    // Einstellungen
+    match /meta/zugang      { allow read: if angemeldet(); allow write: if admin(); }
+    match /meta/hof         { allow read: if voll() || aktiv(); allow write: if schreibt('karte'); }
+    match /meta/{id}        { allow read: if voll() || aktiv(); allow write: if voll(); }
+
+    // Benutzer
+    match /nutzer/{uid} {
+      allow read: if voll() || (angemeldet() && request.auth.uid == uid);
+      // Neu mit Google angemeldet: legt sich selbst als "wartet" an, ohne Rechte.
+      allow create: if voll() || (
+        angemeldet() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['name','email','status','angelegt'])
+        && request.resource.data.status == 'wartet'
+        && request.resource.data.email == request.auth.token.email);
+      // Eigenen Namen darf jeder ändern, alles andere nur Admin bzw. Hof-Login.
+      allow update: if voll() || (
+        angemeldet() && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name']));
+      allow delete: if voll();
     }
   }
 }
