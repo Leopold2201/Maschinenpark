@@ -770,13 +770,27 @@ async function baWert(ll){try{const r=await fetch(`${BS_URL}/1/query?geometry=${
 let BA_LEG=null;
 async function baLegende(){if(BA_LEG)return BA_LEG;try{const j=await (await fetch(`${BS_URL}/legend?f=json`)).json();const l=(j.layers||[]).find(x=>x.layerId===1);
   BA_LEG=Object.keys(BA_NAME).map(k=>{const e=(l&&l.legend||[]).find(x=>x.label===k);return e?{k,img:`data:${e.contentType||"image/png"};base64,${e.imageData}`}:{k}})}catch(_){BA_LEG=Object.keys(BA_NAME).map(k=>({k}))}return BA_LEG}
-/* Esri World Imagery Wayback: frühere Satellitenbilder */
-let WB_ITEMS=null,WB_MOD=null;
-async function wbMod(){if(!WB_MOD)WB_MOD=import("https://cdn.jsdelivr.net/npm/@esri/wayback-core@1.1.0/+esm");return WB_MOD}
-async function wbLokal(c){try{const m=await wbMod();if(!WB_ITEMS)WB_ITEMS=await m.getWaybackItems();
-  const lok=await m.getWaybackItemsWithLocalChanges({latitude:+c.lat,longitude:+c.lng},16);
-  const n=new Set(lok.map(x=>x.releaseNum));return WB_ITEMS.filter(x=>n.has(x.releaseNum))}catch(_){return []}}
-async function wbDatum(c,rel){try{const m=await wbMod();const d=await m.getMetadata({latitude:+c.lat,longitude:+c.lng},16,+rel);return d&&d.date?"Aufnahme "+new Date(d.date).toLocaleDateString("de-DE",{month:"long",year:"numeric"}):""}catch(_){return ""}}
+/* Esri World Imagery Wayback: frühere Satellitenbilder (ohne Zusatzbibliothek) */
+const WB_CFG="https://s3-us-west-2.amazonaws.com/config.maptiles.arcgis.com/waybackconfig.json";
+const WB_BASE="https://wayback.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/MapServer";
+let WB_ITEMS=null;const WB_LOK={};
+async function wbAlle(){if(WB_ITEMS)return WB_ITEMS;const j=await (await fetch(WB_CFG)).json();
+  WB_ITEMS=Object.entries(j).map(([k,v])=>({releaseNum:+k,itemURL:v.itemURL,metaUrl:v.metadataLayerUrl,releaseDateLabel:(String(v.itemTitle||"").match(/\d{4}-\d{2}-\d{2}/)||[""])[0]}))
+    .filter(x=>x.releaseDateLabel&&x.itemURL).sort((a,b)=>b.releaseDateLabel.localeCompare(a.releaseDateLabel));return WB_ITEMS}
+const proJahr=all=>{const seen=new Set();return all.filter(x=>{const y=x.releaseDateLabel.slice(0,4);if(seen.has(y))return false;seen.add(y);return true})};
+async function wbLokal(c){let all;try{all=await wbAlle()}catch(_){return []}
+  const z=16,n=2**z,x=Math.floor((+c.lng+180)/360*n),la=+c.lat*Math.PI/180,y=Math.floor((1-Math.log(Math.tan(la)+1/Math.cos(la))/Math.PI)/2*n),key=`${y}/${x}`;
+  if(WB_LOK[key])return WB_LOK[key];
+  try{const nums=new Set();let rel=all[0].releaseNum,g=0;
+    while(rel&&g++<80){const j=await (await fetch(`${WB_BASE}/tilemap/${rel}/${z}/${y}/${x}`)).json();if(!j||!j.data||!j.data[0])break;
+      const sel=j.select&&j.select[0]?+j.select[0]:rel;nums.add(sel);const k=all.findIndex(it=>it.releaseNum===sel);if(k<0)break;const nx=all[k+1];rel=nx?nx.releaseNum:0}
+    const lok=all.filter(it=>nums.has(it.releaseNum));if(lok.length>1)return WB_LOK[key]=lok}catch(_){}
+  return WB_LOK[key]=proJahr(all)}
+async function wbDatum(c,rel){try{const it=(WB_ITEMS||[]).find(x=>String(x.releaseNum)===String(rel));if(!it||!it.metaUrl)return"";
+  const d=.002,u=`${it.metaUrl.replace(/\/$/,"")}/identify?geometry=${c.lng},${c.lat}&geometryType=esriGeometryPoint&sr=4326&layers=all&tolerance=1&mapExtent=${c.lng-d},${c.lat-d},${+c.lng+d},${+c.lat+d}&imageDisplay=400,400,96&returnGeometry=false&f=json`;
+  const j=await (await fetch(u)).json();const a=(j.results||[]).map(r=>r.attributes||{}).find(a=>a.SRC_DATE2||a.SRC_DATE);if(!a)return"";
+  const v=a.SRC_DATE2||a.SRC_DATE;const dt=typeof v==="number"?new Date(v):/^\d{8}$/.test(String(v))?new Date(+String(v).slice(0,4),+String(v).slice(4,6)-1,1):new Date(v);
+  return isNaN(dt)?"":"Aufnahme "+dt.toLocaleDateString("de-DE",{month:"long",year:"numeric"})}catch(_){return""}}
 /* Historische Luftbilder Hessen 1952/53 (HVBG, Datenlizenz Deutschland – Zero) */
 const HDOP_URL="https://www.gds-srv.hessen.de/cgi-bin/hdop/hehdop.ows";
 function hdopTile(x,y,z){const n=Math.pow(2,z),lon=v=>v/n*360-180,lat=v=>{const r=Math.PI-2*Math.PI*v/n;return 180/Math.PI*Math.atan(.5*(Math.exp(r)-Math.exp(-r)))};
@@ -998,7 +1012,7 @@ async function karte(mid,setzen){
   const altOp=()=>+($("#k_altv")||{value:100}).value/100;
   const altZeigen=()=>{Object.entries(ALT_E).forEach(([k,e])=>{if(e&&(k!==altSel||!altAn))e.aus()});if(!altAn)return;const e=altEbene(altSel);if(e){e.an();e.op&&e.op(altOp())}
     const d=$("#k_altd");if(d){d.textContent="";if(altSel!=="hdop")wbDatum(K.center(),altSel).then(t=>{if(d&&altSel!==("hdop"))d.textContent=t||""})}};
-  const altListe=async()=>{const sel=$("#k_altj");if(!sel)return;const items=await wbLokal(K.center());
+  const altListe=async()=>{const sel=$("#k_altj");if(!sel)return;const d=$("#k_altd");if(d)d.textContent="Jahre werden geladen…";const items=await wbLokal(K.center());if(d)d.textContent=items.length?"":"Satellitenbilder gerade nicht erreichbar – nur 1952/53";
     sel.innerHTML=`<option value="hdop">1952/53</option>`+items.map(it=>`<option value="${it.releaseNum}">${esc(it.releaseDateLabel.slice(0,4))}${items.filter(x=>x.releaseDateLabel.slice(0,4)===it.releaseDateLabel.slice(0,4)).length>1?" ("+esc(it.releaseDateLabel.slice(5,7))+")":""}</option>`).join("");
     if(![...sel.options].some(o=>o.value===altSel))altSel="hdop";sel.value=altSel};
   const altSetzen=an=>{altAn=an;lsSet("mp_alt",an?"1":"0");const b=$("#k_alt");if(b)b.classList.toggle("on",an);const r=$("#k_altr");if(r)r.hidden=!an;if(an)altListe().then(altZeigen);altZeigen()};
