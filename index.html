@@ -792,7 +792,7 @@ async function wbDatum(c,rel){try{const it=(WB_ITEMS||[]).find(x=>String(x.relea
   const v=a.SRC_DATE2||a.SRC_DATE;const dt=typeof v==="number"?new Date(v):/^\d{8}$/.test(String(v))?new Date(+String(v).slice(0,4),+String(v).slice(4,6)-1,1):new Date(v);
   return isNaN(dt)?"":"Aufnahme "+dt.toLocaleDateString("de-DE",{month:"long",year:"numeric"})}catch(_){return""}}
 /* Historische Luftbilder Hessen 1952/53 (HVBG, Datenlizenz Deutschland – Zero) */
-const HDOP_URL="https://www.gds-srv.hessen.de/cgi-bin/hdop/hehdop.ows";
+const HDOP_URL="https://gds-srv.hessen.de/cgi-bin/hdop/he-hdop.ows";
 function hdopTile(x,y,z){const n=Math.pow(2,z),lon=v=>v/n*360-180,lat=v=>{const r=Math.PI-2*Math.PI*v/n;return 180/Math.PI*Math.atan(.5*(Math.exp(r)-Math.exp(-r)))};
   return `${HDOP_URL}?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=he_hdop&STYLES=&SRS=EPSG:4326&BBOX=${lon(x)},${lat(y+1)},${lon(x+1)},${lat(y)}&WIDTH=256&HEIGHT=256&FORMAT=image/jpeg`}
 function bsTile(x,y,z){const S=40075016.685578,o=S/2,t=S/Math.pow(2,z),x0=-o+x*t,y1=o-y*t,px=z>16?Math.max(32,256>>(z-16)):256;
