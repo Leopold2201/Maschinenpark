@@ -299,7 +299,7 @@ body.kvoll-an{overflow:hidden}
     <p class="note" style="margin:0">Jeder meldet sich mit seinem eigenen Google-Konto an. Beim ersten Mal muss ein Admin dich freigeben. Du bleibst auf diesem Gerät angemeldet.</p>
     <details class="hofz"><summary>Mit gemeinsamem Hof-Zugang</summary>
     <form id="lf">
-        <label class="f"><span class="label">Dein Name</span><input id="l_name" autocomplete="name" required maxlength="60" placeholder="Vor- und Nachname"></label>
+        <label class="f"><span class="label">Dein Name</span><input id="login_name" autocomplete="name" required maxlength="60" placeholder="Vor- und Nachname"></label>
     <label class="f"><span class="label">E-Mail</span><input id="l_mail" type="email" autocomplete="username" required></label>
     <label class="f"><span class="label">Passwort</span><input id="l_pw" type="password" autocomplete="current-password" required></label>
     <p class="err" id="lerr" hidden></p>
@@ -405,6 +405,9 @@ const S={m:[],e:[],l:[],k:[],h:[],a:[],f:[],hReady:false,kReady:false,ready:fals
 /* Lager */
 const LKATS=["Öle & Fette","Filter","Kugellager","Ersatzteile","Sonstiges"];
 const EINHEITEN=["Stk","l","kg","Kanister","Eimer","Packung"];
+/* Browser soll in App-Felder (z. B. „Name“ einer Maschine oder eines Ölfilters) nicht den eigenen Namen automatisch eintragen */
+(()=>{const aus=r=>r.querySelectorAll&&r.querySelectorAll("input:not([autocomplete]):not([type=hidden]):not([type=checkbox]):not([type=radio]):not([type=file]),textarea:not([autocomplete])").forEach(i=>i.setAttribute("autocomplete","off"));
+  aus(document);new MutationObserver(ms=>ms.forEach(m=>m.addedNodes.forEach(n=>{if(n.nodeType===1){if(n.matches&&n.matches("input,textarea")&&!n.hasAttribute("autocomplete"))n.setAttribute("autocomplete","off");aus(n)}}))).observe(document.documentElement,{childList:true,subtree:true})})();
 let VIEW="maschinen",LTAB="alle";
 /* ── Rechte: jeder Bereich kein Zugriff / ansehen / bearbeiten; Admin und alter Hof-Login dürfen alles ── */
 const BEREICHE=[["maschinen","Maschinen"],["karte","Karte"],["lager","Lager"],["hof","Hof"],["kohl","Kohl"]];
@@ -529,7 +532,11 @@ function renderLager(){
     $("#llist").innerHTML=html?`<p class="note" style="margin:0 0 10px">Unterlagen der OTW-Sammlung: Betriebsanleitungen, Ersatzteillisten, Werkstatthandbücher. Bereich antippen zum Aufklappen.</p>`+html:`<div class="empty">Nichts gefunden.</div>`;
     $("#addL").hidden=true;return}
   $("#addL").hidden=false;
-  $("#lnach").innerHTML=nach.length?`<div class="nachbox"><div class="nh"><b>Nachbestellen (${nach.length})</b><button class="linkbtn" data-act="lcopy">Liste kopieren</button></div><ul>${nach.map(a=>`<li><button class="linkbtn plain" data-ledit="${esc(a.id)}">${esc(a.name)}</button>${a.teil?` <small>${esc(a.teil)}</small>`:""} <span class="pill warn">${fmtN(a.menge)} ${esc(a.einheit||"Stk")}</span></li>`).join("")}</ul></div>`:"";
+  /* Fehler bis v140: Bezeichnung wurde mit dem Namen der angemeldeten Person überschrieben */
+  const PERS=new Set([meinName(),...(S.a||[]).map(x=>x.name),...(S.u||[]).map(x=>x.name)].filter(Boolean).map(x=>String(x).trim().toLowerCase()));
+  const kaputt=S.l.filter(a=>PERS.has(String(a.name||"").trim().toLowerCase()));
+  const kbox=kaputt.length?`<div class="nachbox" style="border-color:var(--bad)"><div class="nh"><b>⚠ ${kaputt.length} Artikel ohne richtige Bezeichnung</b></div><p class="note" style="margin:4px 0 6px">Durch einen Fehler in der App wurde beim Speichern statt der Bezeichnung dein Name eingetragen. Der Fehler ist behoben – bitte die Artikel kurz antippen und richtig benennen.</p><ul>${kaputt.map(a=>`<li><button class="linkbtn plain" data-ledit="${esc(a.id)}">${esc([a.kat,a.teil].filter(Boolean).join(" · ")||"Artikel")}${a.menge!=null?" – "+esc(fmtN(a.menge))+" "+esc(a.einheit||"Stk"):""}</button></li>`).join("")}</ul></div>`:"";
+  $("#lnach").innerHTML=kbox+(nach.length?`<div class="nachbox"><div class="nh"><b>Nachbestellen (${nach.length})</b><button class="linkbtn" data-act="lcopy">Liste kopieren</button></div><ul>${nach.map(a=>`<li><button class="linkbtn plain" data-ledit="${esc(a.id)}">${esc(a.name)}</button>${a.teil?` <small>${esc(a.teil)}</small>`:""} <span class="pill warn">${fmtN(a.menge)} ${esc(a.einheit||"Stk")}</span></li>`).join("")}</ul></div>`:"");
   const q=nrm($("#lq").value);
   const list=S.l.filter(a=>(LTAB==="alle"||(a.kat||"Sonstiges")===LTAB)&&(!q||nrm([a.name,a.teil,a.ort,mNamen(a)].join(" ")).includes(q)))
     .sort((a,b)=>String(a.name).localeCompare(b.name,"de"));
@@ -1601,10 +1608,10 @@ if(!configured){
   try{S.db.settings({experimentalForceLongPolling:true,merge:true})}catch(_){}
   S.db.enablePersistence({synchronizeTabs:true}).catch(()=>{});
 
-  try{$("#l_name").value=meinName()}catch(_){}
+  try{$("#login_name").value=meinName()}catch(_){}
   $("#lf").addEventListener("submit",async ev=>{
     ev.preventDefault();const btn=ev.submitter;btn.disabled=true;$("#lerr").hidden=true;
-    const nm=$("#l_name").value.trim().replace(/\s+/g," ");if(nm.length<3){$("#lerr").hidden=false;$("#lerr").textContent="Bitte deinen vollen Namen eintragen.";btn.disabled=false;return}
+    const nm=$("#login_name").value.trim().replace(/\s+/g," ");if(nm.length<3){$("#lerr").hidden=false;$("#lerr").textContent="Bitte deinen vollen Namen eintragen.";btn.disabled=false;return}
     lsSet("mp_name",nm);
     try{await auth.signInWithEmailAndPassword($("#l_mail").value.trim(),$("#l_pw").value)}
     catch(e){$("#lerr").hidden=false;$("#lerr").textContent=/invalid|wrong|user-not-found/.test(e.code)?"E-Mail oder Passwort stimmt nicht.":e.code==="auth/too-many-requests"?"Zu viele Versuche. Warte ein paar Minuten.":"Anmelden hat nicht geklappt. Prüf die Internetverbindung."}
@@ -1656,7 +1663,7 @@ if(!configured){
   auth.onAuthStateChanged(user=>{
     datenStop();unsubN.forEach(f=>f());unsubN=[];$("#warte").hidden=true;
     if(!user){ICH={hof:false,admin:false,status:"",rechte:{},uid:"",name:""};$("#login").hidden=false;$("#app").hidden=true;
-      S.m=[];S.e=[];S.l=[];S.ready=false;closeSheet("erzwingen");try{$("#l_name").value=meinName()}catch(_){};return}
+      S.m=[];S.e=[];S.l=[];S.ready=false;closeSheet("erzwingen");try{$("#login_name").value=meinName()}catch(_){};return}
     $("#login").hidden=true;
     unsubN.push(S.db.doc("meta/zugang").onSnapshot(d=>{HOFAUS=!!(d.exists&&d.data().hofLoginAus);
       if(ICH.hof&&HOFAUS)warte("Hof-Login abgeschaltet","Der gemeinsame Hof-Login ist abgeschaltet. Bitte melde dich ab und mit deinem Google-Konto wieder an.");nutzerListe()},()=>{}));
