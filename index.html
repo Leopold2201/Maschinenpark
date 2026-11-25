@@ -791,6 +791,10 @@ async function wbDatum(c,rel){try{const it=(WB_ITEMS||[]).find(x=>String(x.relea
   const j=await (await fetch(u)).json();const a=(j.results||[]).map(r=>r.attributes||{}).find(a=>a.SRC_DATE2||a.SRC_DATE);if(!a)return"";
   const v=a.SRC_DATE2||a.SRC_DATE;const dt=typeof v==="number"?new Date(v):/^\d{8}$/.test(String(v))?new Date(+String(v).slice(0,4),+String(v).slice(4,6)-1,1):new Date(v);
   return isNaN(dt)?"":"Aufnahme "+dt.toLocaleDateString("de-DE",{month:"long",year:"numeric"})}catch(_){return""}}
+const WB_AUF={};
+async function wbAufnahme(c,rel){const k=rel+"@"+(+c.lat).toFixed(3)+","+(+c.lng).toFixed(3);if(k in WB_AUF)return WB_AUF[k];
+  const t=await wbDatum(c,rel);const m=t.match(/Aufnahme (\S+) (\d{4})/);const MON=["januar","februar","märz","april","mai","juni","juli","august","september","oktober","november","dezember"];
+  return WB_AUF[k]=m?{jahr:+m[2],mon:MON.indexOf(m[1].toLowerCase())+1,text:m[1]+" "+m[2]}:null}
 /* Historische Luftbilder Hessen 1952/53 (HVBG, Datenlizenz Deutschland – Zero) */
 const HDOP_URL="https://gds-srv.hessen.de/cgi-bin/hdop/he-hdop.ows";
 function hdopTile(x,y,z){const n=Math.pow(2,z),lon=v=>v/n*360-180,lat=v=>{const r=Math.PI-2*Math.PI*v/n;return 180/Math.PI*Math.atan(.5*(Math.exp(r)-Math.exp(-r)))};
@@ -1011,10 +1015,16 @@ async function karte(mid,setzen){
     const tpl=it.itemURL;return ALT_E[k]=K.ebene((x,y,z)=>tpl.replace("{level}",z).replace("{row}",y).replace("{col}",x),1,{min:11,unten:true,att:"Wayback © Esri, Maxar"})};
   const altOp=()=>+($("#k_altv")||{value:100}).value/100;
   const altZeigen=()=>{Object.entries(ALT_E).forEach(([k,e])=>{if(e&&(k!==altSel||!altAn))e.aus()});if(!altAn)return;const e=altEbene(altSel);if(e){e.an();e.op&&e.op(altOp())}
-    const d=$("#k_altd");if(d){d.textContent="";if(altSel!=="hdop")wbDatum(K.center(),altSel).then(t=>{if(d&&altSel!==("hdop"))d.textContent=t||""})}};
-  const altListe=async()=>{const sel=$("#k_altj");if(!sel)return;const d=$("#k_altd");if(d)d.textContent="Jahre werden geladen…";const items=await wbLokal(K.center());if(d)d.textContent=items.length?"":"Satellitenbilder gerade nicht erreichbar – nur 1952/53";
-    sel.innerHTML=`<option value="hdop">1952/53</option>`+items.map(it=>`<option value="${it.releaseNum}">${esc(it.releaseDateLabel.slice(0,4))}${items.filter(x=>x.releaseDateLabel.slice(0,4)===it.releaseDateLabel.slice(0,4)).length>1?" ("+esc(it.releaseDateLabel.slice(5,7))+")":""}</option>`).join("");
-    if(![...sel.options].some(o=>o.value===altSel))altSel="hdop";sel.value=altSel};
+    const d=$("#k_altd");if(d&&!/geladen|erreichbar/.test(d.textContent))d.textContent=altSel==="hdop"?"Luftbild Hessen 1952/53":""};
+  const altListe=async()=>{const sel=$("#k_altj");if(!sel)return;const d=$("#k_altd");if(d)d.textContent="Jahre werden geladen…";const c=K.center();const items=await wbLokal(c);
+    if(!items.length){if(d)d.textContent="Satellitenbilder gerade nicht erreichbar – nur 1952/53";return}
+    /* nach echtem Aufnahmedatum beschriften, gleiche Aufnahmen nur einmal */
+    const auf=await Promise.all(items.map(it=>wbAufnahme(c,it.releaseNum)));
+    const seen=new Set(),L=[];items.forEach((it,k)=>{const a=auf[k];const key=a?a.jahr+"-"+a.mon:"r"+it.releaseNum;if(seen.has(key))return;seen.add(key);L.push({it,a})});
+    L.sort((x,y)=>(y.a?y.a.jahr*100+y.a.mon:+y.it.releaseDateLabel.slice(0,4)*100)-(x.a?x.a.jahr*100+x.a.mon:+x.it.releaseDateLabel.slice(0,4)*100));
+    if(d)d.textContent="";
+    sel.innerHTML=L.map(({it,a})=>`<option value="${it.releaseNum}">${a?esc(a.text):"Stand "+esc(it.releaseDateLabel.slice(0,4))}</option>`).join("")+`<option value="hdop">1952/53</option>`;
+    if(![...sel.options].some(o=>o.value===altSel))altSel=L.length?String(L[0].it.releaseNum):"hdop";sel.value=altSel};
   const altSetzen=an=>{altAn=an;lsSet("mp_alt",an?"1":"0");const b=$("#k_alt");if(b)b.classList.toggle("on",an);const r=$("#k_altr");if(r)r.hidden=!an;if(an)altListe().then(altZeigen);altZeigen()};
   const artSetzen=an=>{artAn=an;lsSet("mp_bodenart",an?"1":"0");const b=$("#k_bart");if(b)b.classList.toggle("on",an);if(BA)an?BA.an():BA.aus();
     if(an&&bodenAn)bodenSetzen(false);
