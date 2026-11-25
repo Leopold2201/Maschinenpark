@@ -770,36 +770,6 @@ async function baWert(ll){try{const r=await fetch(`${BS_URL}/1/query?geometry=${
 let BA_LEG=null;
 async function baLegende(){if(BA_LEG)return BA_LEG;try{const j=await (await fetch(`${BS_URL}/legend?f=json`)).json();const l=(j.layers||[]).find(x=>x.layerId===1);
   BA_LEG=Object.keys(BA_NAME).map(k=>{const e=(l&&l.legend||[]).find(x=>x.label===k);return e?{k,img:`data:${e.contentType||"image/png"};base64,${e.imageData}`}:{k}})}catch(_){BA_LEG=Object.keys(BA_NAME).map(k=>({k}))}return BA_LEG}
-/* Esri World Imagery Wayback: frühere Satellitenbilder (ohne Zusatzbibliothek) */
-const WB_CFG="https://s3-us-west-2.amazonaws.com/config.maptiles.arcgis.com/waybackconfig.json";
-const WB_BASE="https://wayback.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/MapServer";
-let WB_ITEMS=null;const WB_LOK={};
-async function wbAlle(){if(WB_ITEMS)return WB_ITEMS;const j=await (await fetch(WB_CFG)).json();
-  WB_ITEMS=Object.entries(j).map(([k,v])=>({releaseNum:+k,itemURL:v.itemURL,metaUrl:v.metadataLayerUrl,releaseDateLabel:(String(v.itemTitle||"").match(/\d{4}-\d{2}-\d{2}/)||[""])[0]}))
-    .filter(x=>x.releaseDateLabel&&x.itemURL).sort((a,b)=>b.releaseDateLabel.localeCompare(a.releaseDateLabel));return WB_ITEMS}
-const proJahr=all=>{const seen=new Set();return all.filter(x=>{const y=x.releaseDateLabel.slice(0,4);if(seen.has(y))return false;seen.add(y);return true})};
-async function wbLokal(c){let all;try{all=await wbAlle()}catch(_){return []}
-  const z=16,n=2**z,x=Math.floor((+c.lng+180)/360*n),la=+c.lat*Math.PI/180,y=Math.floor((1-Math.log(Math.tan(la)+1/Math.cos(la))/Math.PI)/2*n),key=`${y}/${x}`;
-  if(WB_LOK[key])return WB_LOK[key];
-  try{const nums=new Set();let rel=all[0].releaseNum,g=0;
-    while(rel&&g++<80){const j=await (await fetch(`${WB_BASE}/tilemap/${rel}/${z}/${y}/${x}`)).json();if(!j||!j.data||!j.data[0])break;
-      const sel=j.select&&j.select[0]?+j.select[0]:rel;nums.add(sel);const k=all.findIndex(it=>it.releaseNum===sel);if(k<0)break;const nx=all[k+1];rel=nx?nx.releaseNum:0}
-    const lok=all.filter(it=>nums.has(it.releaseNum));if(lok.length>1)return WB_LOK[key]=lok}catch(_){}
-  return WB_LOK[key]=proJahr(all)}
-async function wbDatumRoh(c,rel){try{const it=(WB_ITEMS||[]).find(x=>String(x.releaseNum)===String(rel));if(!it||!it.metaUrl)return null;
-  const d=.002,u=`${it.metaUrl.replace(/\/$/,"")}/identify?geometry=${c.lng},${c.lat}&geometryType=esriGeometryPoint&sr=4326&layers=all&tolerance=1&mapExtent=${c.lng-d},${c.lat-d},${+c.lng+d},${+c.lat+d}&imageDisplay=400,400,96&returnGeometry=false&f=json`;
-  const j=await (await fetch(u)).json();
-  /* mehrere Ebenen (grob bis fein) – die mit der feinsten Auflösung ist das Bild, das man beim Reinzoomen sieht */
-  const kand=(j.results||[]).map(r=>r.attributes||{}).filter(a=>a.SRC_DATE2||a.SRC_DATE);if(!kand.length)return null;
-  const res=a=>{const v=parseFloat(a.SRC_RES??a.Resolution??a.RESOLUTION);return isNaN(v)?999:v};
-  const a=kand.sort((x,y)=>res(x)-res(y))[0];
-  const v=a.SRC_DATE2||a.SRC_DATE;const dt=typeof v==="number"?new Date(v):/^\d{8}$/.test(String(v))?new Date(+String(v).slice(0,4),+String(v).slice(4,6)-1,1):new Date(v);
-  return isNaN(dt)?null:dt}catch(_){return null}}
-async function wbDatum(c,rel){const dt=await wbDatumRoh(c,rel);return dt?"Aufnahme "+dt.toLocaleDateString("de-DE",{month:"long",year:"numeric"}):""}
-const WB_AUF={};
-async function wbAufnahme(c,rel){const k=rel+"@"+(+c.lat).toFixed(3)+","+(+c.lng).toFixed(3);if(k in WB_AUF)return WB_AUF[k];
-  const dt=await wbDatumRoh(c,rel);
-  return WB_AUF[k]=dt?{jahr:dt.getFullYear(),mon:dt.getMonth()+1,tag:dt.toISOString().slice(0,10),text:dt.toLocaleDateString("de-DE",{month:"long",year:"numeric"})}:null}
 /* Historische Luftbilder Hessen 1952/53 (HVBG, Datenlizenz Deutschland – Zero) */
 const HDOP_URL="https://gds-srv.hessen.de/cgi-bin/hdop/he-hdop.ows";
 function hdopTile(x,y,z){const n=Math.pow(2,z),lon=v=>v/n*360-180,lat=v=>{const r=Math.PI-2*Math.PI*v/n;return 180/Math.PI*Math.atan(.5*(Math.exp(r)-Math.exp(-r)))};
@@ -815,8 +785,8 @@ async function karte(mid,setzen){
   const st=m&&m.standort&&m.standort.lat?m.standort:null;
   const kh=`<div class="sheet-head"><div><span class="label">${m?esc(m.name):"Hof"}</span><h2>${setzen?"Standort setzen":"Karte"}</h2></div><button class="ghost" data-act="${m?"back":"close"}">${m?"Zurück":"Schließen"}</button></div>`;
   const kb=`  ${setzen?`<p class="note" style="margin:0">Tippe auf die Karte, wo <b>${esc(m.name)}</b> steht – oder stell dich daneben und nimm <b>📍 Mein Standort</b>.</p>`:""}
-  ${setzen?"":`<div class="kfilter zu" id="kfilter"><button type="button" class="kfbtn" id="kfbtn"><i>👁</i>Anzeige</button>${[...(darf("maschinen")?[...KGRP,{id:"oldtimer",name:"Oldtimer"}]:[]),...(darfFelder()?[{id:"felder",name:"Felder"}]:[]),{id:"orte",name:"Orte"},{id:"hindernisse",name:"Hindernisse"}].map(g=>`<button type="button" class="chip${kAus().includes(g.id)?"":" on"}" data-kg="${g.id}">${g.name}</button>`).join("")}${darfBoden()?`<button type="button" class="chip${lsGet("mp_boden")==="1"?" on":""}" id="k_boden">Bodenzahl</button><button type="button" class="chip${lsGet("mp_bodenart")==="1"&&lsGet("mp_boden")!=="1"?" on":""}" id="k_bart">Bodenart</button>`:""}<button type="button" class="chip${lsGet("mp_alt")==="1"?" on":""}" id="k_alt">Früher</button></div>`}
-  <div class="kwrap${tab&&KVOLL?" voll":""}" id="kwrap"><div id="map" class="map"><div class="empty">Karte wird geladen…</div></div>${setzen?"":`<div class="kaltr" id="k_altr" hidden><span>heute</span><input type="range" id="k_altv" min="0" max="100" value="${esc(lsGet("mp_altv")||"100")}" aria-label="Überblenden zwischen heute und früher"><select id="k_altj" aria-label="Jahr"><option value="hdop">1952/53</option></select><small id="k_altd"></small></div>`}<div class="kctl">${setzen?"":`<button type="button" id="k_mess"><i>📏</i>Messen</button>`}${setzen||!darfFelder(true)?"":`<button type="button" id="k_ausw"><i>☑</i>Auswählen</button><button type="button" id="k_feldneu"><i>✏️</i>Einzeichnen</button>`}${setzen||!S.canWrite?"":`<button type="button" id="k_ortneu"><i>📍</i>Ort</button>`}${setzen||!darfFelder(true)?"":`<label id="k_imp"><i>📥</i>Import<input type="file" id="k_impf" accept=".zip,.geojson,.json" hidden></label>`}<button type="button" id="kvoll" aria-label="Vollbild">${tab&&KVOLL?"<i>✕</i><span>Schließen</span>":"<i>⛶</i><span>Vollbild</span>"}</button></div>${setzen?"":`<div id="kfeldv"></div>`}</div>
+  ${setzen?"":`<div class="kfilter zu" id="kfilter"><button type="button" class="kfbtn" id="kfbtn"><i>👁</i>Anzeige</button>${[...(darf("maschinen")?[...KGRP,{id:"oldtimer",name:"Oldtimer"}]:[]),...(darfFelder()?[{id:"felder",name:"Felder"}]:[]),{id:"orte",name:"Orte"},{id:"hindernisse",name:"Hindernisse"}].map(g=>`<button type="button" class="chip${kAus().includes(g.id)?"":" on"}" data-kg="${g.id}">${g.name}</button>`).join("")}${darfBoden()?`<button type="button" class="chip${lsGet("mp_boden")==="1"?" on":""}" id="k_boden">Bodenzahl</button><button type="button" class="chip${lsGet("mp_bodenart")==="1"&&lsGet("mp_boden")!=="1"?" on":""}" id="k_bart">Bodenart</button>`:""}<button type="button" class="chip${lsGet("mp_alt")==="1"?" on":""}" id="k_alt">Historisch</button></div>`}
+  <div class="kwrap${tab&&KVOLL?" voll":""}" id="kwrap"><div id="map" class="map"><div class="empty">Karte wird geladen…</div></div>${setzen?"":`<div class="kaltr" id="k_altr" hidden><span>heute</span><input type="range" id="k_altv" min="0" max="100" value="${esc(lsGet("mp_altv")||"100")}" aria-label="Überblenden zwischen heute und früher"><span>1952/53</span></div>`}<div class="kctl">${setzen?"":`<button type="button" id="k_mess"><i>📏</i>Messen</button>`}${setzen||!darfFelder(true)?"":`<button type="button" id="k_ausw"><i>☑</i>Auswählen</button><button type="button" id="k_feldneu"><i>✏️</i>Einzeichnen</button>`}${setzen||!S.canWrite?"":`<button type="button" id="k_ortneu"><i>📍</i>Ort</button>`}${setzen||!darfFelder(true)?"":`<label id="k_imp"><i>📥</i>Import<input type="file" id="k_impf" accept=".zip,.geojson,.json" hidden></label>`}<button type="button" id="kvoll" aria-label="Vollbild">${tab&&KVOLL?"<i>✕</i><span>Schließen</span>":"<i>⛶</i><span>Vollbild</span>"}</button></div>${setzen?"":`<div id="kfeldv"></div>`}</div>
   ${setzen?`<div class="fields"><label class="f full"><span class="label">Wo genau (optional)</span><input id="k_ort" maxlength="80" value="${esc(st?st.ort||"":"")}" placeholder="z. B. Maschinenhalle hinten links"></label></div>
   <p class="err" id="kerr" hidden></p><div class="row"><button type="button" id="k_gps">📍 Mein Standort</button>${st?`<button type="button" class="danger" id="k_del">Entfernen</button>`:""}<button type="button" class="primary" id="k_save" ${st?"":"disabled"}>Speichern</button></div>`
   :`<div id="kfeld"></div><div id="k_bleg"></div><div id="k_baleg"></div><div id="k_leg" class="kleg"></div><div id="k_auftr"></div><div class="row" style="justify-content:space-between"><small class="note" style="margin:0">${S.m.filter(x=>x.standort&&x.standort.lat).length} Maschinen · ${(S.f||[]).length} ${(S.f||[]).length===1?"Feld":"Felder"}${(S.f||[]).length?` (${fmtHa((S.f||[]).reduce((a,f)=>a+flaecheHa(f.punkte),0))})`:""} · Antippen öffnet</small>${S.canWrite?`<button type="button" class="linkbtn" id="k_hof">Ansicht als Hof merken</button>`:""}</div>`}`;
@@ -1012,26 +982,10 @@ async function karte(mid,setzen){
   /* Bodenzahl-Ebene */
   const BE=K.ebene&&K.ebene(bsTile,.6);let bodenAn=false;
   const BA=K.ebene&&K.ebene(baTile,.6);let artAn=false;
-  /* Zeitreise: Luftbild Hessen 1952/53 und ältere Satellitenbilder (Esri Wayback) */
-  const ALT_E={};let altAn=false,altSel=lsGet("mp_altj")||"hdop";
-  const altEbene=k=>{if(ALT_E[k])return ALT_E[k];if(!K.ebene)return null;
-    if(k==="hdop")return ALT_E[k]=K.ebene(hdopTile,1,{min:11,unten:true,att:"Luftbild 1952/53 © HVBG"});
-    const it=(WB_ITEMS||[]).find(x=>String(x.releaseNum)===String(k));if(!it)return null;
-    const tpl=it.itemURL;return ALT_E[k]=K.ebene((x,y,z)=>tpl.replace("{level}",z).replace("{row}",y).replace("{col}",x),1,{min:11,unten:true,att:"Wayback © Esri, Maxar"})};
-  const altOp=()=>+($("#k_altv")||{value:100}).value/100;
-  const altZeigen=()=>{Object.entries(ALT_E).forEach(([k,e])=>{if(e&&(k!==altSel||!altAn))e.aus()});if(!altAn)return;const e=altEbene(altSel);if(e){e.an();e.op&&e.op(altOp())}
-    const d=$("#k_altd");if(d&&!/geladen|erreichbar/.test(d.textContent))d.textContent=altSel==="hdop"?"Luftbild Hessen 1952/53":""};
-  const altListe=async()=>{const sel=$("#k_altj");if(!sel)return;const d=$("#k_altd");if(d)d.textContent="Jahre werden geladen…";const c=K.center();const items=await wbLokal(c);
-    if(!items.length){if(d)d.textContent="Satellitenbilder gerade nicht erreichbar – nur 1952/53";return}
-    /* nach echtem Aufnahmedatum beschriften, gleiche Aufnahmen nur einmal */
-    const auf=await Promise.all(items.map(it=>wbAufnahme(c,it.releaseNum)));
-    const seen=new Set(),L=[];items.forEach((it,k)=>{const a=auf[k];const key=a?(a.tag||a.jahr+"-"+a.mon):"r"+it.releaseNum;if(seen.has(key))return;seen.add(key);L.push({it,a})});
-    if(L.length<2&&items.length>1){L.length=0;proJahr(items).forEach(it=>L.push({it,a:null}))}
-    L.sort((x,y)=>(y.a?y.a.jahr*100+y.a.mon:+y.it.releaseDateLabel.slice(0,4)*100)-(x.a?x.a.jahr*100+x.a.mon:+x.it.releaseDateLabel.slice(0,4)*100));
-    if(d)d.textContent="";
-    sel.innerHTML=L.map(({it,a})=>`<option value="${it.releaseNum}">${a?esc(a.text):"Stand "+esc(it.releaseDateLabel.slice(0,4))}</option>`).join("")+`<option value="hdop">1952/53</option>`;
-    if(![...sel.options].some(o=>o.value===altSel))altSel=L.length?String(L[0].it.releaseNum):"hdop";sel.value=altSel};
-  const altSetzen=an=>{altAn=an;lsSet("mp_alt",an?"1":"0");const b=$("#k_alt");if(b)b.classList.toggle("on",an);const r=$("#k_altr");if(r)r.hidden=!an;if(an)altListe().then(altZeigen);altZeigen()};
+  /* Historisch: Luftbild Hessen 1952/53 mit Überblend-Regler */
+  const HD=K.ebene&&K.ebene(hdopTile,1,{min:11,unten:true,att:"Luftbild 1952/53 © HVBG"});let altAn=false;
+  const altSetzen=an=>{altAn=an;lsSet("mp_alt",an?"1":"0");const b=$("#k_alt");if(b)b.classList.toggle("on",an);const r=$("#k_altr");if(r)r.hidden=!an;
+    if(HD){if(an){HD.an();HD.op&&HD.op(+($("#k_altv")||{value:100}).value/100)}else HD.aus()}};
   const artSetzen=an=>{artAn=an;lsSet("mp_bodenart",an?"1":"0");const b=$("#k_bart");if(b)b.classList.toggle("on",an);if(BA)an?BA.an():BA.aus();
     if(an&&bodenAn)bodenSetzen(false);
     const lg=$("#k_baleg");if(!lg)return;if(!an){lg.innerHTML="";return}
@@ -1040,8 +994,7 @@ async function karte(mid,setzen){
   const bodenSetzen=an=>{bodenAn=an;lsSet("mp_boden",an?"1":"0");const b=$("#k_boden");if(b)b.classList.toggle("on",an);if(BE)an?BE.an():BE.aus();if(an&&artAn)artSetzen(false);
     const lg=$("#k_bleg");if(lg)lg.innerHTML=an?`<div class="bleg"><span>Acker-/Grünlandzahl</span><i></i><small><span>0</span><span>50</span><span>105</span></small><small class="note">Erst ab näherem Zoom sichtbar · Punkt antippen zeigt den Wert · Quelle: HLNUG</small></div>`:""};
   if(!setzen&&$("#k_boden")){$("#k_boden").addEventListener("click",()=>bodenSetzen(!bodenAn));if(lsGet("mp_boden")==="1")bodenSetzen(true)}
-  if(!setzen&&$("#k_alt")){$("#k_alt").addEventListener("click",()=>altSetzen(!altAn));$("#k_altv").addEventListener("input",e=>{const x=ALT_E[altSel];if(x&&x.op)x.op(+e.target.value/100);lsSet("mp_altv",e.target.value)});
-    $("#k_altj").addEventListener("change",e=>{altSel=e.target.value;lsSet("mp_altj",altSel);altZeigen()});if(lsGet("mp_alt")==="1")altSetzen(true)}
+  if(!setzen&&$("#k_alt")){$("#k_alt").addEventListener("click",()=>altSetzen(!altAn));$("#k_altv").addEventListener("input",e=>{if(HD&&HD.op)HD.op(+e.target.value/100);lsSet("mp_altv",e.target.value)});if(lsGet("mp_alt")==="1")altSetzen(true)}
   if(!setzen&&$("#k_bart")){$("#k_bart").addEventListener("click",()=>artSetzen(!artAn));if(lsGet("mp_bodenart")==="1"&&!bodenAn)artSetzen(true)}
   const bodenZeigen=async ll=>{const el=kPanel();if(!el)return;el.innerHTML=`<div class="kfinfo"><div><b>Bodenzahl</b><small id="kb_w">wird abgefragt…</small></div><button type="button" class="ghost" id="kb_x">✕</button></div>`;
     $("#kb_x").addEventListener("click",()=>{el.innerHTML=""});const w=await bsWert(ll);const z=$("#kb_w");if(!z)return;
