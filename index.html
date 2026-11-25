@@ -786,15 +786,20 @@ async function wbLokal(c){let all;try{all=await wbAlle()}catch(_){return []}
       const sel=j.select&&j.select[0]?+j.select[0]:rel;nums.add(sel);const k=all.findIndex(it=>it.releaseNum===sel);if(k<0)break;const nx=all[k+1];rel=nx?nx.releaseNum:0}
     const lok=all.filter(it=>nums.has(it.releaseNum));if(lok.length>1)return WB_LOK[key]=lok}catch(_){}
   return WB_LOK[key]=proJahr(all)}
-async function wbDatum(c,rel){try{const it=(WB_ITEMS||[]).find(x=>String(x.releaseNum)===String(rel));if(!it||!it.metaUrl)return"";
+async function wbDatumRoh(c,rel){try{const it=(WB_ITEMS||[]).find(x=>String(x.releaseNum)===String(rel));if(!it||!it.metaUrl)return null;
   const d=.002,u=`${it.metaUrl.replace(/\/$/,"")}/identify?geometry=${c.lng},${c.lat}&geometryType=esriGeometryPoint&sr=4326&layers=all&tolerance=1&mapExtent=${c.lng-d},${c.lat-d},${+c.lng+d},${+c.lat+d}&imageDisplay=400,400,96&returnGeometry=false&f=json`;
-  const j=await (await fetch(u)).json();const a=(j.results||[]).map(r=>r.attributes||{}).find(a=>a.SRC_DATE2||a.SRC_DATE);if(!a)return"";
+  const j=await (await fetch(u)).json();
+  /* mehrere Ebenen (grob bis fein) – die mit der feinsten Auflösung ist das Bild, das man beim Reinzoomen sieht */
+  const kand=(j.results||[]).map(r=>r.attributes||{}).filter(a=>a.SRC_DATE2||a.SRC_DATE);if(!kand.length)return null;
+  const res=a=>{const v=parseFloat(a.SRC_RES??a.Resolution??a.RESOLUTION);return isNaN(v)?999:v};
+  const a=kand.sort((x,y)=>res(x)-res(y))[0];
   const v=a.SRC_DATE2||a.SRC_DATE;const dt=typeof v==="number"?new Date(v):/^\d{8}$/.test(String(v))?new Date(+String(v).slice(0,4),+String(v).slice(4,6)-1,1):new Date(v);
-  return isNaN(dt)?"":"Aufnahme "+dt.toLocaleDateString("de-DE",{month:"long",year:"numeric"})}catch(_){return""}}
+  return isNaN(dt)?null:dt}catch(_){return null}}
+async function wbDatum(c,rel){const dt=await wbDatumRoh(c,rel);return dt?"Aufnahme "+dt.toLocaleDateString("de-DE",{month:"long",year:"numeric"}):""}
 const WB_AUF={};
 async function wbAufnahme(c,rel){const k=rel+"@"+(+c.lat).toFixed(3)+","+(+c.lng).toFixed(3);if(k in WB_AUF)return WB_AUF[k];
-  const t=await wbDatum(c,rel);const m=t.match(/Aufnahme (\S+) (\d{4})/);const MON=["januar","februar","märz","april","mai","juni","juli","august","september","oktober","november","dezember"];
-  return WB_AUF[k]=m?{jahr:+m[2],mon:MON.indexOf(m[1].toLowerCase())+1,text:m[1]+" "+m[2]}:null}
+  const dt=await wbDatumRoh(c,rel);
+  return WB_AUF[k]=dt?{jahr:dt.getFullYear(),mon:dt.getMonth()+1,tag:dt.toISOString().slice(0,10),text:dt.toLocaleDateString("de-DE",{month:"long",year:"numeric"})}:null}
 /* Historische Luftbilder Hessen 1952/53 (HVBG, Datenlizenz Deutschland – Zero) */
 const HDOP_URL="https://gds-srv.hessen.de/cgi-bin/hdop/he-hdop.ows";
 function hdopTile(x,y,z){const n=Math.pow(2,z),lon=v=>v/n*360-180,lat=v=>{const r=Math.PI-2*Math.PI*v/n;return 180/Math.PI*Math.atan(.5*(Math.exp(r)-Math.exp(-r)))};
@@ -1020,7 +1025,8 @@ async function karte(mid,setzen){
     if(!items.length){if(d)d.textContent="Satellitenbilder gerade nicht erreichbar – nur 1952/53";return}
     /* nach echtem Aufnahmedatum beschriften, gleiche Aufnahmen nur einmal */
     const auf=await Promise.all(items.map(it=>wbAufnahme(c,it.releaseNum)));
-    const seen=new Set(),L=[];items.forEach((it,k)=>{const a=auf[k];const key=a?a.jahr+"-"+a.mon:"r"+it.releaseNum;if(seen.has(key))return;seen.add(key);L.push({it,a})});
+    const seen=new Set(),L=[];items.forEach((it,k)=>{const a=auf[k];const key=a?(a.tag||a.jahr+"-"+a.mon):"r"+it.releaseNum;if(seen.has(key))return;seen.add(key);L.push({it,a})});
+    if(L.length<2&&items.length>1){L.length=0;proJahr(items).forEach(it=>L.push({it,a:null}))}
     L.sort((x,y)=>(y.a?y.a.jahr*100+y.a.mon:+y.it.releaseDateLabel.slice(0,4)*100)-(x.a?x.a.jahr*100+x.a.mon:+x.it.releaseDateLabel.slice(0,4)*100));
     if(d)d.textContent="";
     sel.innerHTML=L.map(({it,a})=>`<option value="${it.releaseNum}">${a?esc(a.text):"Stand "+esc(it.releaseDateLabel.slice(0,4))}</option>`).join("")+`<option value="hdop">1952/53</option>`;
